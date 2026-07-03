@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NUNI — La musique congolaise mérite son envol</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0E3D2C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NUNI">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- shared svg defs -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="grad-line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6E45A8"/>
+      <stop offset="100%" stop-color="#D4AF6A"/>
+    </linearGradient>
+    <linearGradient id="grad-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E8C77E"/>
+      <stop offset="100%" stop-color="#6E45A8"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- ============ TOASTS ============ -->
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+  <span id="toast-text">Bienvenue chez NUNI.</span>
+</div>
+
+<!-- ============ AI ONBOARDING MODAL ============ -->
+<div class="legal-modal-overlay" id="legal-modal-overlay" onclick="if(event.target===this) closeLegal()">
+  <div class="legal-modal">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeLegal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <h2 class="serif" id="legal-title">Politique de confidentialité</h2>
+    <div class="legal-body" id="legal-body"></div>
+  </div>
+</div>
+
+<div class="ai-modal-overlay" id="ai-modal-overlay">
+  <div class="ai-modal">
+    <div class="ai-modal-avatar">🕊️</div>
+    <span class="ai-modal-eyebrow">Assistant NUNI</span>
+    <h2 class="serif">Votre découverte est terminée !</h2>
+    <p>J'espère que la balade vous a plu. Pour continuer votre aventure musicale, choisissez le profil qui vous correspond :</p>
+    <div class="ai-modal-choices">
+      <button class="ai-choice" onclick="aiChoosePlan('consumer')">
+        <span class="ic">🎧</span>
+        <span class="t">Pass Consommateur</span>
+        <span class="d">Écouter, suivre vos artistes et soutenir la musique congolaise</span>
+      </button>
+      <button class="ai-choice" onclick="aiChoosePlan('artist')">
+        <span class="ic">🎤</span>
+        <span class="t">Pass Artiste</span>
+        <span class="d">Publier votre musique et être rémunéré par le fonds collectif</span>
+      </button>
+    </div>
+    <button class="ai-modal-skip" onclick="closeAiModal()">Plus tard</button>
+  </div>
+</div>
+
+<!-- ============ INSCRIPTION RÉELLE (connectée au vrai serveur) ============ -->
+<div class="ai-modal-overlay" id="real-register-overlay" onclick="if(event.target===this) closeRealRegister()">
+  <div class="ai-modal" style="max-width:460px; text-align:left; max-height:85vh; overflow-y:auto;">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeRealRegister()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="ai-modal-avatar" style="margin:0 0 8px;">📝</div>
+    <span class="ai-modal-eyebrow">Fiche de renseignement</span>
+    <h2 class="serif" id="rr-title">Créer mon compte NUNI</h2>
+    <p style="margin-bottom:16px;">Ces informations créent un vrai compte sur le serveur NUNI — pas une simulation.</p>
+
+    <div class="field-row">
+      <div class="field"><label>Prénom *</label><input type="text" id="rr-first"></div>
+      <div class="field"><label>Nom *</label><input type="text" id="rr-last"></div>
+    </div>
+    <div class="field full"><label>Email *</label><input type="email" id="rr-email"></div>
+    <div class="field full"><label>Mot de passe * (8 caractères min.)</label><input type="password" id="rr-password"></div>
+    <div class="field-row">
+      <div class="field"><label>Âge *</label><input type="number" id="rr-age"></div>
+      <div class="field"><label>Téléphone</label><input type="text" id="rr-phone"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Ville *</label><input type="text" id="rr-city"></div>
+      <div class="field"><label>Pays *</label><input type="text" id="rr-country" value="Congo"></div>
+    </div>
+    <div class="field full"><label>Adresse *</label><input type="text" id="rr-address"></div>
+
+    <div id="rr-artist-fields" style="display:none;">
+      <div class="field full"><label>Nom d'artiste *</label><input type="text" id="rr-artistname"></div>
+      <div class="field full"><label>Label / Manager (optionnel)</label><input type="text" id="rr-label"></div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%; margin-top:16px;" onclick="submitRealRegistration()" id="rr-submit-btn">Créer mon compte et continuer</button>
+    <div id="rr-feedback" style="margin-top:12px; font-size:12.5px;"></div>
+  </div>
+</div>
+
+<!-- ============ SAISIE DU CODE D'ACCÈS (déblocage réel) ============ -->
+<div class="ai-modal-overlay" id="redeem-overlay" onclick="if(event.target===this) closeRedeemModal()">
+  <div class="ai-modal" style="max-width:400px;">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeRedeemModal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="ai-modal-avatar">🔑</div>
+    <span class="ai-modal-eyebrow">Débloquer mon accès</span>
+    <h2 class="serif">Code reçu sur WhatsApp</h2>
+    <p style="margin-bottom:14px;">Une fois votre paiement confirmé, NUNI vous envoie un code à 6 caractères. Saisissez-le ici pour débloquer votre compte.</p>
+    <div class="field full"><label>Email utilisé à l'inscription</label><input type="email" id="redeem-email"></div>
+    <div class="field full"><label>Mot de passe</label><input type="password" id="redeem-password"></div>
+    <div class="field full"><label>Code d'accès (6 caractères)</label><input type="text" id="redeem-code-input" style="text-transform:uppercase; letter-spacing:2px; text-align:center; font-size:18px; font-weight:700;" maxlength="6"></div>
+    <button class="btn btn-primary" style="width:100%; margin-top:14px;" onclick="submitRedeem()" id="redeem-submit-btn">Débloquer mon accès</button>
+    <div id="redeem-feedback" style="margin-top:12px; font-size:12.5px;"></div>
+  </div>
+</div>
+
+<div class="ai-modal-overlay" id="whatsapp-modal-overlay" onclick="if(event.target===this) closeWhatsAppModal()">
+  <div class="ai-modal">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeWhatsAppModal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="ai-modal-avatar">💬</div>
+    <span class="ai-modal-eyebrow">Finaliser votre abonnement</span>
+    <h2 class="serif">On termine ça sur WhatsApp</h2>
+    <p>Pour valider votre paiement Mobile Money en toute sécurité, notre équipe vous accompagne directement sur WhatsApp au <b>+242 06 895 16 00</b>.</p>
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="confirmPlanViaWhatsApp()">Continuer sur WhatsApp</button>
+    <button class="ai-modal-skip" onclick="closeWhatsAppModal()">Annuler</button>
+  </div>
+</div>
+
+<!-- ============ LECTEUR VIDÉO CLIP (style iOS) ============ -->
+<div class="clip-player-overlay" id="clip-player-overlay">
+  <div class="clip-player-topbar">
+    <button class="btn-icon" onclick="closeClipPlayer()" aria-label="Fermer" style="background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); color:#fff;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="clip-player-titles">
+      <div class="t" id="clip-player-title">—</div>
+      <div class="a" id="clip-player-artist">—</div>
+    </div>
+    <div style="width:38px;"></div>
+  </div>
+  <div class="clip-player-video-wrap">
+    <video id="clip-player-video" playsinline controls></video>
+  </div>
+  <div class="clip-player-actions">
+    <button onclick="toggleClipLike(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg><span id="clip-player-likes">0</span></button>
+    <button onclick="toast('Vues comptabilisées en direct.')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg><span id="clip-player-views">0</span></button>
+    <button onclick="closeClipPlayer(); enterApp('artist');"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg><span>Profil</span></button>
+    <button onclick="event.preventDefault(); toast('Lien du clip copié.')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg><span>Partager</span></button>
+  </div>
+</div>
+
+<!-- ============ NUNI TALENT — TOP 100 ============ -->
+<div class="ai-modal-overlay" id="talent-modal-overlay" onclick="if(event.target===this) closeTalentModal()">
+  <div class="ai-modal talent-modal">
+    <div class="talent-bubbles" id="talent-bubbles"></div>
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px; z-index:2;" onclick="closeTalentModal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div style="position:relative; z-index:1;">
+      <div class="ai-modal-avatar">🏆</div>
+      <span class="ai-modal-eyebrow">NUNI Talent</span>
+      <h2 class="serif">Top 100 des plus écoutés</h2>
+      <p style="margin-bottom:16px;">Votez chaque semaine pour l'artiste qui mérite d'être mis en avant. Classement basé sur le nombre d'écoutes.</p>
+      <div class="talent-rank-list" id="talent-rank-list"></div>
+      <div class="talent-winner-card" id="talent-winner-card"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ NUNI RADIO TUNER + NUNI DJ ============ -->
+<div class="ai-modal-overlay" id="profile-info-overlay" onclick="if(event.target===this) closeProfileInfo()">
+  <div class="ai-modal profile-info-modal">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeProfileInfo()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="ai-modal-avatar" id="profile-info-icon">🎵</div>
+    <span class="ai-modal-eyebrow">NUNI</span>
+    <h2 class="serif" id="profile-info-title">Mes playlists</h2>
+    <div id="profile-info-body" style="text-align:left;"></div>
+  </div>
+</div>
+
+<div class="ai-modal-overlay" id="tuner-modal-overlay" onclick="if(event.target===this) closeTuner()">
+  <div class="tuner-modal">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px; z-index:2;" onclick="closeTuner()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+
+    <div class="tuner-tabs">
+      <button class="tuner-tab is-active" id="tuner-tab-radio" onclick="switchTunerTab('radio')">📻 NUNI Radio</button>
+      <button class="tuner-tab" id="tuner-tab-dj" onclick="switchTunerTab('dj')">🎧 NUNI DJ</button>
+    </div>
+
+    <!-- ---- RADIO TUNER ---- -->
+    <div id="tuner-pane-radio">
+      <div class="tuner-noise" id="tuner-noise"></div>
+      <div class="tuner-freq" id="tuner-freq">87.5 <span>MHz</span></div>
+      <div class="tuner-station-name" id="tuner-station-name">NUNI Hits</div>
+      <div class="tuner-station-desc" id="tuner-station-desc">Les morceaux les plus populaires de la plateforme.</div>
+
+      <div class="tuner-nowplaying" id="tuner-nowplaying">
+        <div class="cover" id="tuner-cover"></div>
+        <div><div class="t" id="tuner-track-t">—</div><div class="a" id="tuner-track-a">—</div></div>
+      </div>
+
+      <div class="tuner-controls">
+        <button class="btn-icon" onclick="tunerStep(-1)" aria-label="Station précédente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button class="btn btn-primary tuner-play-btn" id="tuner-play-btn" onclick="tunerTogglePlay()">▶ Écouter cette station</button>
+        <button class="btn-icon" onclick="tunerStep(1)" aria-label="Station suivante"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+
+      <div class="tuner-station-list" id="tuner-station-list"></div>
+    </div>
+
+    <!-- ---- NUNI DJ ---- -->
+    <div id="tuner-pane-dj" style="display:none;">
+      <div class="dj-modes" id="dj-modes"></div>
+      <div class="dj-panel">
+        <div class="dj-live-badge"><span class="dot"></span>EN DIRECT</div>
+        <div class="dj-row"><span>Mode</span><b id="dj-mode-label">Club</b></div>
+        <div class="dj-row"><span>Transition</span><b id="dj-transition-label">Beat Sync</b></div>
+        <div class="dj-row"><span>BPM</span><b id="dj-bpm-label" class="data">126</b></div>
+        <div class="dj-row"><span>Prochain morceau</span><b id="dj-next-label">—</b></div>
+        <div class="dj-row"><span>Temps restant</span><b id="dj-remaining-label" class="data">--:--</b></div>
+      </div>
+      <div class="tuner-nowplaying" id="dj-nowplaying">
+        <div class="cover" id="dj-cover"></div>
+        <div><div class="t" id="dj-track-t">—</div><div class="a" id="dj-track-a">—</div></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" id="dj-play-btn" onclick="djTogglePlay()">▶ Lancer le DJ</button>
+      <p style="font-size:11px; color:var(--text-faint); text-align:center; margin-top:10px; line-height:1.5;">Simulation d'ambiance : le BPM et le beatmatching affichés sont indicatifs — l'enchaînement réel des morceaux utilise votre catalogue NUNI.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SCREEN 1 : HOME ============ -->
+<section class="screen active" id="screen-home">
+  <div class="home-wrap">
+    <div class="home-topbar">
+      <div class="nuni-logo">
+        <img src="assets/logo.png" alt="NUNI" style="width:42px;height:42px;border-radius:50%;display:block;">
+        <div class="wordmark-lockup">
+          <span class="wordmark">NUNI</span>
+          <span class="wordmark-tagline">MIZIKI</span>
+        </div>
+        <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+      </div>
+      <button class="btn-icon" id="theme-toggle-home" aria-label="Changer de thème">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="theme-icon-home"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+    </div>
+
+    <img src="assets/logo.png" alt="NUNI" class="bird-hero">
+
+    <p class="home-eyebrow">La plateforme qui finance directement la musique congolaise</p>
+    <h1 class="home-title">La musique congolaise<br><em>mérite son envol.</em></h1>
+    <p class="home-sub"><span id="rotating-msg">Chaque écoute change une vie.</span></p>
+
+    <div class="home-actions">
+      <button class="btn btn-primary" onclick="goTo('plans')">Créer un compte</button>
+      <button class="btn btn-ghost" onclick="enterApp('catalog'); toast('Connexion réussie — bon retour sur NUNI.')">Connexion</button>
+    </div>
+
+    <div class="impact-counter">
+      <span class="dot"></span>
+      <span class="data" id="impact-value">184 320</span>
+      <span class="impact-lbl">auditeurs actifs sur NUNI ce mois-ci</span>
+    </div>
+
+    <div class="home-footer">
+      <a href="#" onclick="event.preventDefault(); openLegal('privacy')">Politique de confidentialité</a>
+      <a href="#" onclick="event.preventDefault(); openLegal('terms')">Conditions d'utilisation</a>
+      <a href="#" onclick="event.preventDefault(); openLegal('legal')">Mentions légales</a>
+      <a href="#" onclick="event.preventDefault(); openLegal('cookies')">Cookies</a>
+      <a href="mailto:nunimisiki@gmail.com">Questions / réclamations : nunimisiki@gmail.com</a>
+      <span>© 2026 NUNI</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCREEN 2 : PLANS ============ -->
+<section class="screen" id="screen-plans">
+  <button class="btn-icon plans-back" onclick="goTo('home')" aria-label="Retour">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <div class="plans-wrap">
+    <div class="plans-head">
+      <h1 class="serif">Choisissez votre envol</h1>
+      <p>Compte gratuit, puis un Pass adapté à votre usage. Paiement via MTN ou Airtel Money.</p>
+    </div>
+    <div class="plans-grid plans-grid-3">
+      <div class="plan-card discovery">
+        <span class="plan-tag" style="background:rgba(127,199,154,.15); color:#7FC79A;">Pass découverte</span>
+        <h2 class="serif">Essayer NUNI</h2>
+        <p class="plan-price"><b>Gratuit</b> · 24 heures</p>
+        <ul>
+          <li>${ico('check')} Aperçu complet du catalogue &amp; du lecteur</li>
+          <li>${ico('check')} Accès à NUNI Radio &amp; NUNI DJ</li>
+          <li>${ico('check')} Aucune carte ni Mobile Money requis</li>
+          <li>${ico('check')} Un assistant IA vous guide à la fin</li>
+        </ul>
+        <p style="font-size:11.5px; color:var(--text-faint); margin:-14px 0 18px; line-height:1.5;">Idéal pour découvrir le site avant de choisir entre Pass Consommateur et Pass Artiste.</p>
+        <button class="btn btn-ghost" style="width:100%; border-color:#7FC79A; color:#7FC79A;" onclick="startDiscovery()">Démarrer la découverte gratuite</button>
+      </div>
+      <div class="plan-card consumer">
+        <span class="plan-tag">Pass consommateur</span>
+        <h2 class="serif">Écouter &amp; soutenir</h2>
+        <p class="plan-price"><b>650 FCFA</b> / mois · <span id="promo-price-trim">1 200 FCFA</span> / trimestre · 2 100 FCFA / an</p>
+        <ul>
+          <li>${ico('check')} Accès complet au catalogue congolais</li>
+          <li>${ico('check')} Playlists, favoris &amp; recommandations</li>
+          <li>${ico('check')} Suivi de vos artistes préférés</li>
+          <li>${ico('check')} Qualité audio optimale</li>
+        </ul>
+        <div class="promo-box">
+          <label class="promo-label">Vous avez un code promo ?</label>
+          <div class="promo-row">
+            <input type="text" id="promo-input" placeholder="Ex : NUNI5" maxlength="20">
+            <button class="btn btn-ghost btn-sm" onclick="applyPromoCode()">Appliquer</button>
+          </div>
+          <div id="promo-feedback"></div>
+        </div>
+        <div class="plan-paymethods"><span class="pay-pill">MTN Mobile Money</span><span class="pay-pill">Airtel Money</span></div>
+        <button class="btn btn-ghost" style="width:100%" onclick="choosePlan('consumer')">Choisir ce pass</button>
+      </div>
+      <div class="plan-card artist featured">
+        <span class="plan-tag">Pass artiste</span>
+        <h2 class="serif">Créer &amp; gagner</h2>
+        <p class="plan-price"><b>5 000 FCFA</b> / trimestre · 10 000 FCFA / an</p>
+        <ul>
+          <li>${ico('check')} Téléversement audio illimité</li>
+          <li>${ico('check')} Page artiste vérifiée &amp; personnalisable</li>
+          <li>${ico('check')} Rémunération via le fonds collectif NUNI</li>
+          <li>${ico('check')} Assistant IA marketing &amp; visibilité</li>
+        </ul>
+        <p style="font-size:11.5px; color:var(--text-faint); margin:-14px 0 18px; line-height:1.5;">Le détail de votre rémunération (taux, répartition, exemples) reste privé et consultable uniquement dans votre tableau de bord, une fois votre compte créé.</p>
+        <div class="plan-paymethods"><span class="pay-pill">MTN Money</span><span class="pay-pill">Airtel Money</span></div>
+        <button class="btn btn-primary" style="width:100%" onclick="choosePlan('artist')">Choisir ce pass</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ APP SHELL ============ -->
+<div class="app-shell" id="app-shell">
+  <div class="discovery-banner" id="discovery-banner" style="display:none;">
+    <span>🔍 Pass Découverte — expire dans <b id="discovery-countdown">23:59:59</b> <span class="tz-note">(heure de Brazzaville, UTC+1)</span></span>
+    <button class="btn btn-sm btn-ghost" onclick="endDiscovery()">Terminer maintenant (démo)</button>
+  </div>
+  <nav class="app-topnav">
+    <div class="nuni-logo" style="cursor:pointer" onclick="goTo('home')">
+      <img src="assets/logo.png" alt="NUNI" style="width:28px;height:28px;border-radius:50%;display:block;">
+      <span class="wordmark" style="font-size:17px">NUNI</span>
+      <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
+    </div>
+    <div class="app-nav-links">
+      <button class="app-nav-link" data-app-link="catalog" onclick="enterApp('catalog')">Catalogue</button>
+      <button class="app-nav-link" data-app-link="clips" onclick="enterApp('clips')">🎬 Clips</button>
+      <button class="app-nav-link" data-app-link="ads" onclick="enterApp('ads')">🛒 Publicité</button>
+      <button class="app-nav-link nav-consumer-only" data-app-link="library" onclick="enterApp('library')">📚 Bibliothèque</button>
+      <button class="app-nav-link nav-artist-only" data-app-link="artist" onclick="enterApp('artist')">Artiste</button>
+      <button class="app-nav-link nav-artist-only" data-app-link="dashboard" onclick="enterApp('dashboard')">Dashboard</button>
+      <button class="app-nav-link nav-artist-only" data-app-link="admin" onclick="enterApp('admin')">🛡 Admin</button>
+    </div>
+    <div class="app-search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="app-search-input" placeholder="Titres, artistes, albums…" oninput="runSearch(this.value)" onfocus="document.getElementById('search-results').classList.add('open')">
+      <div class="search-results" id="search-results"></div>
+    </div>
+    <div class="app-topnav-right">
+      <div class="notif-wrap">
+        <button class="btn-icon" id="notif-toggle" aria-label="Notifications" onclick="toggleNotifPanel()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="notif-dot" id="notif-dot">3</span>
+        </button>
+        <div class="notif-panel" id="notif-panel">
+          <div class="notif-head">Notifications</div>
+          <div class="notif-item"><span class="ic">🎉</span><div><b>Nouveau follower</b><p>Tcheza Nation vous suit désormais.</p></div></div>
+          <div class="notif-item"><span class="ic">💰</span><div><b>Paiement reçu</b><p>72 480 FCFA versés sur votre Mobile Money.</p></div></div>
+          <div class="notif-item"><span class="ic">🎵</span><div><b>Nouvelle sortie suivie</b><p>Kessy Tina vient de publier "Sango Pesi".</p></div></div>
+        </div>
+      </div>
+      <button class="btn-icon" id="theme-toggle-app" aria-label="Changer de thème">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="theme-icon-app"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <div class="profile-menu-wrap">
+        <button class="user-chip" onclick="toggleProfileMenu()" style="cursor:pointer" title="Mon profil">
+          <div class="avatar" id="profile-chip-avatar">BM</div><span>Bibi M.</span>
+        </button>
+        <div class="profile-menu" id="profile-menu">
+          <label class="profile-menu-item" for="profile-avatar-input" style="cursor:pointer;">🖼️ <span>Changer ma photo</span></label>
+          <button class="profile-menu-item" onclick="enterApp('artist'); closeProfileMenu();">👤 <span>Mon profil</span></button>
+          <button class="profile-menu-item" onclick="toast('Vos favoris — bientôt centralisés ici.'); closeProfileMenu();">❤️ <span>Mes favoris</span></button>
+          <button class="profile-menu-item" onclick="openProfileInfo('playlists'); closeProfileMenu();">🎵 <span>Mes playlists</span></button>
+          <button class="profile-menu-item" onclick="openProfileInfo('history'); closeProfileMenu();">🕘 <span>Historique</span></button>
+          <button class="profile-menu-item" onclick="toast('Vos téléchargements apparaîtront ici.'); closeProfileMenu();">⬇️ <span>Téléchargements</span></button>
+          <button class="profile-menu-item" id="profile-menu-artist-space" onclick="enterApp('dashboard'); closeProfileMenu();">🎤 <span>Mon espace artiste</span></button>
+          <button class="profile-menu-item" id="account-switch-btn" onclick="switchAccountType();">🎧 Passer en vue Consommateur</button>
+          <button class="profile-menu-item" onclick="openProfileInfo('subscription'); closeProfileMenu();">💳 <span>Mon abonnement</span></button>
+          <button class="profile-menu-item" onclick="openProfileInfo('payments'); closeProfileMenu();">💰 <span>Paiements</span></button>
+          <button class="profile-menu-item" onclick="toggleNotifPanel(); closeProfileMenu();">🔔 <span>Notifications</span></button>
+          <button class="profile-menu-item" onclick="openProfileInfo('promo'); closeProfileMenu();">🎁 <span>Codes promo</span></button>
+          <button class="profile-menu-item" onclick="openProfileInfo('language'); closeProfileMenu();">🌍 <span>Langue</span></button>
+          <button class="profile-menu-item" onclick="toggleTheme(); closeProfileMenu();">🌙 <span>Mode sombre / clair</span></button>
+          <div class="profile-menu-sep"></div>
+          <button class="profile-menu-item" onclick="event.preventDefault(); openLegal('privacy'); closeProfileMenu();">📜 <span>Confidentialité</span></button>
+          <button class="profile-menu-item" onclick="event.preventDefault(); openLegal('terms'); closeProfileMenu();">📄 <span>Conditions d'utilisation</span></button>
+          <button class="profile-menu-item" onclick="openProfileInfo('contact'); closeProfileMenu();">📩 <span>Nous contacter</span></button>
+          <div class="profile-menu-sep"></div>
+          <button class="profile-menu-item" onclick="openRedeemModal(); closeProfileMenu();">🔑 <span>Saisir mon code d'accès</span></button>
+          <button class="profile-menu-item danger" onclick="goTo('home'); closeProfileMenu(); toast('Vous avez été déconnecté.');">🚪 <span>Déconnexion</span></button>
+        </div>
+      </div>
+      <input type="file" id="profile-avatar-input" accept="image/*" onchange="handleProfileAvatarUpload(event)" style="display:none">
+    </div>
+  </nav>
+
+  <!-- ---- CATALOG ---- -->
+  <main class="app-main" id="view-catalog">
+    <div class="page-head">
+      <div><h1 id="catalog-greeting-title" class="greeting-anim">Bonsoir 👋</h1><p id="catalog-greeting-sub" class="greeting-anim" style="animation-delay:.08s">Voici ce qui fait vibrer le Congo cette semaine.</p></div>
+    </div>
+
+    <div class="radio-banner">
+      <div class="radio-banner-text">
+        <span class="radio-badge" id="radio-badge"><span class="dot"></span>EN DIRECT</span>
+        <h3 class="serif">NUNI Radio &amp; NUNI DJ</h3>
+        <p>12 stations thématiques façon tuner FM, ou un DJ automatique qui enchaîne les morceaux selon l'ambiance choisie.</p>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="openTuner('radio')">📻 Ouvrir le tuner</button>
+        <button class="btn btn-ghost" onclick="openTuner('dj')">🎧 NUNI DJ</button>
+      </div>
+    </div>
+
+    <div class="genre-grid" id="genre-grid"></div>
+
+    <div id="genre-filtered-shelf" style="display:none;" class="shelf">
+      <div class="shelf-head">
+        <h3 class="serif" id="genre-filtered-heading">Rap</h3>
+        <a href="#" onclick="event.preventDefault(); filterCatalogByGenre('Tout'); document.querySelectorAll('.genre-tile').forEach((t,i)=>t.classList.toggle('is-active', i===0));">← Retour au catalogue</a>
+      </div>
+      <div class="shelf-row" id="genre-filtered-row" style="flex-wrap:wrap;"></div>
+    </div>
+
+    <div id="default-shelves">
+      <div class="shelf">
+        <div class="shelf-head"><h3 class="serif">Vos badges d'auditeur</h3><a href="#">Tout voir</a></div>
+        <div class="badges-row" id="badges-row"></div>
+      </div>
+
+      <div class="shelf">
+        <div class="shelf-head"><h3 class="serif">Artistes à suivre</h3><a href="#">Tout voir</a></div>
+        <div class="artist-suggest-row" id="artist-suggest-row"></div>
+      </div>
+
+      <div class="shelf"><div class="shelf-head"><h3 class="serif">Nouveautés</h3><a href="#">Tout voir</a></div><div class="shelf-row" id="shelf-new"></div></div>
+      <div class="shelf"><div class="shelf-head"><h3 class="serif">Top Congo</h3><a href="#">Tout voir</a></div><div class="shelf-row" id="shelf-top"></div></div>
+      <div class="shelf"><div class="shelf-head"><h3 class="serif">Playlists NUNI</h3><a href="#">Tout voir</a></div><div class="shelf-row" id="shelf-playlists"></div></div>
+
+      <div class="shelf">
+        <div class="shelf-head"><h3 class="serif">Calendrier des sorties</h3><a href="#">Tout voir</a></div>
+        <div class="release-row" id="release-row"></div>
+      </div>
+
+      <div class="talent-banner">
+        <div>
+          <span class="plan-tag" style="background:rgba(212,175,106,.18); color:var(--accent);">NUNI Talent</span>
+          <h3 class="serif">Découvrez la prochaine voix du Congo</h3>
+          <p>Votez chaque semaine pour un nouvel artiste émergent et aidez-le à percer.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openTalentModal()">Voter cette semaine</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ---- CLIPS ---- -->
+  <main class="app-main" id="view-clips" style="display:none;">
+    <div class="page-head">
+      <div><h1>Clips</h1><p>Les clips du moment, façon vidéo — likes, vues et commentaires.</p></div>
+    </div>
+    <div class="shelf">
+      <div class="shelf-head"><h3 class="serif">Derniers clips</h3></div>
+      <div class="clips-grid" id="clips-grid"></div>
+    </div>
+  </main>
+
+  <!-- ---- BIBLIOTHÈQUE (consommateur) ---- -->
+  <main class="app-main" id="view-library" style="display:none;">
+    <div class="page-head">
+      <div><h1>📚 Ma Bibliothèque</h1><p>Vos playlists, votre historique et vos téléchargements, au même endroit.</p></div>
+    </div>
+    <div class="shelf">
+      <div class="shelf-head"><h3 class="serif">Playlists</h3></div>
+      <div class="pi-list" id="library-playlists"></div>
+    </div>
+    <div class="shelf">
+      <div class="shelf-head"><h3 class="serif">Historique récent</h3></div>
+      <div class="pi-list" id="library-history"></div>
+    </div>
+    <div class="shelf">
+      <div class="shelf-head"><h3 class="serif">Téléchargements</h3></div>
+      <div class="pi-empty">Aucun téléchargement pour le moment.</div>
+    </div>
+  </main>
+
+  <!-- ---- PUBLICITÉ ---- -->
+  <main class="app-main" id="view-ads" style="display:none;">
+    <div class="page-head">
+      <div><h1>🛒 Publicité</h1><p>Découvrez les annonces de nos partenaires, ou proposez la vôtre.</p></div>
+    </div>
+
+    <div class="shelf">
+      <div class="shelf-head"><h3 class="serif">Annonces sponsorisées</h3></div>
+      <div class="ads-row" id="ads-row"></div>
+    </div>
+
+    <div class="ads-panel">
+      <div class="ads-panel-head">
+        <span class="plan-tag" style="background:rgba(110,69,168,.18); color:var(--violet-soft);">NUNI Ads</span>
+        <h3 class="serif">Espace Annonceurs</h3>
+        <p>Vous avez un commerce, une marque ou un événement ? Proposez votre publicité — chaque demande est vérifiée avant validation, rien n'est publié automatiquement.</p>
+      </div>
+
+      <div class="ads-pricing-row">
+        <label class="ads-price-opt">
+          <input type="radio" name="ad-duration" value="5j" checked onchange="updateAdPrice()">
+          <div class="opt-box"><div class="opt-days">5 jours</div><div class="opt-price">500 FCFA</div></div>
+        </label>
+        <label class="ads-price-opt">
+          <input type="radio" name="ad-duration" value="2s" onchange="updateAdPrice()">
+          <div class="opt-box"><div class="opt-days">2 semaines</div><div class="opt-price">1 000 FCFA</div></div>
+        </label>
+        <label class="ads-price-opt">
+          <input type="radio" name="ad-duration" value="1m" onchange="updateAdPrice()">
+          <div class="opt-box"><div class="opt-days">1 mois</div><div class="opt-price">2 000 FCFA</div></div>
+        </label>
+      </div>
+
+      <div class="ads-form">
+        <div class="ads-form-fields">
+          <label class="field-label">Nom de l'entreprise / produit
+            <input type="text" id="ad-name" placeholder="Ex : Café Mboka">
+          </label>
+          <label class="field-label">Description courte de ce que vous vendez
+            <textarea id="ad-desc" rows="2" placeholder="Ex : Café torréfié artisanal, livraison à Brazzaville"></textarea>
+          </label>
+          <label class="field-label">Lien (site, page, numéro WhatsApp…)
+            <input type="text" id="ad-link" placeholder="Ex : wa.me/2426xxxxxxx">
+          </label>
+          <label class="field-label">Votre contact (pour vous répondre)
+            <input type="text" id="ad-contact" placeholder="Email ou numéro de téléphone">
+          </label>
+          <label class="upload-dropzone ads-dropzone" for="ad-image-input">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Importer une image publicitaire depuis votre ordinateur</span>
+          </label>
+          <input type="file" id="ad-image-input" accept="image/*" onchange="previewAdImage(event)" style="display:none">
+          <button class="btn btn-primary" style="width:100%" onclick="submitAdRequest()">Déposer ma demande — <span id="ad-submit-price">500 FCFA</span></button>
+          <p style="font-size:11px; color:var(--text-faint); line-height:1.5;">Un assistant IA vérifie d'abord votre demande (authenticité, contenu autorisé) avant qu'elle ne soit transmise pour validation finale à <a href="mailto:nunimisiki@gmail.com" style="color:var(--accent);">nunimisiki@gmail.com</a>. Rien n'est mis en ligne sans accord.</p>
+        </div>
+        <div class="ads-preview">
+          <span class="field-label" style="margin-bottom:8px; display:block;">Aperçu en direct</span>
+          <div class="ad-card" id="ad-preview-card">
+            <div class="ad-img" id="ad-preview-img"></div>
+            <span class="ad-tag">Sponsorisé</span>
+            <div class="ad-name" id="ad-preview-name">Votre produit ici</div>
+            <div class="ad-link" id="ad-preview-link">votre-lien.com</div>
+          </div>
+          <div id="ad-ai-status"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ---- ARTIST ---- -->
+  <main class="app-main" id="view-artist" style="display:none; padding-top:0;">
+    <div class="artist-cover"></div>
+    <div class="artist-header">
+      <div class="artist-avatar" id="artist-page-avatar">BM</div>
+      <div class="artist-id">
+        <div class="artist-name-row">
+          <h1 class="serif" id="artist-page-name">Bibi Mwana</h1>
+          <span class="badge-verified" id="artist-page-badge">${ico('check')} Vérifié</span>
+        </div>
+        <p class="artist-meta" id="artist-page-meta">Rumba · Afro · Kinshasa</p>
+      </div>
+    </div>
+    <div class="artist-stats">
+      <div class="stat-block"><div class="num data">2,4M</div><div class="lbl">Streams totaux</div></div>
+      <div class="stat-block"><div class="num data">186 K</div><div class="lbl">Followers</div></div>
+      <div class="stat-block"><div class="num data">9 480</div><div class="lbl">Soutiens reçus</div></div>
+    </div>
+    <div class="artist-actions">
+      <button class="btn btn-primary" id="artist-page-support-btn" onclick="toast('Merci pour votre soutien à Bibi Mwana 🕊️')">Soutenir cet artiste</button>
+      <button class="btn btn-ghost" id="follow-btn" onclick="toggleFollow(this)">Suivre</button>
+    </div>
+    <p class="artist-bio" id="artist-page-bio">Bibi Mwana réinvente la rumba congolaise avec des arrangements modernes et une voix habitée. Entre Kinshasa et la diaspora, son univers tisse mémoire et avenir — chaque sortie est pensée comme un envol collectif pour la scène locale.</p>
+    <div class="artist-section">
+      <div class="shelf-head"><h3 class="serif">Discographie</h3></div>
+      <div class="shelf-row" id="shelf-artist"></div>
+    </div>
+    <div class="artist-section">
+      <div class="shelf-head"><h3 class="serif">Ses clips</h3></div>
+      <div class="clips-grid" id="artist-page-clips"></div>
+    </div>
+    <div class="artist-section">
+      <div class="shelf-head"><h3 class="serif">Ses sons tendance</h3></div>
+      <div class="shelf-row" id="shelf-artist-trending"></div>
+    </div>
+    <div class="artist-section">
+      <div class="shelf-head"><h3 class="serif">Dernières sorties</h3></div>
+      <div class="shelf-row" id="shelf-artist-albums"></div>
+    </div>
+    <div class="artist-section" style="padding-bottom:50px;">
+      <div class="shelf-head"><h3 class="serif" id="artist-page-calendar-title">Calendrier des sorties — Bibi Mwana</h3></div>
+      <p style="font-size:12.5px; color:var(--text-faint); margin-top:-10px; margin-bottom:16px;">Pour ne manquer aucune date de sortie de ses prochains projets.</p>
+      <div class="release-row" id="artist-release-row"></div>
+    </div>
+  </main>
+
+
+  <!-- ---- DASHBOARD ---- -->
+  <main class="app-main" id="view-dashboard" style="display:none;">
+    <div class="page-head">
+      <div><h1>Tableau de bord artiste</h1><p>Vos performances et revenus du mois en cours.</p></div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="privacy-toggle" id="privacy-toggle" onclick="toggleRevenuePrivacy()">
+          <span class="track"><span class="knob"></span></span>
+          <span>Masquer mes revenus sur mon profil public</span>
+        </button>
+        <button class="btn btn-ghost btn-sm">Exporter le rapport</button>
+      </div>
+    </div>
+    <p style="font-size:13px; color:var(--text-dim); background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:14px 18px; margin-bottom:26px; max-width:680px;">
+      Chaque stream valide génère <b style="color:var(--accent)">2 FCFA</b> versés au fonds collectif, réparti <b style="color:var(--accent)">75% pour l'artiste / 25% pour NUNI</b>. Exemple : 1 000 000 streams = 2 000 000 FCFA, dont 1 500 000 FCFA pour vous et 500 000 FCFA pour NUNI.
+    </p>
+    <div class="dash-grid">
+      <div class="kpi-card"><div class="lbl">Streams ce mois</div><div class="val data">48 320</div><div class="trend">↑ 12,4% vs mois dernier</div></div>
+      <div class="kpi-card revenue-figure"><div class="lbl">Part du fonds attribuée</div><div class="val data">96 640 FCFA</div><div class="trend">↑ 8,1%</div></div>
+      <div class="kpi-card commission revenue-figure"><div class="lbl">Frais de plateforme (25%)</div><div class="val data">−24 160 FCFA</div></div>
+      <div class="kpi-card revenue-figure"><div class="lbl">Revenu net (75%)</div><div class="val data">72 480 FCFA</div><div class="trend">Versé le 5 du mois</div></div>
+    </div>
+    <div class="dash-panel">
+      <h3 class="serif">Streams — 6 derniers mois</h3>
+      <div class="bar-chart" id="bar-chart"></div>
+    </div>
+    <div class="dash-panel">
+      <h3 class="serif">Historique des paiements</h3>
+      <table class="pay-table">
+        <thead><tr><th>Mois</th><th>Streams</th><th>Montant net</th><th>Statut</th></tr></thead>
+        <tbody>
+          <tr><td>Mai 2026</td><td class="data">44 120</td><td class="data">66 180 FCFA</td><td><span class="status-pill paid">Payé</span></td></tr>
+          <tr><td>Juin 2026</td><td class="data">48 320</td><td class="data">72 480 FCFA</td><td><span class="status-pill pending">En attente</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="dash-panel" id="upload-panel">
+      <h3 class="serif">Importer ma musique</h3>
+      <p style="font-size:12.5px; color:var(--text-faint); margin-top:-16px; margin-bottom:18px;">Formats acceptés : MP3, WAV, FLAC, AAC. Dans cette démo, vos fichiers restent sur votre appareil et ne sont pas envoyés en ligne.</p>
+
+      <div class="release-type-row">
+        <span class="rt-label">Type de projet</span>
+        <div class="rt-options" id="release-type-options">
+          <button class="rt-btn is-active" data-type="Single" onclick="setReleaseType(this)">Single</button>
+          <button class="rt-btn" data-type="EP" onclick="setReleaseType(this)">EP</button>
+          <button class="rt-btn" data-type="Album" onclick="setReleaseType(this)">Album</button>
+          <button class="rt-btn" data-type="Mixtape" onclick="setReleaseType(this)">Mixtape</button>
+        </div>
+      </div>
+
+      <div class="cover-pick-row">
+        <div class="cover-pick-preview" id="release-cover-preview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 16l4.5-4.5a2 2 0 0 1 2.8 0L16 16M14 14l1.5-1.5a2 2 0 0 1 2.8 0L20 14M4 6h16v12H4z"/></svg>
+        </div>
+        <div>
+          <label class="btn btn-ghost btn-sm" for="release-cover-input">Choisir la pochette de mon <span id="release-type-echo">single</span></label>
+          <input type="file" id="release-cover-input" accept="image/*" onchange="handleReleaseCover(event)" style="display:none">
+          <p style="font-size:11.5px; color:var(--text-faint); margin-top:8px;">Format carré recommandé (3000×3000px minimum).</p>
+        </div>
+      </div>
+
+      <label class="upload-dropzone" for="audio-upload-input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16"/></svg>
+        <span>Glissez vos fichiers audio ici, ou cliquez pour parcourir votre ordinateur</span>
+      </label>
+      <input type="file" id="audio-upload-input" accept="audio/*" multiple onchange="handleAudioUpload(event)" style="display:none">
+      <div id="audio-upload-list" class="upload-list"></div>
+
+      <div class="release-fields">
+        <div class="field-row">
+          <div class="field"><label>Titre du projet *</label><input type="text" id="rf-titre" placeholder="Ex : Nzela ya Sika"></div>
+          <div class="field"><label>Genre</label>
+            <select id="rf-genre">
+              <option>Rumba</option><option>Afro</option><option>Gospel</option><option>Rap</option>
+              <option>Hip-Hop</option><option>Traditionnel</option><option>Autre</option>
+            </select>
+          </div>
+        </div>
+        <div class="field full"><label>Description</label><textarea id="rf-description" rows="3" placeholder="Parlez de ce projet à vos auditeurs…"></textarea></div>
+        <div class="field-row">
+          <div class="field"><label>Date de sortie</label><input type="date" id="rf-date"></div>
+          <div class="field"><label>Compositeur / Auteur</label><input type="text" id="rf-auteur" placeholder="Votre nom ou pseudonyme"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Featuring (optionnel)</label><input type="text" id="rf-feat" placeholder="Ex : Kessy Tina"></div>
+          <div class="field"><label>Studio d'enregistrement</label><input type="text" id="rf-studio" placeholder="Nom du studio"></div>
+        </div>
+        <div class="field full"><label>Paroles (optionnel)</label><textarea id="rf-paroles" rows="3" placeholder="Collez les paroles pour activer les paroles synchronisées…"></textarea></div>
+        <div class="field-row">
+          <div class="field checkbox-field"><label><input type="checkbox" id="rf-explicit"> Contenu explicite</label></div>
+          <div class="field checkbox-field"><label><input type="checkbox" id="rf-droits"> Je confirme détenir les droits sur ce contenu *</label></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:18px;" onclick="publishRelease()">Publier ce projet sur NUNI</button>
+    </div>
+    <div class="dash-panel" id="clip-upload-panel">
+      <h3 class="serif">Publier un clip</h3>
+      <p style="font-size:12.5px; color:var(--text-faint); margin-top:-16px; margin-bottom:18px;">Votre clip apparaîtra automatiquement dans l'onglet <b>Clips</b> et sur votre page artiste, sous "Ses clips".</p>
+      <div class="cover-pick-row">
+        <div class="cover-pick-preview" id="clip-thumb-preview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 16l4.5-4.5a2 2 0 0 1 2.8 0L16 16M14 14l1.5-1.5a2 2 0 0 1 2.8 0L20 14M4 6h16v12H4z"/></svg>
+        </div>
+        <div>
+          <label class="btn btn-ghost btn-sm" for="clip-thumb-input">Choisir la miniature du clip</label>
+          <input type="file" id="clip-thumb-input" accept="image/*" onchange="handleClipThumb(event)" style="display:none">
+          <p style="font-size:11.5px; color:var(--text-faint); margin-top:8px;">Format 16:9 recommandé.</p>
+        </div>
+      </div>
+      <label class="upload-dropzone" for="clip-video-input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 10l5-3v10l-5-3M4 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/></svg>
+        <span>Glissez votre fichier vidéo ici, ou cliquez pour parcourir votre ordinateur</span>
+      </label>
+      <input type="file" id="clip-video-input" accept="video/*" onchange="handleClipVideo(event)" style="display:none">
+      <div id="clip-upload-status" class="upload-list"></div>
+      <div class="field full" style="margin-top:16px;"><label>Titre du clip *</label><input type="text" id="clip-title-input" placeholder="Ex : Nzela ya Sika (Clip officiel)"></div>
+      <button class="btn btn-primary" style="width:100%; margin-top:16px;" onclick="publishClip()">Publier ce clip sur NUNI</button>
+    </div>
+    <div class="dash-panel">
+      <h3 class="serif">Photos de mon profil artiste</h3>
+      <div class="photo-upload-row">
+        <div class="photo-upload-item">
+          <div class="photo-preview" id="avatar-preview-dash">BM</div>
+          <label class="btn btn-ghost btn-sm" for="avatar-upload-input">Changer la photo de profil</label>
+          <input type="file" id="avatar-upload-input" accept="image/*" onchange="handlePhotoUpload(event,'avatar')" style="display:none">
+        </div>
+        <div class="photo-upload-item">
+          <div class="photo-preview wide" id="cover-preview-dash"></div>
+          <label class="btn btn-ghost btn-sm" for="cover-upload-input">Changer la photo de couverture</label>
+          <input type="file" id="cover-upload-input" accept="image/*" onchange="handlePhotoUpload(event,'cover')" style="display:none">
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ FOOTER APP ============ -->
+  <footer class="app-footer">
+    <div class="app-footer-grid">
+      <div class="app-footer-col">
+        <div class="nuni-logo" style="margin-bottom:12px;">
+          <svg viewBox="0 0 240 200" style="width:32px;height:auto"><use href="#bird-mark"/></svg>
+          <span class="wordmark" style="font-size:16px;">NUNI</span>
+        </div>
+        <p class="app-footer-tagline">La plateforme qui finance directement la musique congolaise.</p>
+        <div class="app-footer-social">
+          <a href="#" onclick="event.preventDefault(); toast('Instagram NUNI — bientôt en ligne.')" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
+          <a href="#" onclick="event.preventDefault(); toast('Facebook NUNI — bientôt en ligne.')" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 9h3V5h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V9a1 1 0 0 1 1-1z"/></svg></a>
+          <a href="#" onclick="event.preventDefault(); toast('TikTok NUNI — bientôt en ligne.')" aria-label="TikTok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 3v9.5a3.5 3.5 0 1 1-3.5-3.5M16 3a5 5 0 0 0 5 5"/></svg></a>
+          <a href="#" onclick="event.preventDefault(); toast('YouTube NUNI — bientôt en ligne.')" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M10 9.5l5 2.5-5 2.5z" fill="currentColor" stroke="none"/></svg></a>
+        </div>
+      </div>
+      <div class="app-footer-col">
+        <h4>Légal</h4>
+        <a href="#" onclick="event.preventDefault(); openLegal('privacy')">Politique de confidentialité</a>
+        <a href="#" onclick="event.preventDefault(); openLegal('terms')">Conditions d'utilisation</a>
+        <a href="#" onclick="event.preventDefault(); toast('Charte de respect des artistes — en préparation.')">Respect des artistes</a>
+        <a href="#" onclick="event.preventDefault(); toast('Charte de la communauté — en préparation.')">Respect de la communauté</a>
+        <a href="#" onclick="event.preventDefault(); openLegal('privacy')">Protection des données</a>
+        <a href="#" onclick="event.preventDefault(); openLegal('cookies')">Cookies</a>
+      </div>
+      <div class="app-footer-col">
+        <h4>Aide</h4>
+        <a href="mailto:nunimisiki@gmail.com">Support</a>
+        <a href="#" onclick="event.preventDefault(); toast('FAQ — en préparation.')">FAQ</a>
+        <a href="#" onclick="event.preventDefault(); toast('Aucune offre d\'emploi pour le moment.')">Carrières</a>
+        <a href="#" onclick="event.preventDefault(); openLegal('legal')">À propos</a>
+        <a href="mailto:nunimisiki@gmail.com">Presse</a>
+      </div>
+      <div class="app-footer-col">
+        <h4>Contact</h4>
+        <a href="mailto:nunimisiki@gmail.com">nunimisiki@gmail.com</a>
+        <a href="https://wa.me/242068951600" target="_blank">WhatsApp : +242 06 895 16 00</a>
+        <a href="#" onclick="event.preventDefault(); openLegal('legal')">Brazzaville, Congo</a>
+      </div>
+    </div>
+    <div class="app-footer-bottom">© 2026 NUNI — Tous droits réservés.</div>
+  </footer>
+</div>
+
+<!-- ============ PLAYER BAR ============ -->
+<div class="player-bar" id="player-bar" style="display:none;">
+  <div class="player-track" onclick="openFullPlayer()" style="cursor:pointer;">
+    <div class="cover player-cover pal-1" id="player-cover"><div class="cover-glyph pal-pattern"></div></div>
+    <div class="player-track-info">
+      <div class="t" id="player-title">Mokili Ya Sika</div>
+      <div class="a" id="player-artist">Bibi Mwana</div>
+    </div>
+  </div>
+  <button class="btn-icon player-like" id="player-like-btn" onclick="event.stopPropagation(); toggleLike(this)" aria-label="Aimer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+  </button>
+  <div class="player-center">
+    <div class="player-controls">
+      <button onclick="shuffleToggle(this)" aria-label="Lecture aléatoire"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
+      <button onclick="prevTrack()" aria-label="Précédent"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM10 12l9-6v12z"/></svg></button>
+      <button class="play-pause" id="play-pause-btn" onclick="togglePlay()" aria-label="Lecture / Pause">
+        <svg viewBox="0 0 24 24" fill="currentColor" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button onclick="nextTrack()" aria-label="Suivant"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM5 18l9-6-9-6z"/></svg></button>
+      <button onclick="repeatToggle(this)" aria-label="Répéter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+    </div>
+    <div class="progress-row">
+      <span class="time data" id="time-elapsed">0:00</span>
+      <div class="progress-track" id="progress-track" onclick="seek(event)"><div class="progress-fill" id="progress-fill"></div></div>
+      <span class="time data" id="time-total">3:24</span>
+    </div>
+  </div>
+  <div class="player-right">
+    <div class="volume-row">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4zM19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      <div class="volume-track" onclick="setVolume(event)"><div class="volume-fill" id="volume-fill"></div></div>
+    </div>
+    <button class="btn-icon" aria-label="Paroles" onclick="openFullPlayer(true)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h7"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============ FULL-SCREEN PLAYER ============ -->
+<div class="full-player" id="full-player">
+  <div class="fp-bg" id="fp-bg"></div>
+  <div class="fp-waves" id="fp-waves"><div class="fp-wave w1"></div><div class="fp-wave w2"></div></div>
+  <div class="fp-particles" id="fp-particles"></div>
+
+  <div class="fp-topbar">
+    <button class="btn-icon" onclick="closeFullPlayer()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <span class="fp-eyebrow">Lecture en cours</span>
+    <button class="btn-icon" id="immersion-btn" onclick="toggleImmersion()" aria-label="Mode immersion">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
+    </button>
+  </div>
+
+  <div class="fp-scroll" id="fp-scroll">
+    <div class="fp-hero">
+      <div class="fp-cover-wrap" id="fp-cover-wrap" onclick="toggleVibeMode()" title="Cliquez pour activer le Mode Vibe NUNI">
+        <div class="fp-ring" id="fp-ring"></div>
+        <div class="fp-circular-eq" id="fp-circular-eq"></div>
+        <div class="cover fp-cover" id="fp-cover"><div class="cover-glyph pal-pattern"></div></div>
+        <div class="fp-vibe-particles" id="fp-vibe-particles"></div>
+      </div>
+      <p class="fp-vibe-hint" id="fp-vibe-hint">✨ Touchez la pochette pour le Mode Vibe NUNI</p>
+
+      <div class="fp-visualizer" id="fp-visualizer"></div>
+
+      <h1 class="serif fp-title" id="fp-title">Mokili Ya Sika</h1>
+      <div class="fp-artist-row">
+        <span id="fp-artist">Bibi Mwana</span>
+        <span class="badge-verified" id="fp-verified" style="display:none">${ico('check')} Artiste vérifié NUNI</span>
+      </div>
+      <div class="fp-meta" id="fp-meta">Envol · Rumba · 2026</div>
+      <div class="fp-meta fp-meta-faint" id="fp-meta2">412 K écoutes · Sorti le 12 Jan 2026</div>
+
+      <div class="fp-artist-stat-card" id="fp-artist-stat" style="display:none">
+        <span>🚀</span>
+        <div>
+          <div class="t">C'est votre morceau</div>
+          <div class="d">Excellent démarrage cette semaine — <a href="#" onclick="event.preventDefault(); enterApp('dashboard'); closeFullPlayer();">voir le tableau de bord</a></div>
+        </div>
+      </div>
+
+      <div class="progress-row fp-progress">
+        <span class="time data" id="fp-time-elapsed">0:00</span>
+        <div class="progress-track" id="fp-progress-track" onclick="seek(event)"><div class="progress-fill" id="fp-progress-fill"></div></div>
+        <span class="time data" id="fp-time-total">3:24</span>
+      </div>
+
+      <div class="player-controls fp-controls">
+        <button onclick="shuffleToggle(this)" aria-label="Lecture aléatoire"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
+        <button onclick="prevTrack()" aria-label="Précédent"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM10 12l9-6v12z"/></svg></button>
+        <button class="play-pause fp-play" onclick="togglePlay()" aria-label="Lecture / Pause">
+          <svg viewBox="0 0 24 24" fill="currentColor" id="fp-play-icon"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button onclick="nextTrack()" aria-label="Suivant"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM5 18l9-6-9-6z"/></svg></button>
+        <button onclick="repeatToggle(this)" aria-label="Répéter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+      </div>
+
+      <div class="fp-subcontrols">
+        <button class="fp-pill" id="speed-btn" onclick="cycleSpeed()">1×</button>
+        <button class="fp-pill" id="quality-btn" onclick="cycleQuality()">Haute qualité</button>
+        <button class="fp-pill" id="lyrics-toggle-btn" onclick="toggleLyrics()">Paroles</button>
+        <div class="volume-row" style="margin-left:4px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4zM19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          <div class="volume-track" onclick="setVolume(event)"><div class="volume-fill" id="volume-fill-fp"></div></div>
+        </div>
+      </div>
+
+      <div class="fp-actions-row">
+        <button class="btn-icon" id="fp-like-btn" onclick="toggleLike(this)" aria-label="Aimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+        <button class="btn-icon" onclick="toast('Ajouté à une playlist.')" aria-label="Ajouter à une playlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13M9 9l12-2M6 18a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 16a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></button>
+        <button class="btn-icon" onclick="toast('Téléchargement démarré (simulation).')" aria-label="Télécharger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16"/></svg></button>
+        <button class="btn-icon" onclick="toast('Lien copié — partagez ce titre.')" aria-label="Partager"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
+        <button class="btn-icon" onclick="enterApp('artist'); closeFullPlayer();" aria-label="Voir l'artiste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg></button>
+        <button class="btn-icon" onclick="toast('Signalement envoyé — merci de votre vigilance.')" aria-label="Signaler"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22V15"/></svg></button>
+      </div>
+
+      <button class="btn btn-primary fp-support-btn" onclick="toast('Merci pour votre soutien 🕊️')">❤️ Soutenir cet artiste</button>
+    </div>
+
+    <!-- Lyrics panel -->
+    <div class="fp-lyrics" id="fp-lyrics">
+      <h3 class="serif">Paroles</h3>
+      <div class="fp-lyrics-lines" id="fp-lyrics-lines"></div>
+    </div>
+
+    <!-- Mur des fans -->
+    <div class="fp-section">
+      <h3 class="serif">Mur des fans</h3>
+      <p class="fp-section-sub">Les derniers fans qui soutiennent cet artiste</p>
+      <div class="fan-wall" id="fan-wall"></div>
+    </div>
+
+    <!-- Artist bio -->
+    <div class="fp-section fp-bio">
+      <h3 class="serif">À propos de l'artiste</h3>
+      <div class="fp-bio-row">
+        <div class="artist-avatar" style="width:84px;height:84px;border-radius:22px;font-size:28px;flex-shrink:0;" id="fp-bio-avatar">BM</div>
+        <div>
+          <p class="fp-bio-text">Bibi Mwana réinvente la rumba congolaise avec des arrangements modernes et une voix habitée. Entre Kinshasa et la diaspora, son univers tisse mémoire et avenir.</p>
+          <div class="fp-bio-chips">
+            <span class="pay-pill">📍 Kinshasa</span>
+            <span class="pay-pill">Influences : Rumba, Soul, Afrobeat</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Suggestions -->
+    <div class="fp-section">
+      <div class="shelf-head"><h3 class="serif">Titres similaires</h3></div>
+      <div class="shelf-row" id="fp-suggest-similar"></div>
+    </div>
+    <div class="fp-section">
+      <div class="shelf-head"><h3 class="serif">Même artiste</h3></div>
+      <div class="shelf-row" id="fp-suggest-artist"></div>
+    </div>
+
+    <!-- Technical info -->
+    <div class="fp-section fp-tech">
+      <h3 class="serif">Informations techniques</h3>
+      <div class="fp-tech-grid">
+        <div><span class="lbl">Format</span><span class="val">FLAC</span></div>
+        <div><span class="lbl">Débit</span><span class="val">1 411 kbps</span></div>
+        <div><span class="lbl">Échantillonnage</span><span class="val">44.1 kHz</span></div>
+        <div><span class="lbl">Taille</span><span class="val">38,4 Mo</span></div>
+      </div>
+    </div>
+
+    <div style="height:40px"></div>
+  </div>
+
+  <button class="ai-assistant-btn" onclick="toast('Assistant IA — « Cet artiste mélange rumba traditionnelle et arrangements modernes. Découvrez son album Envol pour aller plus loin. »')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="3"/></svg>
+    <span>Besoin d'en savoir plus sur cet artiste ?</span>
+  </button>
+</div>
+
+<!-- ============ MIMI — ASSISTANT MUSIQUE CONGOLAISE ============ -->
+<div class="mimi-widget" id="mimi-widget">
+  <div class="mimi-panel" id="mimi-panel">
+    <div class="mimi-panel-head">
+      <div class="mimi-avatar">🕊️</div>
+      <div>
+        <div class="mimi-name">MIMI</div>
+        <div class="mimi-sub">Assistant musique congolaise</div>
+      </div>
+      <button class="btn-icon" onclick="toggleMimi()" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="mimi-messages" id="mimi-messages">
+      <div class="mimi-msg bot">Mbote ! Je suis MIMI 🕊️ Demandez-moi ce que vous voulez savoir sur la musique congolaise — nos légendes, la rumba, les genres... Essayez : « Connais-tu nos papas de la musique ? »</div>
+    </div>
+    <div class="mimi-suggestions">
+      <button onclick="mimiAsk('Connais-tu nos papas de la musique ?')">Nos papas de la musique</button>
+      <button onclick="mimiAsk(&quot;Qu'est-ce que la rumba congolaise ?&quot;)">La rumba congolaise</button>
+      <button onclick="mimiAsk('Parle-moi de Franco')">Franco Luambo</button>
+    </div>
+    <div class="mimi-input-row">
+      <input type="text" id="mimi-input" placeholder="Posez votre question sur la musique congolaise…" onkeydown="if(event.key==='Enter') mimiSend()">
+      <button class="btn-icon" onclick="mimiSend()" aria-label="Envoyer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>
+      </button>
+    </div>
+  </div>
+  <button class="mimi-bubble" id="mimi-bubble" onclick="toggleMimi()" aria-label="Ouvrir MIMI">
+    <span class="mimi-bubble-emoji">🕊️</span>
+  </button>
+</div>
+
+<!-- ============ MOBILE TAB BAR (aperçu app native) ============ -->
+<nav class="mobile-tabbar" id="mobile-tabbar">
+  <button class="tab-btn is-active" data-tab="catalog" onclick="tabNav('catalog')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2 4 4 8-8 4 4"/><path d="M3 19h18"/></svg>
+    <span>Catalogue</span>
+  </button>
+  <button class="tab-btn" data-tab="ads" onclick="tabNav('ads')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1 4h10l1-4M3 7h18l-2 13H5L3 7z"/><path d="M9 11v5M15 11v5"/></svg>
+    <span>Publicité</span>
+  </button>
+  <button class="tab-btn" data-tab="clips" onclick="tabNav('clips')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>
+    <span>Clips</span>
+  </button>
+  <button class="tab-btn tab-consumer-only" data-tab="library" onclick="tabNav('library')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5a2 2 0 0 1 2-2h8l6 6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v6h6"/></svg>
+    <span>Bibliothèque</span>
+  </button>
+  <button class="tab-btn tab-artist-only" data-tab="artist" onclick="tabNav('artist')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Artiste</span>
+  </button>
+  <button class="tab-btn tab-artist-only" data-tab="dashboard" onclick="tabNav('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 15l4-5 3 3 5-7"/></svg>
+    <span>Dashboard</span>
+  </button>
+</nav>
+
+<!-- ============ DEMO NAV ============ -->
+<div class="demo-nav" id="demo-nav">
+  <div class="demo-menu" id="demo-menu">
+    <div class="label">Aperçu des écrans</div>
+    <button data-screen="home" onclick="jumpDemo('home')">① Accueil</button>
+    <button data-screen="plans" onclick="jumpDemo('plans')">② Sélection de Pass</button>
+    <button data-screen="catalog" onclick="jumpDemo('catalog')">③ Catalogue</button>
+    <button data-screen="artist" onclick="jumpDemo('artist')">④ Lecteur (en bas)</button>
+    <button data-screen="artist" onclick="jumpDemo('artist')">⑤ Page Artiste</button>
+    <button data-screen="dashboard" onclick="jumpDemo('dashboard')">⑥ Dashboard</button>
+  </div>
+  <button class="demo-toggle" id="demo-toggle" aria-label="Navigation démo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+  </button>
+</div>
+
+<!-- hidden symbol defs -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="bird-mark" viewBox="0 0 240 240">
+    <circle cx="120" cy="120" r="120" fill="#0E3D2C"/>
+    <rect x="70" y="64" width="54" height="131" rx="10" fill="var(--jaune-nuni)"/>
+    <polygon points="124,76 154,76 182,150 152,150" fill="var(--vert-nuni)"/>
+    <polygon points="152,150 182,150 199,195 169,195" fill="var(--rouge-nuni)"/>
+    <path d="M185,131 L225,131 L225,180 Q225,195 210,195 L200,195 Q185,195 185,180 Z" fill="var(--rouge-nuni)"/>
+    <polygon points="190,76 206,76 198,92" fill="var(--jaune-nuni)"/>
+    <polygon points="200,97 216,97 208,113" fill="var(--jaune-nuni)"/>
+    <circle cx="221" cy="82" r="3.2" fill="var(--jaune-nuni)"/>
+    <circle cx="211" cy="119" r="3.2" fill="var(--jaune-nuni)"/>
+    <path d="M120,128 C100,121 77,134 64,164 C82,170 64,178 73,188 C90,196 110,180 122,160 C129,148 127,136 120,128 Z" fill="var(--jaune-nuni)"/>
+    <circle cx="128" cy="120" r="16" fill="var(--jaune-nuni)"/>
+    <path d="M141,108 L163,85 L148,118 Z" fill="var(--jaune-nuni)"/>
+    <path d="M141,118 L159,116 L146,129 Z" fill="var(--jaune-nuni)"/>
+    <circle cx="134" cy="115" r="2.6" fill="#0E3D2C"/>
+    <ellipse cx="178" cy="58" rx="7" ry="5.5" transform="rotate(-25 178 58)" fill="var(--jaune-nuni)"/>
+    <rect x="183" y="32" width="3.2" height="28" rx="1.6" fill="var(--jaune-nuni)"/>
+    <path d="M186,32 C195,34 200,42 197,50 C194,44 189,41 185,42 Z" fill="var(--jaune-nuni)"/>
+  </symbol>
+</svg>
+
+<script src="js/app.js"></script>
+</body>
+</html>

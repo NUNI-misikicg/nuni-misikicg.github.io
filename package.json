@@ -1,0 +1,14 @@
+{
+  "name": "nuni-site",
+  "version": "2.0.0",
+  "description": "NUNI - La musique congolaise mérite son envol. Plateforme musicale congolaise (frontend statique).",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
