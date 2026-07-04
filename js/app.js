@@ -1,33 +1,53 @@
-console.log('🎵 NUNI app.js chargé — version I1 (V0.5 : responsive multi-appareils + écran de chargement)');
+console.log('🎵 NUNI app.js chargé — version I2 (Nouveau logo + micro-interactions sur l\'écran de chargement)');
 
 /* ============ ÉCRAN DE CHARGEMENT (SPLASH) ============
    Séquence différente si en ligne ou hors ligne (comme demandé). Durée volontairement
    courte et fixe : elle sert à donner une impression de qualité et à masquer la
    préparation réelle de l'app, pas à attendre une vraie réponse serveur précise. */
+let splashNoteTimer = null;
+function spawnSplashNote(){
+  const layer = document.getElementById('splash-notes');
+  if(!layer) return;
+  const notes = ['♪','♫','♩'];
+  const n = document.createElement('span');
+  n.className = 'splash-note';
+  n.textContent = notes[Math.floor(Math.random()*notes.length)];
+  n.style.setProperty('--nx', (Math.random()*70-35) + 'px');
+  n.style.setProperty('--nr', (Math.random()*40-20) + 'deg');
+  n.style.left = (35 + Math.random()*30) + '%';
+  layer.appendChild(n);
+  setTimeout(()=> n.remove(), 2700);
+}
 function runSplashSequence(){
   const el = document.getElementById('splash-screen');
   const status = document.getElementById('splash-status');
+  const icon = document.getElementById('splash-status-icon');
   const bar = document.getElementById('splash-bar-fill');
   if(!el || !status || !bar) return;
   const online = navigator.onLine;
   const steps = online
-    ? [ { t:'Connexion à NUNI…', p:30 }, { t:'Chargement de votre bibliothèque…', p:68 }, { t:'Synchronisation…', p:96 } ]
-    : [ { t:'Mode hors ligne', p:45 }, { t:'Chargement de votre bibliothèque locale…', p:92 } ];
+    ? [ { t:'Connexion à NUNI…', p:30, ic:'🔗' }, { t:'Chargement de votre bibliothèque…', p:68, ic:'📚' }, { t:'Synchronisation…', p:96, ic:'🔄' } ]
+    : [ { t:'Mode hors ligne', p:45, ic:'📡' }, { t:'Chargement de votre bibliothèque locale…', p:92, ic:'📚' } ];
   let i = 0;
+  splashNoteTimer = setInterval(spawnSplashNote, 650);
   const advance = ()=>{
     if(i >= steps.length){
       bar.style.width = '100%';
       setTimeout(()=>{
         el.classList.add('fade-out');
+        clearInterval(splashNoteTimer);
         setTimeout(()=> el.remove(), 650);
       }, 260);
       return;
     }
     status.style.opacity = 0;
+    if(icon) icon.style.opacity = 0;
     setTimeout(()=>{
       status.textContent = steps[i].t;
+      if(icon) icon.textContent = steps[i].ic;
       bar.style.width = steps[i].p + '%';
       status.style.opacity = 1;
+      if(icon) icon.style.opacity = 1;
       i++;
       setTimeout(advance, 480);
     }, 180);
