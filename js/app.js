@@ -1,3 +1,4 @@
+console.log('🎵 NUNI app.js chargé — version F2 (Popup album : glassmorphism + morceau en cours)');
 /* ============ HELPERS ============ */
 function ico(name){
   if(name==='check') return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -133,6 +134,7 @@ function applyPromoCode(){
 const NUNI_API_BASE = 'https://nuni-backend.onrender.com';
 let realAuthToken = null;
 let realUserId = null;
+let currentUser = null; // infos complètes (prénom, nom...) de la personne connectée
 
 function choosePlan(type){
   pendingPlanType = type;
@@ -181,6 +183,7 @@ async function submitRealRegistration(){
     }
     realAuthToken = data.token;
     realUserId = data.user.id;
+    currentUser = data.user;
 
     // demande de Pass, tout de suite après la création du compte
     const subRes = await fetch(NUNI_API_BASE + '/api/subscribe/request', {
@@ -258,6 +261,7 @@ async function submitRedeem(){
       }
       realAuthToken = loginData.token;
       realUserId = loginData.user.id;
+      currentUser = loginData.user;
     }
 
     const res = await fetch(NUNI_API_BASE + '/api/subscribe/redeem', {
@@ -275,6 +279,8 @@ async function submitRedeem(){
     feedback.style.color = '#7FC79A';
     feedback.textContent = '✅ ' + data.message;
     toast('Accès débloqué — bienvenue sur NUNI en intégralité 🕊️');
+    currentUser = data.user;
+    applyAccountType();
     setTimeout(()=>{ closeRedeemModal(); enterApp('catalog'); }, 1200);
   }catch(e){
     feedback.style.color = 'var(--rose-braise)';
@@ -500,7 +506,8 @@ function enterApp(view){
   if(view === 'clips') renderClips();
   if(view === 'library') renderLibrary();
   ['catalog','clips','ads','library','artist','dashboard','admin'].forEach(v=>{
-    document.getElementById('view-'+v).style.display = (v===view) ? 'block' : 'none';
+    const el = document.getElementById('view-'+v);
+    if(el) el.style.display = (v===view) ? 'block' : 'none';
   });
   document.querySelectorAll('.app-nav-link').forEach(l=>{
     l.classList.toggle('is-active', l.dataset.appLink === view);
@@ -529,17 +536,23 @@ const artistProfiles = {
   'Les Anges du Rythme': { meta:'Traditionnel · Kinshasa', bio:"Les Anges du Rythme perpétuent les rythmes traditionnels congolais tout en les rapprochant des oreilles d'aujourd'hui.", verified:true },
   'Tcheza Nation': { meta:'Rap · Brazzaville', bio:"Tcheza Nation s'impose sur la scène rap congolaise avec des textes engagés et une identité sonore urbaine affirmée.", verified:false },
 };
+let currentArtistPageRealId = null;
 function openArtistPage(name){
+  const isOwnArtistPage = !!(currentUser && currentUser.account_type === 'artist' && currentUser.artist_name === name);
   const profile = artistProfiles[name] || { meta:'Artiste NUNI', bio:"Découvrez l'univers de "+name+" sur NUNI.", verified:false };
+  const reallyVerified = isOwnArtistPage ? !!currentUser.is_verified : profile.verified;
   document.getElementById('artist-page-name').textContent = name;
   document.getElementById('artist-page-meta').textContent = profile.meta;
   document.getElementById('artist-page-bio').textContent = profile.bio;
-  document.getElementById('artist-page-badge').style.display = profile.verified ? 'inline-flex' : 'none';
+  document.getElementById('artist-page-badge').style.display = reallyVerified ? 'inline-flex' : 'none';
   document.getElementById('artist-page-avatar').textContent = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('artist-page-support-btn').setAttribute('onclick', `toast('Merci pour votre soutien à ${name} 🕊️')`);
   document.getElementById('artist-page-calendar-title').textContent = 'Calendrier des sorties — ' + name;
+  renderCertificationButton(isOwnArtistPage, reallyVerified);
 
   const artistTracks = tracks.filter(t=>t.a===name);
+  const realTrackOfArtist = artistTracks.find(t=>t.artistId);
+  currentArtistPageRealId = realTrackOfArtist ? realTrackOfArtist.artistId : null;
   ['shelf-artist','shelf-artist-trending','shelf-artist-albums'].forEach(id=>{
     const row = document.getElementById(id);
     if(row) row.innerHTML = '';
@@ -555,6 +568,69 @@ function openArtistPage(name){
   renderArtistClips(name);
 
   enterApp('artist');
+}
+const NUNI_CERT_MIN_TRACKS = 50;
+const NUNI_CERT_MIN_FOLLOWERS = 5000;
+function renderCertificationButton(isOwnArtistPage, reallyVerified){
+  const old = document.getElementById('nuni-cert-wrap');
+  if(old) old.remove();
+  const badge = document.getElementById('artist-page-badge');
+  if(!isOwnArtistPage || reallyVerified || !badge) return;
+  const status = currentUser.verification_status || 'none';
+  const trackCount = currentUser.track_count || 0;
+  const followerCount = currentUser.follower_count || 0;
+  const eligible = trackCount >= NUNI_CERT_MIN_TRACKS && followerCount >= NUNI_CERT_MIN_FOLLOWERS;
+
+  const wrap = document.createElement('span');
+  wrap.id = 'nuni-cert-wrap';
+  wrap.style.cssText = 'display:inline-flex; flex-direction:column; gap:4px; margin-left:10px; vertical-align:middle;';
+
+  const btn = document.createElement('button');
+  btn.style.cssText = 'padding:5px 14px; border-radius:16px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid rgba(212,175,106,0.4);';
+
+  if(status === 'pending'){
+    btn.textContent = '⏳ Certification en attente';
+    btn.disabled = true;
+    btn.style.background = 'rgba(255,255,255,0.08)';
+    btn.style.color = '#999';
+    btn.style.cursor = 'default';
+  } else if(!eligible){
+    btn.textContent = '🔒 Conditions non remplies';
+    btn.disabled = true;
+    btn.style.background = 'rgba(255,255,255,0.06)';
+    btn.style.color = '#888';
+    btn.style.cursor = 'not-allowed';
+  } else {
+    btn.textContent = status === 'rejected' ? '🏅 Redemander la certification' : '🏅 Demander la certification';
+    btn.style.background = 'linear-gradient(135deg,#D4AF6A,#8E63C9)';
+    btn.style.color = '#141220';
+    btn.onclick = requestVerification;
+  }
+  wrap.appendChild(btn);
+
+  if(status !== 'pending'){
+    const conditions = document.createElement('div');
+    conditions.style.cssText = 'font-size:11px; color:#888; line-height:1.5;';
+    conditions.innerHTML = `
+      📋 Conditions : ${trackCount}/${NUNI_CERT_MIN_TRACKS} sons publiés · ${followerCount}/${NUNI_CERT_MIN_FOLLOWERS} abonnés<br>
+      🎁 Avantages : badge vérifié, codes promo exclusifs, mise en avant, stats avancées`;
+    wrap.appendChild(conditions);
+  }
+
+  badge.insertAdjacentElement('afterend', wrap);
+}
+async function requestVerification(){
+  if(!realAuthToken){ toast('Connectez-vous avec un vrai compte pour demander la certification.'); return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/verification/request', {
+      method:'POST', headers:{'Authorization':'Bearer ' + realAuthToken}
+    });
+    const data = await res.json();
+    if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
+    currentUser.verification_status = 'pending';
+    toast('✅ ' + data.message);
+    openArtistPage(currentUser.artist_name);
+  }catch(e){ toast('❌ Impossible de contacter le serveur NUNI.'); }
 }
 
 const genres = [
@@ -620,6 +696,7 @@ function filterCatalogByGenre(genreName){
     row.innerHTML = `<p style="color:var(--text-faint); font-size:13px;">Aucun titre dans ce genre pour le moment.</p>`;
     return;
   }
+  filtered = dedupeAlbums(filtered);
   filtered.forEach((tr,i)=>{
     const card = trackCard(tr);
     card.style.animationDelay = (i*0.05) + 's';
@@ -740,28 +817,233 @@ const lyricLines = [
   {time:180, text:"Nuni nous rassemble, longue vie à la mémoire"},
 ];
 const fans = ['MK','PJ','TN','AL','RB','DS','FC'];
+function ensureAlbumViewStyles(){
+  if(document.getElementById('album-view-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'album-view-styles';
+  style.textContent = `
+    #album-view-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #album-view-overlay.show{opacity:1;}
+    .av-hero{position:relative; padding:56px 24px 40px; overflow:hidden;}
+    .av-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(38px) saturate(1.3) brightness(0.5); transform:scale(1.15);}
+    .av-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(10,10,16,0.15) 0%, #0A0A10 92%);}
+    .av-hero-content{position:relative; max-width:760px; margin:0 auto; display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap;}
+    .av-cover{width:168px; height:168px; border-radius:14px; background-size:cover; background-position:center; flex-shrink:0; box-shadow:0 18px 40px rgba(0,0,0,0.55); border:1px solid rgba(212,175,106,0.25);}
+    .av-badge{display:inline-flex; align-items:center; gap:6px; background:rgba(212,175,106,0.16); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); color:#E8C77E; border:1px solid rgba(212,175,106,0.45); font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:4px 10px; border-radius:20px; margin-bottom:10px;}
+    .av-title{color:#fff; font-size:30px; font-weight:800; line-height:1.15; margin:0 0 8px;}
+    .av-meta{color:#B9C2B4; font-size:13.5px;}
+    .av-meta b{color:#E8C77E; font-weight:600; cursor:pointer;}
+    .av-actions{max-width:760px; margin:22px auto 0; padding:0 24px; display:flex; gap:14px; align-items:center;}
+    .av-play-all{background:linear-gradient(135deg,#1E8449,#0E3D2C); color:#F3E6C8; border:1px solid rgba(212,175,106,0.5); font-weight:700; font-size:14px; padding:12px 26px; border-radius:30px; cursor:pointer; display:flex; align-items:center; gap:8px; transition:transform .15s ease, box-shadow .15s ease;}
+    .av-icon-btn{width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); color:#EDEDED; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s ease, color .15s ease, transform .15s ease;}
+    .av-icon-btn:hover{background:rgba(212,175,106,0.18); color:#D4AF6A; transform:translateY(-1px);}
+    .av-icon-btn.is-active{background:#D4AF6A; color:#0A0A10; border-color:#D4AF6A;}
+    .av-play-all:hover{transform:translateY(-1px); box-shadow:0 8px 22px rgba(212,175,106,0.18);}
+    .av-close{position:fixed; top:18px; right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .av-close:hover{background:rgba(255,255,255,0.12);}
+    .av-list{max-width:760px; margin:26px auto 80px; padding:0 24px;}
+    .av-row{display:flex; align-items:center; gap:16px; padding:12px 10px; border-radius:10px; cursor:pointer; transition:background .15s ease;}
+    .av-row:hover{background:rgba(212,175,106,0.07);}
+    .av-row-num{width:24px; text-align:center; color:#7D8A79; font-size:13px; font-family:var(--font-data, monospace);}
+    .av-row:hover .av-row-num{color:#D4AF6A;}
+    .av-row-title{flex:1; color:#EDEDED; font-size:14.5px; font-weight:500;}
+    .av-row-play{width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#0A0A10; background:#D4AF6A; opacity:0; transition:opacity .15s ease;}
+    .av-row:hover .av-row-play{opacity:1;}
+    .av-list-panel{background:rgba(255,255,255,0.05); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:6px; overflow:hidden;}
+    .av-row{opacity:0; animation:avRowIn .35s ease forwards;}
+    @keyframes avRowIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+    .av-row.is-playing{background:linear-gradient(90deg, rgba(212,175,106,0.16), transparent);}
+    .av-row.is-playing .av-row-title{color:#F3E6C8; font-weight:600;}
+    .av-row-dot{width:6px; height:6px; border-radius:50%; background:#D4AF6A; box-shadow:0 0 6px #D4AF6A; margin-left:auto; margin-right:4px;}
+  `;
+  document.head.appendChild(style);
+}
+function ensureNavStyles(){
+  if(document.getElementById('nuni-nav-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'nuni-nav-styles';
+  style.textContent = `
+    .app-nav-link{position:relative; transition:color .25s ease;}
+    .app-nav-link.is-active{color:var(--accent, #D4AF6A) !important;}
+    .app-nav-link.is-active::after{content:''; position:absolute; left:2px; right:2px; bottom:-9px; height:2px; border-radius:2px; background:var(--accent, #D4AF6A); animation:nuniNavIn .25s ease;}
+    .tab-btn{transition:color .2s ease, transform .2s ease;}
+    .tab-btn.is-active{color:var(--accent, #D4AF6A) !important; transform:translateY(-1px);}
+    @keyframes nuniNavIn{ from{ transform:scaleX(0); opacity:0; } to{ transform:scaleX(1); opacity:1; } }
+  `;
+  document.head.appendChild(style);
+}
+ensureNavStyles();
+document.addEventListener('click', (e)=>{
+  const link = e.target.closest('.app-nav-link[data-app-link="artist"], .tab-btn[data-tab="artist"]');
+  if(link && currentUser && currentUser.account_type === 'artist' && currentUser.artist_name){
+    e.preventDefault();
+    e.stopPropagation();
+    openArtistPage(currentUser.artist_name);
+  }
+}, true);
+
+/* ============ RADIO DÉSACTIVÉE (temporairement, code conservé pour réactivation future) ============ */
+// Le mode DJ reste actif. Seule la Radio est retirée de la navigation ; tout son code
+// (openTuner, tunerStations, startTunerPlayback, etc.) reste inchangé ci-dessous.
+function ensureRadioHiddenFromNav(){
+  // Force toute ouverture du tuner à atterrir sur l'onglet DJ, jamais Radio
+  const originalOpenTuner = window.openTuner;
+  window.openTuner = function(){ return originalOpenTuner('dj'); };
+
+  // Cache le bouton/lien "Ouvrir le tuner" (radio) partout où il apparaît, sans toucher au reste
+  document.querySelectorAll('button, a').forEach(el=>{
+    const txt = (el.textContent || '').trim().toLowerCase();
+    if(txt.includes('ouvrir le tuner')) el.style.display = 'none';
+  });
+  // Cache l'onglet "Radio" à l'intérieur du sélecteur tuner (si jamais il s'ouvre autrement)
+  const radioTab = document.getElementById('tuner-tab-radio');
+  if(radioTab) radioTab.style.display = 'none';
+  // Cache l'indicateur "radio en direct" sur le lecteur
+  const radioBadge = document.getElementById('radio-badge');
+  if(radioBadge) radioBadge.style.display = 'none';
+}
+ensureRadioHiddenFromNav();
+setTimeout(ensureRadioHiddenFromNav, 500); // sécurité si certains éléments se rendent un peu après
+function ensureBadgeStyles(){
+  if(document.getElementById('nuni-badge-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'nuni-badge-styles';
+  style.textContent = `
+    .nuni-type-badge{position:absolute; top:8px; left:8px; z-index:2; display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; background:linear-gradient(135deg,#E8C77E,#B98A3D); color:#241708; font-family:Georgia,'Times New Roman',serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:1.4px; box-shadow:0 3px 10px rgba(212,175,106,0.4); border:1px solid rgba(255,255,255,0.25);}
+  `;
+  document.head.appendChild(style);
+}
+ensureBadgeStyles();
+function handleTrackCardClick(tr){
+  if(tr.releaseType && tr.releaseType !== 'Single'){ openAlbumView(tr); }
+  else { playTrack(tr); }
+}
+function openAlbumView(tr){
+  const albumTracks = tracks.filter(t => t.album === tr.album && t.a === tr.a);
+  if(albumTracks.length <= 1){ playTrack(tr); return; } // un seul morceau trouvé : on joue direct par sécurité
+  ensureAlbumViewStyles();
+  let overlay = document.getElementById('album-view-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'album-view-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+
+  const coverStyle = tr.cover ? `background-image:url(${tr.cover});` : `background:linear-gradient(135deg,#1E8449,#0E3D2C);`;
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+
+  overlay.innerHTML = `
+    <button class="av-close" title="Fermer">✕</button>
+    <div class="av-hero">
+      <div class="av-hero-bg" style="${coverStyle}"></div>
+      <div class="av-hero-fade"></div>
+      <div class="av-hero-content">
+        <div class="av-cover" style="${coverStyle}"></div>
+        <div>
+          <div class="av-badge">🎵 ${tr.releaseType || 'Album'}</div>
+          <div class="av-title">${tr.album}</div>
+          <div class="av-meta"><b class="av-artist-link">${tr.a}</b> · ${albumTracks.length} titre${albumTracks.length>1?'s':''} · Sorti ${tr.release ? 'le ' + tr.release : "aujourd'hui"}</div>
+        </div>
+      </div>
+    </div>
+    <div class="av-actions">
+      <button class="av-play-all"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Tout écouter</button>
+      <button class="av-icon-btn av-shuffle-btn" title="Écouter en aléatoire"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h3.5a3 3 0 0 1 2.4 1.2L15 15a3 3 0 0 0 2.4 1.2H20M4 18h3.5a3 3 0 0 0 2.4-1.2l1-1.3M16.5 6H20M16.5 18H20"/><path d="M18 3l3 3-3 3M18 15l3 3-3 3"/></svg></button>
+      <button class="av-icon-btn av-fav-btn" title="Ajouter aux favoris"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+      <button class="av-icon-btn av-download-btn" title="Télécharger"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button>
+    </div>
+    <div class="av-list"><div class="av-list-panel"></div></div>
+  `;
+
+  overlay.querySelector('.av-close').onclick = closeOverlay;
+  overlay.querySelector('.av-artist-link').onclick = ()=>{ closeOverlay(); openArtistPage(tr.a); };
+  overlay.querySelector('.av-play-all').onclick = ()=>{ playTrack(albumTracks[0]); closeOverlay(); };
+  overlay.querySelector('.av-shuffle-btn').onclick = ()=>{
+    const randomTrack = albumTracks[Math.floor(Math.random()*albumTracks.length)];
+    playTrack(randomTrack);
+    closeOverlay();
+    toast('Lecture aléatoire de « ' + tr.album + ' »');
+  };
+  const favBtn = overlay.querySelector('.av-fav-btn');
+  const albumAlreadyFav = albumTracks.every(t => favoritesPlaylist.some(f => f.t === t.t));
+  favBtn.classList.toggle('is-active', albumAlreadyFav);
+  favBtn.onclick = ()=>{
+    const nowFav = !favBtn.classList.contains('is-active');
+    favBtn.classList.toggle('is-active', nowFav);
+    albumTracks.forEach(t=>{
+      const already = favoritesPlaylist.find(f=>f.t===t.t);
+      if(nowFav && !already) favoritesPlaylist.unshift(t);
+      if(!nowFav && already) favoritesPlaylist = favoritesPlaylist.filter(f=>f.t!==t.t);
+    });
+    toast(nowFav ? 'Album ajouté à vos favoris.' : 'Album retiré de vos favoris.');
+  };
+  overlay.querySelector('.av-download-btn').onclick = ()=>{
+    let count = 0;
+    albumTracks.forEach(t=>{
+      if(!t.audioUrl) return;
+      const a = document.createElement('a');
+      a.href = t.audioUrl;
+      a.download = t.t.replace(/[^\w\s-]/g,'') + '.mp3';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      count++;
+    });
+    toast(count ? `Téléchargement de ${count} fichier(s) lancé.` : 'Aucun fichier audio disponible pour le téléchargement.');
+  };
+
+  const list = overlay.querySelector('.av-list-panel');
+  albumTracks.forEach((t, i)=>{
+    const row = document.createElement('div');
+    const isPlaying = playing && currentTrack && currentTrack.t === t.t;
+    row.className = 'av-row' + (isPlaying ? ' is-playing' : '');
+    row.style.animationDelay = (i * 0.05) + 's';
+    row.innerHTML = `
+      <div class="av-row-num">${isPlaying ? '♪' : i+1}</div>
+      <div class="av-row-title">${t.t}</div>
+      ${isPlaying ? '<span class="av-row-dot"></span>' : ''}
+      <div class="av-row-play"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>`;
+    row.onclick = ()=>{ playTrack(t); closeOverlay(); };
+    list.appendChild(row);
+  });
+
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+}
 function trackCard(tr){
   const card = document.createElement('div');
   card.className = 'track-card';
   const coverInner = tr.cover
     ? `<div class="cover" style="background-image:url(${tr.cover}); background-size:cover; background-position:center;">`
     : `<div class="cover ${tr.p}"><div class="cover-glyph pal-pattern"></div>`;
+  const isMultiTrack = tr.releaseType && tr.releaseType !== 'Single';
   card.innerHTML = `
     ${coverInner}
       ${tr.audioUrl ? '<span class="imported-badge" title="Votre import">Vous</span>' : ''}
+      ${isMultiTrack ? `<span class="nuni-type-badge" title="${tr.releaseType}">💿 ${tr.releaseType}</span>` : ''}
       <div class="play-fab"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
     </div>
     <div class="ttl">${tr.t}</div>
     <div class="art" style="cursor:pointer;">${tr.a}</div>
     <div class="likes">♥ <span>${formatLikes(tr.likes||0)}</span></div>`;
-  card.querySelector('.cover').onclick = ()=> playTrack(tr);
-  card.querySelector('.ttl').onclick = ()=> playTrack(tr);
+  card.querySelector('.cover').onclick = ()=> handleTrackCardClick(tr);
+  card.querySelector('.ttl').onclick = ()=> handleTrackCardClick(tr);
   card.querySelector('.art').onclick = (e)=>{ e.stopPropagation(); openArtistPage(tr.a); };
   return card;
 }
+function dedupeAlbums(list){
+  const seen = new Set();
+  return list.filter(tr=>{
+    if(tr.releaseType && tr.releaseType !== 'Single'){
+      const key = tr.a + '::' + tr.album;
+      if(seen.has(key)) return false;
+      seen.add(key);
+    }
+    return true;
+  });
+}
 function fillShelf(id, list){
   const row = document.getElementById(id);
-  list.forEach((tr,i) => {
+  dedupeAlbums(list).forEach((tr,i) => {
     const card = trackCard(tr);
     card.style.animationDelay = (i*0.06) + 's';
     card.classList.add('reveal-in');
@@ -774,6 +1056,41 @@ fillShelf('shelf-playlists', tracks.slice(2,7));
 fillShelf('shelf-artist', tracks.filter(t=>t.a==='Bibi Mwana').concat(tracks.slice(0,4)));
 fillShelf('shelf-artist-trending', [...tracks.filter(t=>t.a==='Bibi Mwana')].sort((a,b)=> b.likes - a.likes));
 fillShelf('shelf-artist-albums', tracks.filter(t=>t.a==='Bibi Mwana'));
+
+/* ============ VRAIS MORCEAUX PUBLIÉS (serveur NUNI) ============ */
+function refreshMainShelves(){
+  ['shelf-new','shelf-top','shelf-playlists'].forEach(id=>{
+    const row = document.getElementById(id);
+    if(row) row.innerHTML = '';
+  });
+  fillShelf('shelf-new', tracks.slice(0,5));
+  fillShelf('shelf-top', [...tracks].reverse().slice(0,5));
+  fillShelf('shelf-playlists', tracks.slice(2,7));
+}
+async function loadRealTracks(){
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/tracks');
+    if(!res.ok) return;
+    const data = await res.json();
+    if(!data.tracks || !data.tracks.length) return;
+    // retire les vrais morceaux déjà chargés avant de réinjecter (évite les doublons)
+    for(let i = tracks.length - 1; i >= 0; i--){ if(tracks[i].isReal) tracks.splice(i, 1); }
+    const mapped = data.tracks.map(r => ({
+      t: r.title, a: r.artist_name || 'Artiste NUNI', p: 'pal-1',
+      album: r.album || r.title, genre: r.genre || 'Afro',
+      year: new Date(r.created_at).getFullYear(),
+      streams: String(r.streams || 0),
+      release: new Date(r.created_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}),
+      verified: !!r.is_verified, likes: r.likes || 0,
+      cover: r.cover_url || null, audioUrl: r.audio_url || null, isReal: true,
+      releaseType: r.release_type || 'Single',
+      artistId: r.artist_id,
+    }));
+    tracks.unshift(...mapped);
+    refreshMainShelves();
+  }catch(e){ /* pas grave si le serveur est indisponible, le catalogue de démo reste affiché */ }
+}
+loadRealTracks();
 
 /* ============ RELEASE CALENDAR ============ */
 const releases = [
@@ -957,6 +1274,19 @@ function shuffleToggle(btn){ btn.style.color = btn.style.color ? '' : 'var(--acc
 function repeatToggle(btn){ btn.style.color = btn.style.color ? '' : 'var(--accent)'; }
 function toggleFollow(btn){
   const following = btn.textContent.trim() === 'Suivi ✓';
+  if(currentArtistPageRealId && realAuthToken){
+    btn.disabled = true;
+    fetch(NUNI_API_BASE + '/api/follow', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ artistId: currentArtistPageRealId })
+    }).then(r=>r.json()).then(data=>{
+      btn.disabled = false;
+      if(data.error){ toast('❌ ' + data.error); return; }
+      btn.textContent = data.following ? 'Suivi ✓' : 'Suivre';
+      toast(data.following ? 'Vous suivez maintenant cet artiste.' : 'Vous ne suivez plus cet artiste.');
+    }).catch(()=>{ btn.disabled = false; toast('❌ Impossible de contacter le serveur NUNI.'); });
+    return;
+  }
   btn.textContent = following ? 'Suivre' : 'Suivi ✓';
   toast(following ? 'Vous ne suivez plus Bibi Mwana.' : 'Vous suivez maintenant Bibi Mwana.');
 }
@@ -1039,6 +1369,124 @@ function publishClip(){
   thumbPreview.style.backgroundImage = '';
   thumbPreview.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 16l4.5-4.5a2 2 0 0 1 2.8 0L16 16M14 14l1.5-1.5a2 2 0 0 1 2.8 0L20 14M4 6h16v12H4z"/></svg>';
 }
+function ensureClipWatchStyles(){
+  if(document.getElementById('nuni-clipwatch-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'nuni-clipwatch-styles';
+  style.textContent = `
+    #clip-watch-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #clip-watch-overlay.show{opacity:1;}
+    .cw-close{position:fixed; top:18px; right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .cw-close:hover{background:rgba(255,255,255,0.16);}
+    .cw-wrap{max-width:900px; margin:0 auto; padding:60px 24px 80px;}
+    .cw-video-wrap{width:100%; aspect-ratio:16/9; background:#000; border-radius:14px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:0 20px 50px rgba(0,0,0,0.5);}
+    .cw-video-wrap video{width:100%; height:100%; object-fit:contain; background:#000;}
+    .cw-video-placeholder{color:#6b6b78; font-size:14px; text-align:center; padding:24px;}
+    .cw-title{color:#fff; font-size:20px; font-weight:800; margin:18px 0 4px; line-height:1.3;}
+    .cw-meta{color:#8a8a94; font-size:13px; margin-bottom:16px;}
+    .cw-subrow{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding:14px 0; border-top:1px solid rgba(255,255,255,0.08); border-bottom:1px solid rgba(255,255,255,0.08);}
+    .cw-artist-block{display:flex; align-items:center; gap:12px; cursor:pointer;}
+    .cw-avatar{width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,#6E45A8,#D4AF6A); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:15px; flex-shrink:0;}
+    .cw-artist-name{color:#fff; font-weight:700; font-size:14.5px;}
+    .cw-follow-btn{background:#fff; color:#0A0A10; border:none; border-radius:20px; padding:8px 18px; font-weight:700; font-size:13px; cursor:pointer; white-space:nowrap;}
+    .cw-follow-btn.is-following{background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.25);}
+    .cw-actions{display:flex; gap:10px;}
+    .cw-related-title{color:#fff; font-size:15px; font-weight:700; margin:26px 0 14px;}
+    .cw-related-item{display:flex; gap:12px; padding:8px; border-radius:10px; cursor:pointer; transition:background .15s ease;}
+    .cw-related-item:hover{background:rgba(255,255,255,0.05);}
+    .cw-related-thumb{width:130px; height:74px; border-radius:8px; background-size:cover; background-position:center; flex-shrink:0; position:relative; overflow:hidden;}
+    .cw-related-thumb .dur{position:absolute; bottom:4px; right:5px; background:rgba(0,0,0,0.75); color:#fff; font-size:10px; padding:1px 5px; border-radius:4px; font-family:var(--font-data, monospace);}
+    .cw-related-info .t{color:#eee; font-size:13.5px; font-weight:600; line-height:1.35; margin-bottom:4px;}
+    .cw-related-info .a{color:#8a8a94; font-size:12px;}
+  `;
+  document.head.appendChild(style);
+}
+function openClipWatchPage(clip){
+  ensureClipWatchStyles();
+  clip.views = (clip.views || 0) + 1;
+  let overlay = document.getElementById('clip-watch-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'clip-watch-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{
+    const v = overlay.querySelector('video');
+    if(v) v.pause();
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+    setTimeout(()=> overlay.remove(), 200);
+  };
+
+  const initials = clip.artist.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const videoInner = clip.videoUrl
+    ? `<video src="${clip.videoUrl}" controls autoplay></video>`
+    : `<div class="cw-video-placeholder">🎬 Aperçu vidéo non fourni pour ce clip de démonstration.</div>`;
+
+  overlay.innerHTML = `
+    <button class="cw-close" title="Fermer">✕</button>
+    <div class="cw-wrap">
+      <div class="cw-video-wrap">${videoInner}</div>
+      <div class="cw-title">${clip.title}</div>
+      <div class="cw-meta">${formatLikes(clip.views)} vues · ${clip.date || "aujourd'hui"}</div>
+      <div class="cw-subrow">
+        <div class="cw-artist-block">
+          <div class="cw-avatar">${initials}</div>
+          <div class="cw-artist-name">${clip.artist}</div>
+          <button class="cw-follow-btn">Suivre</button>
+        </div>
+        <div class="cw-actions">
+          <button class="av-icon-btn cw-like-btn" title="J'aime"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          <button class="av-icon-btn cw-share-btn" title="Partager"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-3.9M8.6 13.5l6.8 3.9"/></svg></button>
+        </div>
+      </div>
+      <div class="cw-related-title">À suivre</div>
+      <div class="cw-related-list"></div>
+    </div>
+  `;
+  ensureBadgeStyles(); // réutilise av-icon-btn déjà stylé par l'album view
+
+  overlay.querySelector('.cw-close').onclick = closeOverlay;
+  overlay.querySelector('.cw-artist-block').onclick = (e)=>{
+    if(e.target.closest('.cw-follow-btn')) return;
+    closeOverlay();
+    openArtistPage(clip.artist);
+  };
+  const followBtn = overlay.querySelector('.cw-follow-btn');
+  followBtn.onclick = (e)=>{
+    e.stopPropagation();
+    const now = followBtn.classList.toggle('is-following');
+    followBtn.textContent = now ? 'Suivi ✓' : 'Suivre';
+    toast(now ? `Vous suivez maintenant ${clip.artist}.` : `Vous ne suivez plus ${clip.artist}.`);
+  };
+  const likeBtn = overlay.querySelector('.cw-like-btn');
+  likeBtn.onclick = ()=>{
+    const liked = likeBtn.classList.toggle('is-active');
+    clip.likes += liked ? 1 : -1;
+  };
+  overlay.querySelector('.cw-share-btn').onclick = ()=>{
+    toast('Lien du clip copié — partagez-le où vous voulez 🕊️');
+  };
+
+  const related = clips.filter(c=>c!==clip).sort((a,b)=>{
+    const aSame = a.artist===clip.artist ? 0 : 1;
+    const bSame = b.artist===clip.artist ? 0 : 1;
+    return aSame - bSame;
+  }).slice(0, 8);
+  const relatedList = overlay.querySelector('.cw-related-list');
+  related.forEach(rc=>{
+    const item = document.createElement('div');
+    item.className = 'cw-related-item';
+    const thumbStyle = rc.thumb ? `background-image:url(${rc.thumb});` : `background:linear-gradient(135deg,#6E45A8,#141A38);`;
+    item.innerHTML = `
+      <div class="cw-related-thumb" style="${thumbStyle}"><span class="dur">${rc.dur||'—:—'}</span></div>
+      <div class="cw-related-info"><div class="t">${rc.title}</div><div class="a">${rc.artist} · ${formatLikes(rc.views)} vues</div></div>`;
+    item.onclick = ()=> openClipWatchPage(rc);
+    relatedList.appendChild(item);
+  });
+
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+}
 function clipCard(clip){
   const card = document.createElement('div');
   card.className = 'clip-card';
@@ -1054,10 +1502,7 @@ function clipCard(clip){
       <div class="a">${clip.artist}</div>
       <div class="meta"><span>👁️ ${formatLikes(clip.views)} vues</span><span>❤️ ${formatLikes(clip.likes)}</span></div>
     </div>`;
-  card.onclick = ()=>{
-    clip.views += 1;
-    openClipPlayer(clip);
-  };
+  card.onclick = ()=> openClipWatchPage(clip);
   return card;
 }
 function shuffleArray(arr){
@@ -1132,7 +1577,15 @@ function toggleClipLike(btn){
 }
 
 let uploadedFiles = [];
-function publishRelease(){
+function fileToDataURL(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function publishRelease(){
   const hasAudio = uploadedFiles.length > 0;
   const titre = document.getElementById('rf-titre').value.trim();
   const coverPreview = document.getElementById('release-cover-preview');
@@ -1150,23 +1603,53 @@ function publishRelease(){
   const dateVal = document.getElementById('rf-date').value;
   const releaseLabel = dateVal ? new Date(dateVal).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) : "aujourd'hui";
 
-  const newTracks = uploadedFiles.map((file, i)=>{
-    const trackTitle = uploadedFiles.length > 1 ? `${titre} — ${file.name.replace(/\.[^/.]+$/, '')}` : titre;
+  const artistDisplayName = (currentUser && currentUser.artist_name) ? currentUser.artist_name : 'Bibi Mwana';
+  const filesForUpload = [...uploadedFiles];
+  const newTracks = filesForUpload.map((file, i)=>{
+    const trackTitle = filesForUpload.length > 1 ? `${titre} · Piste ${i+1}` : titre;
     return {
-      t: trackTitle, a: 'Bibi Mwana', p: 'pal-1', album: titre, genre: genre, year: new Date().getFullYear(),
+      t: trackTitle, a: artistDisplayName, p: 'pal-1', album: titre, genre: genre, year: new Date().getFullYear(),
       streams: '0', release: releaseLabel, verified: true, likes: 0,
-      cover: coverUrl, audioUrl: URL.createObjectURL(file)
+      cover: coverUrl, audioUrl: URL.createObjectURL(file), releaseType: currentReleaseType
     };
   });
   tracks.unshift(...newTracks);
 
   // figure automatiquement dans la zone artiste (discographie + tendances)
+  const isGroupedRelease = newTracks.length > 1 && newTracks[0].releaseType && newTracks[0].releaseType !== 'Single';
   ['shelf-artist','shelf-artist-trending','shelf-new'].forEach(id=>{
     const row = document.getElementById(id);
-    if(row) newTracks.slice().reverse().forEach(tr=> row.prepend(trackCard(tr)));
+    if(!row) return;
+    if(isGroupedRelease){
+      row.prepend(trackCard(newTracks[0])); // une seule pochette représente tout l'album/EP/mixtape
+    } else {
+      newTracks.slice().reverse().forEach(tr=> row.prepend(trackCard(tr)));
+    }
   });
 
   toast(`"${titre}" (${currentReleaseType}) publié — disponible dans votre discographie. Lecture en cours…`);
+
+  // Envoi réel au serveur NUNI, pour que le morceau soit visible par tous les auditeurs
+  if(realAuthToken){
+    (async ()=>{
+      for(const file of filesForUpload){
+        try{
+          const audioDataUrl = await fileToDataURL(file);
+          await fetch(NUNI_API_BASE + '/api/tracks', {
+            method:'POST',
+            headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+            body: JSON.stringify({
+              title: titre, album: titre, genre: genre, releaseType: currentReleaseType,
+              coverUrl: coverUrl, audioUrl: audioDataUrl,
+            })
+          });
+        }catch(e){ toast('⚠️ Un fichier n\'a pas pu être envoyé au serveur (trop volumineux ?). Il reste visible uniquement dans votre navigateur.'); }
+      }
+      toast('Vos morceaux ont bien été envoyés sur le serveur NUNI — visibles par tous les auditeurs.');
+      currentUser.track_count = (currentUser.track_count || 0) + filesForUpload.length;
+      loadRealTracks();
+    })();
+  }
 
   // reset form for the next upload
   document.getElementById('rf-titre').value = '';
@@ -1188,8 +1671,22 @@ function publishRelease(){
   openFullPlayer();
 }
 function handleAudioUpload(e){
-  const files = Array.from(e.target.files || []);
+  let files = Array.from(e.target.files || []);
   const list = document.getElementById('audio-upload-list');
+
+  if(currentReleaseType === 'Single'){
+    // Un Single ne prend qu'un seul fichier : on remplace ce qui était déjà importé
+    if(files.length > 1){ toast('Un Single ne contient qu\'un seul fichier audio — seul le premier a été gardé.'); files = files.slice(0,1); }
+    uploadedFiles = [];
+    list.innerHTML = '';
+  } else {
+    const remaining = 20 - uploadedFiles.length;
+    if(files.length > remaining){
+      toast(`Limite de 20 fichiers audio par ${currentReleaseType.toLowerCase()} — seuls les ${Math.max(remaining,0)} premiers ont été ajoutés.`);
+      files = files.slice(0, Math.max(remaining,0));
+    }
+  }
+
   files.forEach(file=>{
     uploadedFiles.push(file);
     const item = document.createElement('div');
@@ -1802,9 +2299,10 @@ function runSearch(q){
     const item = document.createElement('div');
     item.className = 'sr-item';
     const coverStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
+    const badge = (tr.releaseType && tr.releaseType !== 'Single') ? `<span style="display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px; background:rgba(212,175,106,0.15); color:var(--accent, #D4AF6A); font-size:10px; font-weight:700; letter-spacing:0.5px; vertical-align:middle;">${tr.releaseType}</span>` : '';
     item.innerHTML = `<div class="sr-cover ${tr.cover ? '' : tr.p}" style="${coverStyle}"></div>
-      <div><div class="sr-t">${tr.t}</div><div class="sr-a">${tr.a}${tr.album ? ' · ' + tr.album : ''}</div></div>`;
-    item.onclick = ()=>{ enterApp('catalog'); playTrack(tr); box.classList.remove('open'); document.getElementById('app-search-input').value=''; };
+      <div><div class="sr-t">${tr.t}${badge}</div><div class="sr-a">${tr.a}${tr.album ? ' · ' + tr.album : ''}</div></div>`;
+    item.onclick = ()=>{ enterApp('catalog'); handleTrackCardClick(tr); box.classList.remove('open'); document.getElementById('app-search-input').value=''; };
     box.appendChild(item);
   });
 }
@@ -1815,14 +2313,17 @@ document.addEventListener('click', (e)=>{
 
 /* ============ SÉPARATION INTERFACE CONSOMMATEUR / ARTISTE ============ */
 let accountType = 'artist'; // 'artist' ou 'consumer' — démo : on part en vue Artiste (Bibi Mwana)
+let demoOverride = false; // true = le bouton démo a été utilisé manuellement, on ignore le vrai compte
 function applyAccountType(){
+  if(!demoOverride && currentUser){ accountType = currentUser.account_type; }
   const isArtist = accountType === 'artist';
+  const hasActivePass = currentUser ? (currentUser.subscription_status === 'active') : true; // true en mode démo
   document.querySelectorAll('.nav-artist-only').forEach(el=> el.style.display = isArtist ? '' : 'none');
   document.querySelectorAll('.nav-consumer-only').forEach(el=> el.style.display = isArtist ? 'none' : '');
   document.querySelectorAll('.tab-artist-only').forEach(el=> el.style.display = isArtist ? '' : 'none');
   document.querySelectorAll('.tab-consumer-only').forEach(el=> el.style.display = isArtist ? 'none' : '');
   const chipLabel = document.querySelector('.user-chip span');
-  if(chipLabel) chipLabel.textContent = isArtist ? 'Bibi M.' : 'Auditeur';
+  if(chipLabel) chipLabel.textContent = currentUser ? (currentUser.first_name + ' ' + currentUser.last_name.charAt(0) + '.') : (isArtist ? 'Bibi M.' : 'Auditeur');
   const artistMenuItem = document.getElementById('profile-menu-artist-space');
   if(artistMenuItem) artistMenuItem.style.display = isArtist ? '' : 'none';
   const switchBtn = document.getElementById('account-switch-btn');
@@ -1832,8 +2333,14 @@ function applyAccountType(){
     const activeLink = document.querySelector('.app-nav-link.is-active');
     if(activeLink && ['artist','dashboard','admin'].includes(activeLink.dataset.appLink)) enterApp('catalog');
   }
+  // si le Pass n'est pas encore actif, on redirige vers l'écran des Pass
+  if(currentUser && !hasActivePass && document.getElementById('app-shell').classList.contains('active')){
+    goTo('plans');
+    toast('Activez votre Pass pour accéder à NUNI — finalisez le paiement sur WhatsApp.');
+  }
 }
 function switchAccountType(){
+  demoOverride = true;
   accountType = accountType === 'artist' ? 'consumer' : 'artist';
   applyAccountType();
   closeProfileMenu();
