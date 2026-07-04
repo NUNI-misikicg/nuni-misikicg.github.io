@@ -1,4 +1,4 @@
-console.log('🎵 NUNI app.js chargé — version F4 (Vraie fenêtre Connexion email + mot de passe)');
+console.log('🎵 NUNI app.js chargé — version G1 (Lecteur plein écran : palette dynamique + immersion)');
 /* ============ HELPERS ============ */
 function ico(name){
   if(name==='check') return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -1279,6 +1279,142 @@ const palGradients = {
   'pal-6':'linear-gradient(135deg,#2E7D6B,#0F2D27)',
 };
 
+/* ============================================================
+   NuniPalette — utilitaire réutilisable d'extraction de couleurs
+   ------------------------------------------------------------
+   Objectif : à partir d'une image de pochette, produire une palette
+   de 5 couleurs harmonieuses (dominante, secondaire, accent, sombre,
+   claire) utilisables pour n'importe quel composant NUNI : lecteur
+   plein écran aujourd'hui, mini-lecteur / cartes album / pages
+   artiste / playlists plus tard.
+
+   - Chaque palette est mise en cache par URL d'image : une pochette
+     n'est jamais analysée deux fois.
+   - Le calcul se fait sur une image réduite à 40×40 pixels : coût
+     CPU négligeable, même sur un appareil modeste.
+   - Si l'image ne peut pas être lue (restriction de sécurité CORS,
+     pochette absente), une palette de secours cohérente avec
+     l'identité NUNI est renvoyée à la place — jamais d'erreur visible.
+   - Les niveaux de luminosité de la couleur "sombre" sont bornés
+     pour rester lisibles avec du texte clair par-dessus (accessibilité).
+============================================================ */
+const NuniPalette = (function(){
+  const cache = new Map();
+  const FALLBACK = {
+    dominant:'hsl(262, 45%, 40%)', secondary:'hsl(230, 40%, 18%)',
+    accent:'hsl(38, 65%, 62%)', dark:'hsl(250, 35%, 11%)', light:'hsl(38, 40%, 72%)'
+  };
+
+  function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+
+  function rgbToHsl(r, g, b){
+    r/=255; g/=255; b/=255;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b);
+    let h, s, l=(max+min)/2;
+    if(max===min){ h=0; s=0; }
+    else{
+      const d = max-min;
+      s = l>0.5 ? d/(2-max-min) : d/(max+min);
+      switch(max){
+        case r: h=(g-b)/d+(g<b?6:0); break;
+        case g: h=(b-r)/d+2; break;
+        default: h=(r-g)/d+4;
+      }
+      h/=6;
+    }
+    return [h*360, s, l];
+  }
+  function hslCss(h, s, l){ return `hsl(${Math.round(h)}, ${Math.round(clamp(s,0,1)*100)}%, ${Math.round(clamp(l,0,1)*100)}%)`; }
+
+  // Analyse les pixels d'une image (réduite à 40x40) et regroupe les couleurs proches en "buckets"
+  function quantize(img){
+    const size = 40;
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d', { willReadFrequently:true });
+    ctx.drawImage(img, 0, 0, size, size);
+    let data;
+    try{ data = ctx.getImageData(0, 0, size, size).data; }
+    catch(e){ return null; } // image protégée (CORS) : on utilisera la palette de secours
+
+    const buckets = new Map();
+    for(let i=0;i<data.length;i+=4){
+      const r=data[i], g=data[i+1], b=data[i+2], a=data[i+3];
+      if(a<80) continue;
+      const lum = 0.299*r + 0.587*g + 0.114*b;
+      if(lum<14 || lum>246) continue; // ignore les noirs/blancs quasi purs (peu utiles pour un dégradé)
+      const key = Math.round(r/24)+','+Math.round(g/24)+','+Math.round(b/24);
+      const entry = buckets.get(key);
+      if(entry) entry.count++; else buckets.set(key, {r,g,b,count:1});
+    }
+    const sorted = [...buckets.values()].sort((a,b)=> b.count - a.count);
+    return sorted.length ? sorted : null;
+  }
+
+  function buildPalette(sorted){
+    const dominant = sorted[0];
+    const [dh] = rgbToHsl(dominant.r, dominant.g, dominant.b);
+    // Couleur secondaire : la plus fréquente qui soit visuellement distincte de la dominante
+    const secondary = sorted.find(c=>{
+      const [h] = rgbToHsl(c.r, c.g, c.b);
+      const dist = Math.abs(c.r-dominant.r) + Math.abs(c.g-dominant.g) + Math.abs(c.b-dominant.b);
+      return Math.abs(h-dh) > 20 || dist > 90;
+    }) || sorted[Math.min(1, sorted.length-1)];
+    // Couleur accent : la plus saturée parmi les couleurs fréquentes
+    const accent = sorted.slice(0, 12).sort((a,b)=> rgbToHsl(b.r,b.g,b.b)[1] - rgbToHsl(a.r,a.g,a.b)[1])[0] || dominant;
+
+    const [dh2, ds2, dl2] = rgbToHsl(dominant.r, dominant.g, dominant.b);
+    const [sh2, ss2, sl2] = rgbToHsl(secondary.r, secondary.g, secondary.b);
+    const [ah2, as2, al2] = rgbToHsl(accent.r, accent.g, accent.b);
+
+    return {
+      dominant: hslCss(dh2, clamp(ds2, 0.35, 0.75), clamp(dl2, 0.26, 0.48)),
+      secondary: hslCss(sh2, clamp(ss2, 0.28, 0.7), clamp(sl2, 0.16, 0.4)),
+      accent: hslCss(ah2, clamp(as2, 0.45, 0.85), clamp(al2, 0.45, 0.66)),
+      // "sombre" bornée entre 8% et 20% de luminosité : garantit un fond assez foncé
+      // pour que le texte clair du lecteur reste toujours lisible par-dessus (accessibilité)
+      dark: hslCss(dh2, clamp(ds2, 0.3, 0.55), clamp(Math.min(dl2, 0.2), 0.08, 0.2)),
+      light: hslCss(dh2, clamp(ds2*0.55, 0.08, 0.35), clamp(Math.max(dl2, 0.68), 0.6, 0.8)),
+    };
+  }
+
+  function extract(imageUrl){
+    if(!imageUrl) return Promise.resolve(FALLBACK);
+    if(cache.has(imageUrl)) return Promise.resolve(cache.get(imageUrl)); // déjà calculée : aucun recalcul
+    return new Promise((resolve)=>{
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = ()=>{
+        const sorted = quantize(img);
+        const palette = sorted ? buildPalette(sorted) : FALLBACK;
+        cache.set(imageUrl, palette);
+        resolve(palette);
+      };
+      img.onerror = ()=>{ cache.set(imageUrl, FALLBACK); resolve(FALLBACK); };
+      img.src = imageUrl;
+    });
+  }
+
+  function forPaletteClass(palClass){
+    // Palette de secours pour les pochettes générées (pal-1 à pal-6), cohérente avec leurs dégradés existants
+    const map = {
+      'pal-1': { dominant:'#6E45A8', secondary:'#141A38', accent:'#A98AD6', dark:'#141A38', light:'#A98AD6' },
+      'pal-2': { dominant:'#D4AF6A', secondary:'#7A4E2A', accent:'#E8C77E', dark:'#3D2712', light:'#F2DDA8' },
+      'pal-3': { dominant:'#C9667A', secondary:'#3A1530', accent:'#E497A8', dark:'#2A0F22', light:'#E9AFBC' },
+      'pal-4': { dominant:'#1D2550', secondary:'#0A0A10', accent:'#8E63C9', dark:'#0A0A10', light:'#A98AD6' },
+      'pal-5': { dominant:'#8E63C9', secondary:'#D4AF6A', accent:'#E8C77E', dark:'#2A1D40', light:'#F2DDA8' },
+      'pal-6': { dominant:'#2E7D6B', secondary:'#0F2D27', accent:'#5FBBA0', dark:'#0F2D27', light:'#9FDFCC' },
+    };
+    return map[palClass] || FALLBACK;
+  }
+
+  function toGradientCss(palette, angle){
+    return `linear-gradient(${angle || 135}deg, ${palette.dominant} 0%, ${palette.secondary} 100%)`;
+  }
+
+  return { extract, forPaletteClass, toGradientCss, FALLBACK };
+})();
+
 function fmt(s){ const m = Math.floor(s/60); const sec = String(Math.floor(s%60)).padStart(2,'0'); return `${m}:${sec}`; }
 
 function applyCoverTo(el, tr){
@@ -1352,6 +1488,7 @@ function updateProgress(){
     document.getElementById('fp-time-total').textContent = fmt(duration);
   }
   updateLyricsHighlight();
+  updateFpRemainingPill();
 }
 function seek(e){
   const rect = e.currentTarget.getBoundingClientRect();
@@ -1939,18 +2076,8 @@ function syncFullPlayer(){
   document.getElementById('fp-meta').textContent = `${tr.album} · ${tr.genre} · ${tr.year}`;
   document.getElementById('fp-meta2').textContent = `${tr.streams} écoutes · Sorti le ${tr.release}`;
   document.getElementById('fp-verified').style.display = tr.verified ? 'inline-flex' : 'none';
-  const cover = document.getElementById('fp-cover');
-  if(tr.cover){
-    cover.className = 'cover fp-cover';
-    cover.style.backgroundImage = `url(${tr.cover})`;
-    cover.innerHTML = '';
-    document.getElementById('fp-bg').style.background = `linear-gradient(135deg, var(--violet), var(--bleu-nuit))`;
-  } else {
-    cover.style.backgroundImage = '';
-    cover.className = 'cover fp-cover ' + tr.p;
-    cover.innerHTML = '<div class="cover-glyph pal-pattern"></div>';
-    document.getElementById('fp-bg').style.background = palGradients[tr.p] || palGradients['pal-1'];
-  }
+  applyPlayerVisuals(tr);
+  renderFpInfoPills(tr);
   document.getElementById('fp-bio-avatar').textContent = tr.a.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('fp-artist-stat').style.display = (tr.a === 'Bibi Mwana') ? 'flex' : 'none';
   renderLyrics();
@@ -1962,6 +2089,111 @@ function syncFullPlayer(){
   if(similar){ similar.innerHTML=''; tracks.filter(t=>t.genre===tr.genre && t.t!==tr.t).slice(0,5).forEach(t=> similar.appendChild(trackCard(t))); if(!similar.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,5).forEach(t=> similar.appendChild(trackCard(t))); }
   if(sameArtist){ sameArtist.innerHTML=''; tracks.filter(t=>t.a===tr.a && t.t!==tr.t).forEach(t=> sameArtist.appendChild(trackCard(t))); if(!sameArtist.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,4).forEach(t=> sameArtist.appendChild(trackCard(t))); }
 }
+
+/* ============ VISUELS DU LECTEUR : fond dégradé + halo + pochette (via NuniPalette) ============ */
+let fpActiveBgLayer = 'a'; // alterne entre les deux calques pour un fondu propre
+let fpLastCoverKey = null; // évite de relancer toute l'animation si le morceau n'a pas vraiment changé de visuel
+function applyPlayerVisuals(tr){
+  const coverKey = tr.cover || tr.p;
+  const coverEl = document.getElementById('fp-cover');
+  const isSameVisual = coverKey === fpLastCoverKey;
+
+  // --- Pochette : petite transition en fondu, seulement si elle change vraiment ---
+  const updateCoverEl = ()=>{
+    if(tr.cover){
+      coverEl.className = 'cover fp-cover';
+      coverEl.style.backgroundImage = `url(${tr.cover})`;
+      coverEl.innerHTML = '';
+    } else {
+      coverEl.style.backgroundImage = '';
+      coverEl.className = 'cover fp-cover ' + tr.p;
+      coverEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>';
+    }
+  };
+  if(isSameVisual){
+    updateCoverEl();
+  } else {
+    coverEl.style.opacity = '0';
+    coverEl.style.transform = 'scale(.94)';
+    setTimeout(()=>{
+      updateCoverEl();
+      coverEl.style.opacity = '1';
+      coverEl.style.transform = 'scale(1)';
+    }, 180);
+  }
+
+  // --- Palette + fond + halo : recalcul seulement si le visuel a changé (cache interne en plus) ---
+  const applyPalette = (palette)=>{
+    const nextLayerId = fpActiveBgLayer === 'a' ? 'fp-bg-b' : 'fp-bg-a';
+    const prevLayerId = fpActiveBgLayer === 'a' ? 'fp-bg-a' : 'fp-bg-b';
+    const nextLayer = document.getElementById(nextLayerId);
+    const prevLayer = document.getElementById(prevLayerId);
+    if(nextLayer){
+      nextLayer.style.background = `linear-gradient(135deg, ${palette.dominant} 0%, ${palette.secondary} 60%, ${palette.dark} 100%)`;
+      nextLayer.classList.add('is-active');
+    }
+    if(prevLayer) prevLayer.classList.remove('is-active');
+    fpActiveBgLayer = fpActiveBgLayer === 'a' ? 'b' : 'a';
+
+    const halo = document.getElementById('fp-halo');
+    if(halo) halo.style.background = `radial-gradient(circle, ${palette.accent} 0%, transparent 72%)`;
+  };
+
+  if(isSameVisual) return; // même pochette qu'avant : on ne relance ni le calcul ni le fondu du fond
+  fpLastCoverKey = coverKey;
+
+  if(tr.cover){
+    NuniPalette.extract(tr.cover).then(applyPalette);
+  } else {
+    applyPalette(NuniPalette.forPaletteClass(tr.p));
+  }
+}
+
+/* ============ INFOS DISCRÈTES DU LECTEUR (type de sortie, année, piste, temps restant) ============ */
+function renderFpInfoPills(tr){
+  const wrap = document.getElementById('fp-info-pills');
+  if(!wrap) return;
+  const pills = [];
+  if(tr.releaseType) pills.push(tr.releaseType);
+  if(tr.year) pills.push(String(tr.year));
+
+  if(tr.album && tr.releaseType && tr.releaseType !== 'Single'){
+    const albumTracks = tracks.filter(t=> t.album === tr.album && t.a === tr.a);
+    if(albumTracks.length > 1){
+      const idx = albumTracks.findIndex(t=> t.t === tr.t);
+      if(idx > -1) pills.push(`Piste ${idx+1}/${albumTracks.length}`);
+    }
+  }
+  wrap.innerHTML = pills.map(p=> `<span class="fp-info-pill">${p}</span>`).join('')
+    + `<span class="fp-info-pill" id="fp-remaining-pill">--:-- restantes</span>`;
+  updateFpRemainingPill();
+}
+function updateFpRemainingPill(){
+  const el = document.getElementById('fp-remaining-pill');
+  if(!el) return;
+  const remaining = Math.max(0, duration - elapsed);
+  el.textContent = fmt(remaining) + ' restantes';
+}
+
+/* ============ LÉGÈRE PROFONDEUR 3D SUR LA POCHETTE (souris, ordinateur uniquement) ============ */
+function setupFpCoverTilt(){
+  const wrap = document.getElementById('fp-cover-wrap');
+  if(!wrap) return;
+  const canHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if(!canHover) return; // mobile/tactile : on n'ajoute pas cet effet, inutile et parfois gênant
+  wrap.addEventListener('mousemove', (e)=>{
+    const rect = wrap.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    const rotateY = px * 12; // rotation max ~6° de chaque côté, effet volontairement discret
+    const rotateX = py * -12;
+    wrap.style.transform = `perspective(900px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+  });
+  wrap.addEventListener('mouseleave', ()=>{
+    wrap.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+  });
+}
+setupFpCoverTilt();
 
 /* ============ DASHBOARD CHART ============ */
 const monthly = [
@@ -2735,8 +2967,10 @@ function spawnVibeParticle(){
   const p = document.createElement('span');
   p.className = 'vibe-particle';
   p.textContent = vibeEmojis[Math.floor(Math.random()*vibeEmojis.length)];
-  p.style.left = (20 + Math.random()*60) + '%';
-  p.style.setProperty('--drift', (Math.random()*60-30) + 'px');
+  p.style.left = (18 + Math.random()*64) + '%';
+  p.style.setProperty('--drift', (Math.random()*80-40) + 'px');
+  p.style.setProperty('--spin', (Math.random()*50-25) + 'deg');
+  p.style.fontSize = (12 + Math.random()*9) + 'px';
   p.style.color = Math.random() > 0.5 ? 'var(--accent)' : 'var(--violet-soft)';
   layer.appendChild(p);
   setTimeout(()=> p.remove(), 3600);

@@ -894,7 +894,10 @@
 
 <!-- ============ FULL-SCREEN PLAYER ============ -->
 <div class="full-player" id="full-player">
-  <div class="fp-bg" id="fp-bg"></div>
+  <div class="fp-bg-stack" id="fp-bg-stack">
+    <div class="fp-bg-layer is-active" id="fp-bg-a"></div>
+    <div class="fp-bg-layer" id="fp-bg-b"></div>
+  </div>
   <div class="fp-waves" id="fp-waves"><div class="fp-wave w1"></div><div class="fp-wave w2"></div></div>
   <div class="fp-particles" id="fp-particles"></div>
 
@@ -911,6 +914,7 @@
   <div class="fp-scroll" id="fp-scroll">
     <div class="fp-hero">
       <div class="fp-cover-wrap" id="fp-cover-wrap" onclick="toggleVibeMode()" title="Cliquez pour activer le Mode Vibe NUNI">
+        <div class="fp-halo" id="fp-halo"></div>
         <div class="fp-ring" id="fp-ring"></div>
         <div class="fp-circular-eq" id="fp-circular-eq"></div>
         <div class="cover fp-cover" id="fp-cover"><div class="cover-glyph pal-pattern"></div></div>
@@ -927,6 +931,7 @@
       </div>
       <div class="fp-meta" id="fp-meta">Envol · Rumba · 2026</div>
       <div class="fp-meta fp-meta-faint" id="fp-meta2">412 K écoutes · Sorti le 12 Jan 2026</div>
+      <div class="fp-info-pills" id="fp-info-pills"></div>
 
       <div class="fp-artist-stat-card" id="fp-artist-stat" style="display:none">
         <span>🚀</span>
