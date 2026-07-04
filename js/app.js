@@ -1,4 +1,4 @@
-console.log('🎵 NUNI app.js chargé — version H2 (Correctif : synchronisation du bouton favori entre les morceaux)');
+console.log('🎵 NUNI app.js chargé — version H3 (Audit complet du site : correction du lien Admin)');
 /* ============ HELPERS ============ */
 function ico(name){
   if(name==='check') return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>';
