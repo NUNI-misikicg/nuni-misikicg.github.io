@@ -1,4 +1,4 @@
-console.log('🎵 NUNI app.js chargé — version H1 (Lecteur vivant : micro-interactions, file d\'attente, menu rapide)');
+console.log('🎵 NUNI app.js chargé — version H2 (Correctif : synchronisation du bouton favori entre les morceaux)');
 /* ============ HELPERS ============ */
 function ico(name){
   if(name==='check') return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -1455,6 +1455,7 @@ function playTrack(tr){
   document.getElementById('player-title').textContent = tr.t;
   document.getElementById('player-artist').textContent = tr.a;
   applyCoverTo(document.getElementById('player-cover'), tr);
+  syncLikeButtons(tr);
 
   listeningHistory.unshift({ track: tr, at: Date.now() });
   listeningHistory = listeningHistory.slice(0, 60);
@@ -1610,19 +1611,22 @@ function prevTrack(){
   const i = pool.findIndex(t=>t.t===currentTrack.t);
   playTrack(pool[(i-1+pool.length) % pool.length] || pool[0]);
 }
+function syncLikeButtons(tr){
+  const isLiked = favoritesPlaylist.some(f=> f.t === tr.t);
+  document.querySelectorAll('#player-like-btn, #fp-like-btn').forEach(b=> b.classList.toggle('liked', isLiked));
+}
 function toggleLike(btn){
-  btn.classList.toggle('liked');
-  document.querySelectorAll('#player-like-btn, #fp-like-btn').forEach(b=> b.classList.toggle('liked', btn.classList.contains('liked')));
-  const liked = btn.classList.contains('liked');
+  const willLike = !btn.classList.contains('liked');
   bounceEl(btn);
   hapticPing();
-  if(liked){
+  if(willLike){
     if(!favoritesPlaylist.find(t=>t.t===currentTrack.t)) favoritesPlaylist.unshift(currentTrack);
     spawnFlyPing(btn, '❤️'); // petite confirmation visuelle : "ça vient d'être ajouté à votre bibliothèque"
   } else {
     favoritesPlaylist = favoritesPlaylist.filter(t=>t.t!==currentTrack.t);
   }
-  toast(liked ? 'Ajouté à votre playlist Favoris — visible dans Bibliothèque.' : 'Retiré de votre playlist Favoris.');
+  syncLikeButtons(currentTrack);
+  toast(willLike ? 'Ajouté à votre playlist Favoris — visible dans Bibliothèque.' : 'Retiré de votre playlist Favoris.');
 }
 function shuffleToggle(btn){
   const activating = !btn.style.color;
