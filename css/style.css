@@ -713,7 +713,7 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   border-top:1px solid var(--border); display:flex; align-items:center; padding:0 24px; gap:24px;
 }
 .player-track{ display:flex; align-items:center; gap:14px; width:230px; flex-shrink:0; }
-.player-cover{ width:54px; height:54px; border-radius:10px; flex-shrink:0; position:relative; overflow:hidden; }
+.player-cover{ width:54px; height:54px; border-radius:10px; flex-shrink:0; position:relative; overflow:hidden; background-size:cover; background-position:center; }
 .player-cover.spinning{ animation:none; }
 .player-track-info .t{ font-size:13.5px; font-weight:600; letter-spacing:-0.01em; transition:opacity .35s var(--ease); }
 .player-track-info .a{ font-size:12px; font-weight:500; color:var(--text-faint); margin-top:2px; transition:opacity .35s var(--ease); }
@@ -768,7 +768,7 @@ html[data-theme="light"] .fp-bg-stack{ opacity:.35; }
 .fp-hero{ max-width:480px; margin:0 auto; display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:10px; }
 
 .fp-cover-wrap{ position:relative; width:248px; height:248px; margin-bottom:22px; transition:transform .2s ease-out; transform-style:preserve-3d; }
-.fp-cover{ width:248px; height:248px; border-radius:28px; box-shadow:0 30px 70px -20px rgba(0,0,0,.55); animation:fpFloat 5s ease-in-out infinite; position:relative; overflow:hidden; transition:opacity .18s ease, transform .18s ease; }
+.fp-cover{ width:248px; height:248px; border-radius:28px; box-shadow:0 30px 70px -20px rgba(0,0,0,.55); animation:fpFloat 5s ease-in-out infinite; position:relative; overflow:hidden; transition:opacity .18s ease, transform .18s ease; background-size:cover; background-position:center; }
 .fp-cover::after{ content:''; position:absolute; inset:0; background:linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%); transform:translateX(-120%); opacity:0; pointer-events:none; }
 html.is-playing .fp-cover::after{ animation: fpSheen 4.5s ease-in-out infinite; }
 @keyframes fpSheen{ 0%{ transform:translateX(-120%); opacity:0; } 8%{ opacity:.5; } 45%{ transform:translateX(120%); opacity:0; } 100%{ transform:translateX(120%); opacity:0; } }
