@@ -18,6 +18,15 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<!-- ============ ÉCRAN DE CHARGEMENT (SPLASH) ============ -->
+<div id="splash-screen">
+  <div class="splash-halo"></div>
+  <img src="icons/icon-192.png" alt="NUNI" class="splash-logo" id="splash-logo">
+  <div class="splash-wordmark">NUNI</div>
+  <div class="splash-status" id="splash-status">Connexion à NUNI…</div>
+  <div class="splash-bar"><div class="splash-bar-fill" id="splash-bar-fill"></div></div>
+</div>
+
 
 <!-- shared svg defs -->
 <svg width="0" height="0" style="position:absolute">
@@ -127,7 +136,8 @@
 
 <!-- ============ CONNEXION (email + mot de passe uniquement, sans code) ============ -->
 <div class="ai-modal-overlay" id="login-overlay" onclick="if(event.target===this) closeLoginModal()">
-  <div class="ai-modal" style="max-width:400px; text-align:left;">
+  <div class="ai-modal" style="max-width:400px; text-align:left; position:relative;">
+    <div class="modal-preparing" id="login-preparing"><span class="modal-preparing-spin"></span>Préparation sécurisée…</div>
     <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeLoginModal()" aria-label="Fermer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
     </button>
