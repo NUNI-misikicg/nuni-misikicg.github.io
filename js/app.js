@@ -1,4 +1,4 @@
-console.log('🎵 NUNI app.js chargé — version J4 (Nouveaux prix Pass Consommateur : 650/650/1500 FCFA)');
+console.log('🎵 NUNI app.js chargé — version K1 (Vraies paroles par morceau + vérification de la publication)');
 
 /* ============ ÉCRAN DE CHARGEMENT (SPLASH) ============
    Séquence différente si en ligne ou hors ligne (comme demandé). Durée volontairement
@@ -1028,16 +1028,6 @@ const tracks = [
   {t:'Soki Nakomi', a:'Ndombe Junior', p:'pal-1', album:'Kin Vibes', genre:'Afro', year:2025, streams:'264 K', release:'03 Sep 2025', verified:true, likes:11080},
 ];
 function formatLikes(n){ return n >= 1000 ? (n/1000).toFixed(1).replace('.0','') + 'K' : n; }
-const lyricLines = [
-  {time:0,   text:"Ce soir la ville respire au rythme du tambour"},
-  {time:26,  text:"Chaque voix qui s'élève trouve enfin son retour"},
-  {time:52,  text:"Nos rêves prennent racine dans la terre et le son"},
-  {time:78,  text:"Mokili ya sika, un monde en chanson"},
-  {time:104, text:"On se lève ensemble quand la musique appelle"},
-  {time:130, text:"Le Congo dans le cœur, l'envol sous nos ailes"},
-  {time:156, text:"Écoute, soutiens, fais grandir notre histoire"},
-  {time:180, text:"Nuni nous rassemble, longue vie à la mémoire"},
-];
 const fans = ['MK','PJ','TN','AL','RB','DS','FC'];
 function ensureAlbumViewStyles(){
   if(document.getElementById('album-view-styles')) return;
@@ -1307,6 +1297,7 @@ async function loadRealTracks(){
       cover: r.cover_url || null, audioUrl: r.audio_url || null, isReal: true,
       releaseType: r.release_type || 'Single',
       artistId: r.artist_id,
+      lyrics: r.lyrics || null,
     }));
     tracks.unshift(...mapped);
     refreshMainShelves();
@@ -2072,6 +2063,7 @@ async function publishRelease(){
 
   const coverUrl = coverData.slice(5, -2); // strip url("...")
   const genre = document.getElementById('rf-genre').value;
+  const paroles = document.getElementById('rf-paroles').value.trim();
   const dateVal = document.getElementById('rf-date').value;
   const releaseLabel = dateVal ? new Date(dateVal).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) : "aujourd'hui";
 
@@ -2082,7 +2074,8 @@ async function publishRelease(){
     return {
       t: trackTitle, a: artistDisplayName, p: 'pal-1', album: titre, genre: genre, year: new Date().getFullYear(),
       streams: '0', release: releaseLabel, verified: true, likes: 0,
-      cover: coverUrl, audioUrl: URL.createObjectURL(file), releaseType: currentReleaseType
+      cover: coverUrl, audioUrl: URL.createObjectURL(file), releaseType: currentReleaseType,
+      lyrics: paroles || null,
     };
   });
   tracks.unshift(...newTracks);
@@ -2104,21 +2097,37 @@ async function publishRelease(){
   // Envoi réel au serveur NUNI, pour que le morceau soit visible par tous les auditeurs
   if(realAuthToken){
     (async ()=>{
+      let successCount = 0;
+      let failCount = 0;
+      let lastError = '';
       for(const file of filesForUpload){
         try{
           const audioDataUrl = await fileToDataURL(file);
-          await fetch(NUNI_API_BASE + '/api/tracks', {
+          const res = await fetch(NUNI_API_BASE + '/api/tracks', {
             method:'POST',
             headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
             body: JSON.stringify({
               title: titre, album: titre, genre: genre, releaseType: currentReleaseType,
-              coverUrl: coverUrl, audioUrl: audioDataUrl,
+              coverUrl: coverUrl, audioUrl: audioDataUrl, lyrics: paroles || null,
             })
           });
-        }catch(e){ toast('⚠️ Un fichier n\'a pas pu être envoyé au serveur (trop volumineux ?). Il reste visible uniquement dans votre navigateur.'); }
+          if(res.ok){
+            successCount++;
+          } else {
+            failCount++;
+            const errData = await res.json().catch(()=>({}));
+            lastError = errData.error || ('Erreur serveur (' + res.status + ')');
+          }
+        }catch(e){ failCount++; lastError = 'Connexion au serveur impossible.'; }
       }
-      toast('Vos morceaux ont bien été envoyés sur le serveur NUNI — visibles par tous les auditeurs.');
-      currentUser.track_count = (currentUser.track_count || 0) + filesForUpload.length;
+      if(failCount === 0){
+        toast('Vos morceaux ont bien été envoyés sur le serveur NUNI — visibles par tous les auditeurs.');
+      } else if(successCount > 0){
+        toast(`⚠️ ${successCount} morceau(x) envoyé(s), ${failCount} échec(s) : ${lastError}`);
+      } else {
+        toast(`❌ Aucun morceau envoyé au serveur : ${lastError}. Ils restent visibles uniquement dans votre navigateur.`);
+      }
+      currentUser.track_count = (currentUser.track_count || 0) + successCount;
       loadRealTracks();
     })();
   }
@@ -2255,11 +2264,46 @@ function toggleLyrics(){
     document.getElementById('fp-scroll').scrollTo({top: document.getElementById('fp-lyrics').offsetTop - 90, behavior:'smooth'});
   }
 }
+let currentLyricLines = [];
+/* Construit les lignes de paroles du morceau en cours.
+   - Si l'artiste a fourni un vrai texte : réparti dans le temps de façon régulière sur la durée du morceau
+     (on n'a pas de minutage précis ligne par ligne, donc c'est une répartition égale plutôt qu'un vrai
+     minutage — un vrai éditeur de paroles synchronisées serait un chantier à part, plus ambitieux).
+   - Sinon, pour l'unique morceau de démonstration d'origine : on garde son texte spécifique.
+   - Sinon : aucune parole disponible, message clair plutôt qu'un texte qui n'a rien à voir. */
+function buildLyricLinesFor(tr){
+  if(tr && tr.lyrics){
+    const rawLines = tr.lyrics.split('\n').map(s=>s.trim()).filter(Boolean);
+    if(rawLines.length){
+      const total = (usingRealAudio && duration) ? duration : (duration || 204);
+      const step = total / (rawLines.length + 1);
+      return rawLines.map((text,i)=> ({ time: Math.round(step*(i+1)), text }));
+    }
+  }
+  if(tr && tr.t === 'Mokili Ya Sika' && tr.a === 'Bibi Mwana'){
+    return [
+      {time:0,   text:"Ce soir la ville respire au rythme du tambour"},
+      {time:26,  text:"Chaque voix qui s'élève trouve enfin son retour"},
+      {time:52,  text:"Nos rêves prennent racine dans la terre et le son"},
+      {time:78,  text:"Mokili ya sika, un monde en chanson"},
+      {time:104, text:"On se lève ensemble quand la musique appelle"},
+      {time:130, text:"Le Congo dans le cœur, l'envol sous nos ailes"},
+      {time:156, text:"Écoute, soutiens, fais grandir notre histoire"},
+      {time:180, text:"Nuni nous rassemble, longue vie à la mémoire"},
+    ];
+  }
+  return [];
+}
 function renderLyrics(){
   const box = document.getElementById('fp-lyrics-lines');
   if(!box) return;
   box.innerHTML = '';
-  lyricLines.forEach((l,i)=>{
+  currentLyricLines = buildLyricLinesFor(currentTrack);
+  if(!currentLyricLines.length){
+    box.innerHTML = `<p style="cursor:default; color:var(--text-faint); font-size:14px;">Paroles non fournies pour ce morceau.</p>`;
+    return;
+  }
+  currentLyricLines.forEach((l,i)=>{
     const p = document.createElement('p');
     p.textContent = l.text;
     p.dataset.time = l.time;
@@ -2269,10 +2313,10 @@ function renderLyrics(){
 }
 function updateLyricsHighlight(){
   const box = document.getElementById('fp-lyrics-lines');
-  if(!box) return;
+  if(!box || !currentLyricLines.length) return;
   const lines = box.querySelectorAll('p');
   let current = 0;
-  lyricLines.forEach((l,i)=>{ if(elapsed >= l.time) current = i; });
+  currentLyricLines.forEach((l,i)=>{ if(elapsed >= l.time) current = i; });
   lines.forEach((p,i)=> p.classList.toggle('is-current', i===current));
 }
 function renderFanWall(){
