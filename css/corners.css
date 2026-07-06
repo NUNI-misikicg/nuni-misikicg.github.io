@@ -1,0 +1,39 @@
+/* ===== Motif décoratif dans les 4 coins de l'interface (ajout NUNI) ===== */
+/* Le fichier corner-pattern.png doit être placé dans ton dossier assets/ */
+
+.nuni-corner-decor {
+  position: fixed;
+  width: 140px;
+  height: 140px;
+  background-image: url('assets/corner-pattern.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.35;
+  pointer-events: none; /* ne bloque jamais les clics sur le contenu au-dessus */
+  z-index: 0;            /* toujours derrière le contenu */
+}
+
+.nuni-corner-decor.top-left {
+  top: 0; left: 0;
+  background-position: top left;
+}
+.nuni-corner-decor.top-right {
+  top: 0; right: 0;
+  transform: scaleX(-1); /* effet miroir, pas besoin d'un 2e fichier */
+  background-position: top left;
+}
+.nuni-corner-decor.bottom-left {
+  bottom: 0; left: 0;
+  transform: scaleY(-1);
+  background-position: top left;
+}
+.nuni-corner-decor.bottom-right {
+  bottom: 0; right: 0;
+  transform: scale(-1, -1); /* miroir horizontal + vertical */
+  background-position: top left;
+}
+
+/* Sur mobile, on réduit la taille pour ne pas envahir l'écran */
+@media (max-width: 640px) {
+  .nuni-corner-decor { width: 80px; height: 80px; opacity: 0.25; }
+}

@@ -16,8 +16,14 @@
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/corners.css">
 </head>
 <body>
+<div class="nuni-corner-decor top-left"></div>
+<div class="nuni-corner-decor top-right"></div>
+<div class="nuni-corner-decor bottom-left"></div>
+<div class="nuni-corner-decor bottom-right"></div>
+
 <!-- ============ ÉCRAN DE CHARGEMENT (SPLASH) ============ -->
 <div id="splash-screen">
   <div class="splash-halo"></div>
@@ -429,7 +435,7 @@
     <button class="btn btn-sm btn-ghost" onclick="endDiscovery()">Terminer maintenant (démo)</button>
   </div>
   <nav class="app-topnav">
-    <div class="nuni-logo" style="cursor:pointer" onclick="goTo('home')">
+    <div class="nuni-logo" style="cursor:pointer" onclick="logoutUser()" title="Retour à l'accueil (vous serez déconnecté)">
       <img src="assets/logo.png" alt="NUNI" style="width:28px;height:28px;border-radius:50%;display:block;">
       <span class="wordmark" style="font-size:17px">NUNI</span>
       <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>

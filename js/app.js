@@ -18,6 +18,7 @@ function spawnSplashNote(){
   layer.appendChild(n);
   setTimeout(()=> n.remove(), 2700);
 }
+let sessionRestorePromise = null; // rempli plus bas, dès que restoreSession() démarre — lu par le splash ci-dessous
 function runSplashSequence(){
   const el = document.getElementById('splash-screen');
   const status = document.getElementById('splash-status');
@@ -33,11 +34,20 @@ function runSplashSequence(){
   const advance = ()=>{
     if(i >= steps.length){
       bar.style.width = '100%';
-      setTimeout(()=>{
-        el.classList.add('fade-out');
-        clearInterval(splashNoteTimer);
-        setTimeout(()=> el.remove(), 650);
-      }, 260);
+      // Attend que la vérification de session (reconnexion automatique) soit terminée avant de révéler
+      // quoi que ce soit derrière l'écran de chargement — évite le "flash" de l'écran d'accueil avant de
+      // retrouver directement son compte. Plafonné à 1,2s supplémentaires max, pour ne jamais bloquer
+      // l'utilisateur si le réseau est lent.
+      const waitFor = sessionRestorePromise
+        ? Promise.race([sessionRestorePromise, new Promise(r=> setTimeout(r, 1200))])
+        : Promise.resolve();
+      waitFor.then(()=>{
+        setTimeout(()=>{
+          el.classList.add('fade-out');
+          clearInterval(splashNoteTimer);
+          setTimeout(()=> el.remove(), 650);
+        }, 260);
+      });
       return;
     }
     status.style.opacity = 0;
@@ -195,7 +205,7 @@ async function applyPromoCode(){
 }
 
 /* ============ CONNEXION AU VRAI SERVEUR NUNI (Railway) ============ */
-const NUNI_API_BASE = 'https://nuni-backend.onrender.com';
+const NUNI_API_BASE = 'http://localhost:3000'; // ⚠️ TEMPORAIRE pour tester la migration Postgres/Cloudinary en local — remettre 'https://nuni-backend.onrender.com' avant de publier le site
 let realAuthToken = null;
 let realUserId = null;
 let currentUser = null; // infos complètes (prénom, nom...) de la personne connectée
@@ -243,7 +253,29 @@ async function restoreSession(){
     toast(`Bon retour, ${currentUser.first_name} 👋`);
   }catch(e){ /* pas de réseau : on laisse l'écran d'accueil, l'utilisateur pourra réessayer */ }
 }
+// Coupe complètement la lecture en cours — appelée à la déconnexion pour qu'aucun son d'un
+// compte ne continue de jouer une fois passé sur un autre compte (chaque session doit repartir
+// de zéro, sans musique héritée de la session précédente).
+function stopAllPlayback(){
+  try{
+    clearInterval(progressTimer);
+    realAudio.pause();
+    realAudio.removeAttribute('src');
+    usingRealAudio = false;
+    playing = false;
+    elapsed = 0;
+    document.documentElement.classList.remove('is-playing');
+    const icon = document.getElementById('play-icon');
+    if(icon) icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+    const fpIcon = document.getElementById('fp-play-icon');
+    if(fpIcon) fpIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+    const playerBar = document.getElementById('player-bar');
+    if(playerBar) playerBar.style.display = 'none';
+    closeFullPlayer();
+  }catch(e){ /* pas bloquant si un élément du lecteur n'existe pas encore au moment de l'appel */ }
+}
 function logoutUser(){
+  stopAllPlayback();
   clearSession();
   realAuthToken = null;
   realUserId = null;
@@ -1225,6 +1257,7 @@ function openAlbumView(tr){
 function trackCard(tr){
   const card = document.createElement('div');
   card.className = 'track-card';
+  if(tr.realId) card.dataset.trackId = tr.realId;
   const coverInner = tr.cover
     ? `<div class="cover" style="background-image:url(${tr.cover}); background-size:cover; background-position:center;">`
     : `<div class="cover ${tr.p}"><div class="cover-glyph pal-pattern"></div>`;
@@ -1584,6 +1617,16 @@ function playTrack(tr){
     fetch(NUNI_API_BASE + '/api/tracks/' + tr.realId + '/play', {
       method:'POST',
       headers: realAuthToken ? {'Authorization':'Bearer ' + realAuthToken} : {}
+    }).then(r=> r.json()).then(data=>{
+      if(typeof data.streams === 'number'){
+        tr.streams = String(data.streams);
+        document.querySelectorAll('.track-card').forEach(card=>{
+          if(card.dataset.trackId === String(tr.realId)){
+            const streamsSpan = card.querySelector('.likes span');
+            if(streamsSpan) streamsSpan.textContent = data.streams;
+          }
+        });
+      }
     }).catch(()=>{});
   }
 
@@ -1801,9 +1844,11 @@ function setReleaseType(btn){
   currentReleaseType = btn.dataset.type;
   document.getElementById('release-type-echo').textContent = currentReleaseType.toLowerCase();
 }
+let pendingCoverFile = null;
 function handleReleaseCover(e){
   const file = e.target.files[0];
   if(!file) return;
+  pendingCoverFile = file;
   const reader = new FileReader();
   reader.onload = ()=>{
     const preview = document.getElementById('release-cover-preview');
@@ -1811,23 +1856,67 @@ function handleReleaseCover(e){
     preview.innerHTML = '';
     toast(`Pochette sélectionnée pour votre ${currentReleaseType.toLowerCase()}.`);
   };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(file); // uniquement pour l'aperçu visuel — le vrai fichier est gardé dans pendingCoverFile
   e.target.value = '';
+}
+
+/* ============ UPLOAD DIRECT NAVIGATEUR → CLOUDINARY ============
+   Les gros fichiers (audio, vidéo) partent DIRECTEMENT vers Cloudinary depuis le navigateur,
+   sans jamais être convertis en base64 ni transiter par notre serveur. Ça évite les plantages
+   "Out of Memory" sur les fichiers volumineux (WAV, FLAC, clips de plusieurs dizaines de Mo).
+   Le serveur ne fournit qu'une signature temporaire, sans jamais exposer de clé secrète. */
+async function uploadFileToCloudinary(file, resourceType, onProgress){
+  if(!realAuthToken) throw new Error('Connectez-vous pour publier un fichier.');
+  const sigRes = await fetch(NUNI_API_BASE + '/api/upload-signature', {
+    headers: { 'Authorization': 'Bearer ' + realAuthToken }
+  });
+  if(!sigRes.ok){
+    const err = await sigRes.json().catch(()=>({}));
+    throw new Error(err.error || 'Impossible d\'obtenir une autorisation d\'envoi.');
+  }
+  const sig = await sigRes.json();
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('api_key', sig.apiKey);
+  form.append('timestamp', sig.timestamp);
+  form.append('signature', sig.signature);
+  form.append('folder', sig.folder);
+
+  return new Promise((resolve, reject)=>{
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${sig.cloudName}/${resourceType}/upload`);
+    xhr.upload.onprogress = (e)=>{
+      if(onProgress && e.lengthComputable) onProgress(Math.round((e.loaded/e.total)*100));
+    };
+    xhr.onload = ()=>{
+      if(xhr.status >= 200 && xhr.status < 300){
+        try{ resolve(JSON.parse(xhr.responseText).secure_url); }
+        catch(err){ reject(new Error('Réponse Cloudinary illisible.')); }
+      } else {
+        reject(new Error('Envoi refusé par Cloudinary (statut ' + xhr.status + ').'));
+      }
+    };
+    xhr.onerror = ()=> reject(new Error('Connexion à Cloudinary impossible.'));
+    xhr.send(form);
+  });
 }
 
 /* ============ CLIPS — publication + système aléatoire ============ */
 let clips = [];
 let pendingClipVideoFile = null;
+let pendingClipThumbFile = null;
 function handleClipThumb(e){
   const file = e.target.files[0];
   if(!file) return;
+  pendingClipThumbFile = file;
   const reader = new FileReader();
   reader.onload = ()=>{
     const preview = document.getElementById('clip-thumb-preview');
     preview.style.backgroundImage = `url(${reader.result})`;
     preview.innerHTML = '';
   };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(file); // uniquement pour l'aperçu visuel
   e.target.value = '';
 }
 function handleClipVideo(e){
@@ -1836,9 +1925,7 @@ function handleClipVideo(e){
   pendingClipVideoFile = file;
   const status = document.getElementById('clip-upload-status');
   const sizeMb = (file.size / (1024*1024)).toFixed(1);
-  const tooLarge = file.size > 9.5 * 1024 * 1024; // ~9,5 Mo réels ≈ 15 Mo une fois encodés, la limite du serveur
-  status.innerHTML = `<div class="upload-item"><div class="ui-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l5-3v10l-5-3M4 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/></svg></div><div class="ui-info"><div class="ui-name">${file.name} (${sizeMb} Mo)</div></div><div class="ui-status" style="color:${tooLarge?'var(--rose-braise)':'var(--accent)'}">${tooLarge?'⚠️ Probablement trop lourde':'Prêt à publier'}</div></div>`;
-  if(tooLarge) toast('⚠️ Cette vidéo est probablement trop lourde pour être envoyée au serveur (limite ≈ 9-10 Mo). Compressez-la ou raccourcissez le clip.');
+  status.innerHTML = `<div class="upload-item"><div class="ui-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l5-3v10l-5-3M4 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/></svg></div><div class="ui-info"><div class="ui-name">${file.name} (${sizeMb} Mo)</div></div><div class="ui-status" style="color:var(--accent)">Prêt à publier</div></div>`;
   if(!document.getElementById('clip-title-input').value) document.getElementById('clip-title-input').value = file.name.replace(/\.[^/.]+$/, '');
 }
 async function publishClip(){
@@ -1848,13 +1935,13 @@ async function publishClip(){
   const hasThumb = thumbData && thumbData !== '';
   if(!pendingClipVideoFile){ toast('Importez un fichier vidéo avant de publier.'); return; }
   if(!title){ toast('Donnez un titre à votre clip avant de publier.'); return; }
-  if(!hasThumb){ toast('Choisissez une miniature avant de publier.'); return; }
+  if(!hasThumb || !pendingClipThumbFile){ toast('Choisissez une miniature avant de publier.'); return; }
 
-  const thumbUrl = thumbData.slice(5, -2);
+  const thumbPreviewUrl = thumbData.slice(5, -2); // aperçu local immédiat, en attendant l'envoi réel
   const artistDisplayName = (currentUser && currentUser.artist_name) ? currentUser.artist_name : 'Bibi Mwana';
   const localVideoUrl = URL.createObjectURL(pendingClipVideoFile);
   const newClip = {
-    id: 'clip_' + Date.now(), title, artist: artistDisplayName, thumb: thumbUrl,
+    id: 'clip_' + Date.now(), title, artist: artistDisplayName, thumb: thumbPreviewUrl,
     videoUrl: localVideoUrl, views: 0,
     likes: 0, date: new Date().toLocaleDateString('fr-FR', {day:'2-digit', month:'short'}), dur:'—:—'
   };
@@ -1862,10 +1949,12 @@ async function publishClip(){
   renderClips();
   renderArtistClips(artistDisplayName);
 
-  const pendingFile = pendingClipVideoFile;
+  const videoFile = pendingClipVideoFile;
+  const thumbFile = pendingClipThumbFile;
   document.getElementById('clip-title-input').value = '';
   document.getElementById('clip-upload-status').innerHTML = '';
   pendingClipVideoFile = null;
+  pendingClipThumbFile = null;
   thumbPreview.style.backgroundImage = '';
   thumbPreview.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 16l4.5-4.5a2 2 0 0 1 2.8 0L16 16M14 14l1.5-1.5a2 2 0 0 1 2.8 0L20 14M4 6h16v12H4z"/></svg>';
 
@@ -1874,13 +1963,16 @@ async function publishClip(){
     toast(`Clip "${title}" visible uniquement dans votre navigateur (connectez-vous pour le partager avec tous).`);
     return;
   }
-  toast(`Clip "${title}" publié — envoi au serveur en cours…`);
+  toast(`Clip "${title}" — envoi vers Cloudinary en cours…`);
   try{
-    const videoDataUrl = await fileToDataURL(pendingFile);
+    const [thumbUrl, videoUrl] = await Promise.all([
+      uploadFileToCloudinary(thumbFile, 'image'),
+      uploadFileToCloudinary(videoFile, 'video'),
+    ]);
     const res = await fetch(NUNI_API_BASE + '/api/clips', {
       method:'POST',
       headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
-      body: JSON.stringify({ title, thumbUrl, videoUrl: videoDataUrl })
+      body: JSON.stringify({ title, thumbUrl, videoUrl })
     });
     if(res.ok){
       toast(`Clip "${title}" bien envoyé sur le serveur NUNI — visible par tous les auditeurs.`);
@@ -1931,6 +2023,20 @@ function openClipWatchPage(clip){
     fetch(NUNI_API_BASE + '/api/clips/' + clip.realId + '/view', {
       method:'POST',
       headers: realAuthToken ? {'Authorization':'Bearer ' + realAuthToken} : {}
+    }).then(r=> r.json()).then(data=>{
+      // Le serveur renvoie le vrai total à jour (compté ou pas selon les règles anti-triche/doublon).
+      // On met à jour partout où ce chiffre est affiché, sans attendre un rechargement de page.
+      if(typeof data.views === 'number'){
+        clip.views = data.views;
+        const metaEl = document.querySelector('#clip-watch-overlay .cw-meta');
+        if(metaEl) metaEl.textContent = `${formatLikes(clip.views)} vues · ${clip.date || "aujourd'hui"}`;
+        document.querySelectorAll('.clip-card').forEach(card=>{
+          if(card.dataset.clipId === String(clip.id)){
+            const viewsSpan = card.querySelector('.meta span');
+            if(viewsSpan) viewsSpan.textContent = `👁️ ${formatLikes(clip.views)} vues`;
+          }
+        });
+      }
     }).catch(()=>{});
   } else {
     clip.views = (clip.views || 0) + 1; // clips de démonstration uniquement : compteur local simple
@@ -2021,6 +2127,7 @@ function openClipWatchPage(clip){
 function clipCard(clip){
   const card = document.createElement('div');
   card.className = 'clip-card';
+  card.dataset.clipId = clip.id;
   const thumbStyle = clip.thumb ? `background-image:url(${clip.thumb}); background-size:cover; background-position:center;` : '';
   const palClass = clip.thumb ? '' : (clip.pal || 'pal-1');
   card.innerHTML = `
@@ -2149,7 +2256,8 @@ async function publishRelease(){
   if(!hasCover){ toast('Choisissez une pochette avant de publier.'); return; }
   if(!droitsOk){ toast('Vous devez confirmer détenir les droits sur ce contenu.'); return; }
 
-  const coverUrl = coverData.slice(5, -2); // strip url("...")
+  const coverUrl = coverData.slice(5, -2); // strip url("...") — aperçu local immédiat
+  const coverFile = pendingCoverFile; // vrai fichier, pour l'envoi direct vers Cloudinary
   const genre = document.getElementById('rf-genre').value;
   const paroles = document.getElementById('rf-paroles').value.trim();
   const dateVal = document.getElementById('rf-date').value;
@@ -2188,15 +2296,23 @@ async function publishRelease(){
       let successCount = 0;
       let failCount = 0;
       let lastError = '';
+      let cloudCoverUrl = null;
+      try{
+        cloudCoverUrl = await uploadFileToCloudinary(coverFile, 'image');
+      }catch(e){
+        toast(`❌ Envoi de la pochette impossible : ${e.message}. Les morceaux restent visibles uniquement dans votre navigateur.`);
+        currentUser.track_count = (currentUser.track_count || 0);
+        return;
+      }
       for(const file of filesForUpload){
         try{
-          const audioDataUrl = await fileToDataURL(file);
+          const cloudAudioUrl = await uploadFileToCloudinary(file, 'video'); // Cloudinary traite l'audio sous "video"
           const res = await fetch(NUNI_API_BASE + '/api/tracks', {
             method:'POST',
             headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
             body: JSON.stringify({
               title: titre, album: titre, genre: genre, releaseType: currentReleaseType,
-              coverUrl: coverUrl, audioUrl: audioDataUrl, lyrics: paroles || null,
+              coverUrl: cloudCoverUrl, audioUrl: cloudAudioUrl, lyrics: paroles || null,
             })
           });
           if(res.ok){
@@ -2206,7 +2322,7 @@ async function publishRelease(){
             const errData = await res.json().catch(()=>({}));
             lastError = errData.error || ('Erreur serveur (' + res.status + ')');
           }
-        }catch(e){ failCount++; lastError = 'Connexion au serveur impossible.'; }
+        }catch(e){ failCount++; lastError = e.message || 'Connexion au serveur impossible.'; }
       }
       if(failCount === 0){
         toast('Vos morceaux ont bien été envoyés sur le serveur NUNI — visibles par tous les auditeurs.');
@@ -2232,6 +2348,7 @@ async function publishRelease(){
   document.getElementById('rf-droits').checked = false;
   document.getElementById('audio-upload-list').innerHTML = '';
   uploadedFiles = [];
+  pendingCoverFile = null;
   coverPreview.style.backgroundImage = '';
   coverPreview.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 16l4.5-4.5a2 2 0 0 1 2.8 0L16 16M14 14l1.5-1.5a2 2 0 0 1 2.8 0L20 14M4 6h16v12H4z"/></svg>';
 
@@ -3200,7 +3317,7 @@ document.addEventListener('click', (e)=>{
   if(wrap && !wrap.contains(e.target)) closeProfileMenu();
 });
 applyAccountType();
-restoreSession();
+sessionRestorePromise = restoreSession();
 
 /* ============ CONTENU DU MENU PROFIL ============ */
 let currentLanguage = 'fr';
