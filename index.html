@@ -679,9 +679,9 @@
       </div>
     </div>
     <div class="artist-stats">
-      <div class="stat-block"><div class="num data">2,4M</div><div class="lbl">Streams totaux</div></div>
-      <div class="stat-block"><div class="num data">186 K</div><div class="lbl">Followers</div></div>
-      <div class="stat-block"><div class="num data">9 480</div><div class="lbl">Soutiens reçus</div></div>
+      <div class="stat-block"><div class="num data" id="artist-stat-streams">—</div><div class="lbl">Streams totaux</div></div>
+      <div class="stat-block"><div class="num data" id="artist-stat-followers">—</div><div class="lbl">Followers</div></div>
+      <div class="stat-block"><div class="num data" id="artist-stat-supports">—</div><div class="lbl">Soutiens reçus</div></div>
     </div>
     <div class="artist-actions">
       <button class="btn btn-primary" id="artist-page-support-btn" onclick="toast('Merci pour votre soutien à Bibi Mwana 🕊️')">Soutenir cet artiste</button>
@@ -728,10 +728,10 @@
       Chaque stream valide génère <b style="color:var(--accent)">2 FCFA</b> versés au fonds collectif, réparti <b style="color:var(--accent)">75% pour l'artiste / 25% pour NUNI</b>. Exemple : 1 000 000 streams = 2 000 000 FCFA, dont 1 500 000 FCFA pour vous et 500 000 FCFA pour NUNI.
     </p>
     <div class="dash-grid">
-      <div class="kpi-card"><div class="lbl">Streams ce mois</div><div class="val data">48 320</div><div class="trend">↑ 12,4% vs mois dernier</div></div>
-      <div class="kpi-card revenue-figure"><div class="lbl">Part du fonds attribuée</div><div class="val data">96 640 FCFA</div><div class="trend">↑ 8,1%</div></div>
-      <div class="kpi-card commission revenue-figure"><div class="lbl">Frais de plateforme (25%)</div><div class="val data">−24 160 FCFA</div></div>
-      <div class="kpi-card revenue-figure"><div class="lbl">Revenu net (75%)</div><div class="val data">72 480 FCFA</div><div class="trend">Versé le 5 du mois</div></div>
+      <div class="kpi-card"><div class="lbl">Streams ce mois</div><div class="val data" id="dash-streams-total">—</div><div class="trend" id="dash-streams-trend"></div></div>
+      <div class="kpi-card revenue-figure"><div class="lbl">Part du fonds attribuée</div><div class="val data" id="dash-gross">—</div></div>
+      <div class="kpi-card commission revenue-figure"><div class="lbl">Frais de plateforme (25%)</div><div class="val data" id="dash-platform-share">—</div></div>
+      <div class="kpi-card revenue-figure"><div class="lbl">Revenu net (75%)</div><div class="val data" id="dash-artist-share">—</div><div class="trend">Versé le 5 du mois</div></div>
     </div>
     <div class="dash-panel">
       <h3 class="serif">Streams — 6 derniers mois</h3>

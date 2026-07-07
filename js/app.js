@@ -853,6 +853,23 @@ function openArtistPage(name){
   document.getElementById('artist-page-calendar-title').textContent = 'Calendrier des sorties — ' + name;
   renderCertificationButton(isOwnArtistPage, reallyVerified);
 
+  // Statistiques réelles de l'en-tête artiste (avant : "2,4M" / "186K" / "9 480" codés en dur,
+  // identiques pour tout le monde et jamais reliés à aucune vraie donnée).
+  const statStreamsEl = document.getElementById('artist-stat-streams');
+  const statFollowersEl = document.getElementById('artist-stat-followers');
+  const statSupportsEl = document.getElementById('artist-stat-supports');
+  const artistTracksForStats = tracks.filter(t=>t.a===name);
+  const realStreamsSum = artistTracksForStats.reduce((sum,t)=> sum + (t.isReal ? Number(t.streams)||0 : 0), 0);
+  if(statStreamsEl) statStreamsEl.textContent = realStreamsSum > 0 ? realStreamsSum.toLocaleString('fr-FR') : '0';
+  if(isOwnArtistPage){
+    if(statFollowersEl) statFollowersEl.textContent = (currentUser.follower_count || 0).toLocaleString('fr-FR');
+  } else if(statFollowersEl){
+    statFollowersEl.textContent = '—'; // pas encore de vraie donnée disponible pour un artiste tiers
+  }
+  // "Soutiens reçus" n'est relié à aucun vrai système de pourboires/soutiens pour l'instant —
+  // on l'affiche honnêtement à "—" plutôt qu'un chiffre inventé.
+  if(statSupportsEl) statSupportsEl.textContent = '—';
+
   const artistTracks = tracks.filter(t=>t.a===name);
   const realTrackOfArtist = artistTracks.find(t=>t.artistId);
   currentArtistPageRealId = realTrackOfArtist ? realTrackOfArtist.artistId : null;
@@ -2866,7 +2883,7 @@ async function refreshActiveUsersCount(){
   }catch(e){ /* pas grave si le serveur est momentanément indisponible — l'ancien chiffre reste affiché */ }
 }
 refreshActiveUsersCount();
-setInterval(refreshActiveUsersCount, 60000); // se remet à jour toutes les minutes
+setInterval(refreshActiveUsersCount, 3000); // quasi instantané, sans surcharger le serveur gratuit
 
 /* ============ NUNI RADIO TUNER (12 stations) ============ */
 const tunerStations = [
