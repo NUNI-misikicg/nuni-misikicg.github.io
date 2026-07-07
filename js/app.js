@@ -243,14 +243,30 @@ async function restoreSession(){
   if(!stored || !stored.token) return;
   try{
     const res = await fetch(NUNI_API_BASE + '/api/me', { headers:{ 'Authorization':'Bearer ' + stored.token } });
-    if(!res.ok){ clearSession(); return; }
+    if(!res.ok){
+      // Compte suspendu/supprimé DEPUIS l'émission du token : on le détecte ici, à la toute
+      // première requête de la session, pas seulement à la reconnexion manuelle. On informe
+      // clairement plutôt que de renvoyer silencieusement vers l'accueil sans explication.
+      const errData = await res.json().catch(()=>({}));
+      clearSession();
+      if(res.status === 403 && errData.error){ toast('❌ ' + errData.error); }
+      return;
+    }
     const data = await res.json();
     realAuthToken = stored.token;
+    startAccountStatusWatcher();
     realUserId = stored.userId;
     currentUser = data.user;
     applyAccountType();
-    enterApp('catalog');
-    toast(`Bon retour, ${currentUser.first_name} 👋`);
+    if(currentUser.subscription_status === 'active'){
+      enterApp('catalog');
+      toast(`Bon retour, ${currentUser.first_name} 👋`);
+    } else if(currentUser.plan && currentUser.plan !== 'discovery'){
+      choosePlan(currentUser.plan); // Pass déjà connu : pas besoin de re-remplir l'inscription
+      toast(`Bon retour, ${currentUser.first_name} — votre Pass n'est plus actif, réactivez-le.`);
+    } else {
+      goTo('plans');
+    }
   }catch(e){ /* pas de réseau : on laisse l'écran d'accueil, l'utilisateur pourra réessayer */ }
 }
 // Coupe complètement la lecture en cours — appelée à la déconnexion pour qu'aucun son d'un
@@ -274,7 +290,28 @@ function stopAllPlayback(){
     closeFullPlayer();
   }catch(e){ /* pas bloquant si un élément du lecteur n'existe pas encore au moment de l'appel */ }
 }
+// Vérification périodique en arrière-plan : si l'admin suspend/supprime ce compte pendant
+// qu'il est déjà connecté (pas juste au prochain login), on le détecte dans les 2 minutes
+// et on déconnecte immédiatement, plutôt que d'attendre l'expiration du token (30 jours).
+let accountStatusCheckTimer = null;
+function startAccountStatusWatcher(){
+  clearInterval(accountStatusCheckTimer);
+  accountStatusCheckTimer = setInterval(async ()=>{
+    if(!realAuthToken) return;
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/me', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+      if(res.status === 401 || res.status === 403){
+        const errData = await res.json().catch(()=>({}));
+        clearInterval(accountStatusCheckTimer);
+        toast('❌ ' + (errData.error || 'Session invalide.'));
+        logoutUser();
+      }
+    }catch(e){ /* pas de réseau : on ne déconnecte pas sur un simple souci de connexion */ }
+  }, 120000); // toutes les 2 minutes
+}
+
 function logoutUser(){
+  clearInterval(accountStatusCheckTimer);
   stopAllPlayback();
   clearSession();
   realAuthToken = null;
@@ -333,6 +370,7 @@ async function submitLogin(){
       return;
     }
     realAuthToken = data.token;
+    startAccountStatusWatcher();
     realUserId = data.user.id;
     currentUser = data.user;
     const rememberBox = document.getElementById('login-remember');
@@ -342,7 +380,16 @@ async function submitLogin(){
     feedback.textContent = '✅ Connexion réussie — bon retour ' + currentUser.first_name + ' !';
     btn.disabled = false;
     applyAccountType();
-    setTimeout(()=>{ closeLoginModal(); enterApp('catalog'); }, 600);
+    setTimeout(()=>{
+      closeLoginModal();
+      if(currentUser.subscription_status === 'active'){
+        enterApp('catalog');
+      } else if(currentUser.plan && currentUser.plan !== 'discovery'){
+        choosePlan(currentUser.plan);
+      } else {
+        goTo('plans');
+      }
+    }, 600);
   }catch(e){
     feedback.style.color = 'var(--rose-braise)';
     feedback.textContent = '❌ Impossible de contacter le serveur NUNI.';
@@ -350,8 +397,22 @@ async function submitLogin(){
   }
 }
 
-function choosePlan(type){
+async function choosePlan(type){
   pendingPlanType = type;
+  // Compte déjà existant et connecté : pas besoin de repasser par le formulaire d'inscription
+  // complet — on redemande juste le Pass, puis on l'envoie directement sur WhatsApp payer,
+  // et il n'aura plus qu'à saisir son nouveau code d'accès une fois le paiement confirmé.
+  if(currentUser && realAuthToken){
+    try{
+      await fetch(NUNI_API_BASE + '/api/subscribe/request', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+        body: JSON.stringify({ plan: type })
+      });
+    }catch(e){ /* pas bloquant : on affiche WhatsApp même si cet appel échoue */ }
+    document.getElementById('whatsapp-modal-overlay').classList.add('show');
+    return;
+  }
   document.getElementById('rr-title').textContent = type === 'artist' ? 'Créer mon compte Artiste' : 'Créer mon compte Consommateur';
   document.getElementById('rr-artist-fields').style.display = type === 'artist' ? 'block' : 'none';
   document.getElementById('rr-feedback').innerHTML = '';
@@ -396,6 +457,7 @@ async function submitRealRegistration(){
       return;
     }
     realAuthToken = data.token;
+    startAccountStatusWatcher();
     realUserId = data.user.id;
     currentUser = data.user;
     saveSession(data.token, data.user, true); // toujours mémorisé après une inscription fraîche
@@ -430,7 +492,7 @@ function confirmPlanViaWhatsApp(){
   const msg = encodeURIComponent(`Bonjour NUNI, je souhaite souscrire au ${planLabel}${idNote}. Pouvez-vous m'aider à finaliser mon paiement ?`);
   window.open(`https://wa.me/242068951600?text=${msg}`, '_blank');
   document.getElementById('whatsapp-modal-overlay').classList.remove('show');
-  toast('Compte créé — une fois votre paiement confirmé, vous recevrez un code à saisir ci-dessous.');
+  toast('Une fois votre paiement confirmé, vous recevrez un code à saisir ci-dessous.');
   openRedeemModal();
 }
 function closeWhatsAppModal(){
@@ -475,6 +537,7 @@ async function submitRedeem(){
         return;
       }
       realAuthToken = loginData.token;
+      startAccountStatusWatcher();
       realUserId = loginData.user.id;
       currentUser = loginData.user;
       const rememberBox = document.getElementById('redeem-remember');
@@ -2306,12 +2369,14 @@ async function publishRelease(){
       }
       for(const file of filesForUpload){
         try{
+          const fileIndex = filesForUpload.indexOf(file);
+          const perTrackTitle = filesForUpload.length > 1 ? `${titre} · Piste ${fileIndex+1}` : titre;
           const cloudAudioUrl = await uploadFileToCloudinary(file, 'video'); // Cloudinary traite l'audio sous "video"
           const res = await fetch(NUNI_API_BASE + '/api/tracks', {
             method:'POST',
             headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
             body: JSON.stringify({
-              title: titre, album: titre, genre: genre, releaseType: currentReleaseType,
+              title: perTrackTitle, album: titre, genre: genre, releaseType: currentReleaseType,
               coverUrl: cloudCoverUrl, audioUrl: cloudAudioUrl, lyrics: paroles || null,
             })
           });
@@ -3253,11 +3318,6 @@ function applyAccountType(){
   if(!isArtist){
     const activeLink = document.querySelector('.app-nav-link.is-active');
     if(activeLink && ['artist','dashboard','admin'].includes(activeLink.dataset.appLink)) enterApp('catalog');
-  }
-  // si le Pass n'est pas encore actif, on redirige vers l'écran des Pass
-  if(currentUser && !hasActivePass && document.getElementById('app-shell').classList.contains('active')){
-    goTo('plans');
-    toast('Activez votre Pass pour accéder à NUNI — finalisez le paiement sur WhatsApp.');
   }
 }
 function switchAccountType(){
