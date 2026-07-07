@@ -255,6 +255,7 @@ async function restoreSession(){
     const data = await res.json();
     realAuthToken = stored.token;
     startAccountStatusWatcher();
+    syncLikedTracksFromServer();
     realUserId = stored.userId;
     currentUser = data.user;
     applyAccountType();
@@ -371,6 +372,7 @@ async function submitLogin(){
     }
     realAuthToken = data.token;
     startAccountStatusWatcher();
+    syncLikedTracksFromServer();
     realUserId = data.user.id;
     currentUser = data.user;
     const rememberBox = document.getElementById('login-remember');
@@ -458,6 +460,7 @@ async function submitRealRegistration(){
     }
     realAuthToken = data.token;
     startAccountStatusWatcher();
+    syncLikedTracksFromServer();
     realUserId = data.user.id;
     currentUser = data.user;
     saveSession(data.token, data.user, true); // toujours mémorisé après une inscription fraîche
@@ -538,6 +541,7 @@ async function submitRedeem(){
       }
       realAuthToken = loginData.token;
       startAccountStatusWatcher();
+      syncLikedTracksFromServer();
       realUserId = loginData.user.id;
       currentUser = loginData.user;
       const rememberBox = document.getElementById('redeem-remember');
@@ -878,6 +882,25 @@ function openArtistPage(name){
   const realTrackOfArtist = artistTracks.find(t=>t.artistId);
   currentArtistPageRealId = realTrackOfArtist ? realTrackOfArtist.artistId : null;
   document.getElementById('artist-page-support-btn').setAttribute('onclick', `openSupportArtistModal(${currentArtistPageRealId || 'null'}, ${JSON.stringify(name)})`);
+
+  // Vrai statut de suivi — avant, le bouton affichait toujours "Suivre" par défaut, même si
+  // le compte connecté suivait déjà cet artiste, faute de vérification à l'ouverture.
+  const followBtn = document.getElementById('follow-btn');
+  if(followBtn){
+    if(isOwnArtistPage){
+      followBtn.style.display = 'none';
+    } else {
+      followBtn.style.display = '';
+      followBtn.textContent = 'Suivre';
+      if(currentArtistPageRealId && realAuthToken){
+        fetch(NUNI_API_BASE + '/api/follow/' + currentArtistPageRealId + '/status', {
+          headers:{ 'Authorization':'Bearer ' + realAuthToken }
+        }).then(r=>r.json()).then(data=>{
+          followBtn.textContent = data.following ? 'Suivi ✓' : 'Suivre';
+        }).catch(()=>{});
+      }
+    }
+  }
   ['shelf-artist','shelf-artist-trending','shelf-artist-albums'].forEach(id=>{
     const row = document.getElementById(id);
     if(row) row.innerHTML = '';
@@ -1479,6 +1502,28 @@ function refreshMainShelves(){
   fillShelf('shelf-top', [...tracks].reverse().slice(0,5));
   fillShelf('shelf-playlists', tracks.slice(2,7));
 }
+/* ============ RESYNCHRONISATION DES LIKES APRÈS CONNEXION ============
+   Avant : les cœurs (Favoris) vivaient uniquement dans un tableau en mémoire du navigateur,
+   remis à zéro à chaque rechargement de page ou changement d'appareil. Maintenant : on va
+   chercher la vraie liste des morceaux likés en base au moment de la connexion, et on la
+   fusionne avec les morceaux déjà chargés — les cœurs reflètent enfin la vérité serveur,
+   partout où vous vous connectez. */
+async function syncLikedTracksFromServer(){
+  if(!realAuthToken) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/liked-tracks', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    if(!res.ok) return;
+    const data = await res.json();
+    const likedIds = new Set(data.track_ids || []);
+    tracks.forEach(tr=>{
+      if(tr.isReal && tr.realId && likedIds.has(tr.realId) && !favoritesPlaylist.find(f=>f.t===tr.t)){
+        favoritesPlaylist.unshift(tr);
+      }
+    });
+    syncLikeButtons(currentTrack);
+  }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
+}
+
 async function loadArtistStats(){
   const elTotal = document.getElementById('dash-streams-total');
   const elTrend = document.getElementById('dash-streams-trend');
@@ -1951,13 +1996,50 @@ function syncLikeButtons(tr){
   const isLiked = favoritesPlaylist.some(f=> f.t === tr.t);
   document.querySelectorAll('#player-like-btn, #fp-like-btn').forEach(b=> b.classList.toggle('liked', isLiked));
 }
-function toggleLike(btn){
-  const willLike = !btn.classList.contains('liked');
+async function toggleLike(btn){
   bounceEl(btn);
   hapticPing();
+
+  // Morceau réel + compte connecté : vrai like persisté en base, partagé entre tous vos
+  // appareils. Avant, ceci ne touchait jamais le serveur — un simple tableau en mémoire,
+  // remis à zéro à chaque rechargement de page.
+  if(currentTrack.isReal && currentTrack.realId && realAuthToken){
+    btn.disabled = true;
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/tracks/' + currentTrack.realId + '/like', {
+        method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken }
+      });
+      const data = await res.json();
+      btn.disabled = false;
+      if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
+      currentTrack.likes = data.likes;
+      if(data.liked){
+        if(!favoritesPlaylist.find(t=>t.t===currentTrack.t)) favoritesPlaylist.unshift(currentTrack);
+        spawnFlyPing(btn, '❤️');
+      } else {
+        favoritesPlaylist = favoritesPlaylist.filter(t=>t.t!==currentTrack.t);
+      }
+      syncLikeButtons(currentTrack);
+      document.querySelectorAll('.track-card').forEach(card=>{
+        if(card.dataset.trackId === String(currentTrack.realId)){
+          const likeSpans = card.querySelectorAll('.likes span');
+          if(likeSpans[1]) likeSpans[1].textContent = formatLikes(data.likes);
+        }
+      });
+      toast(data.liked ? 'Ajouté à votre playlist Favoris — visible dans Bibliothèque.' : 'Retiré de votre playlist Favoris.');
+    }catch(e){
+      btn.disabled = false;
+      toast('❌ Impossible de contacter le serveur NUNI.');
+    }
+    return;
+  }
+
+  // Morceau de démonstration, ou visiteur non connecté : comportement local uniquement,
+  // comme avant (pas de vrai compte pour rattacher un like persistant).
+  const willLike = !btn.classList.contains('liked');
   if(willLike){
     if(!favoritesPlaylist.find(t=>t.t===currentTrack.t)) favoritesPlaylist.unshift(currentTrack);
-    spawnFlyPing(btn, '❤️'); // petite confirmation visuelle : "ça vient d'être ajouté à votre bibliothèque"
+    spawnFlyPing(btn, '❤️');
   } else {
     favoritesPlaylist = favoritesPlaylist.filter(t=>t.t!==currentTrack.t);
   }
@@ -2263,7 +2345,26 @@ function openClipWatchPage(clip){
     toast(now ? `Vous suivez maintenant ${clip.artist}.` : `Vous ne suivez plus ${clip.artist}.`);
   };
   const likeBtn = overlay.querySelector('.cw-like-btn');
-  likeBtn.onclick = ()=>{
+  likeBtn.onclick = async ()=>{
+    bounceEl(likeBtn);
+    hapticPing();
+    if(clip.isReal && clip.realId && realAuthToken){
+      likeBtn.disabled = true;
+      try{
+        const res = await fetch(NUNI_API_BASE + '/api/clips/' + clip.realId + '/like', {
+          method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken }
+        });
+        const data = await res.json();
+        likeBtn.disabled = false;
+        if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
+        clip.likes = data.likes;
+        likeBtn.classList.toggle('is-active', data.liked);
+        const metaEl = overlay.querySelector('.cw-meta');
+        if(metaEl) metaEl.textContent = `${formatLikes(clip.views)} vues · ${clip.date || "aujourd'hui"}`;
+      }catch(e){ likeBtn.disabled = false; toast('❌ Impossible de contacter le serveur NUNI.'); }
+      return;
+    }
+    // Clip de démonstration, ou visiteur non connecté : comportement local uniquement
     const liked = likeBtn.classList.toggle('is-active');
     clip.likes += liked ? 1 : -1;
   };
@@ -2393,8 +2494,23 @@ function closeClipPlayer(){
   video.pause();
   document.getElementById('clip-player-overlay').classList.remove('show');
 }
-function toggleClipLike(btn){
+async function toggleClipLike(btn){
   if(!currentClip) return;
+  if(currentClip.isReal && currentClip.realId && realAuthToken){
+    btn.disabled = true;
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/clips/' + currentClip.realId + '/like', {
+        method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken }
+      });
+      const data = await res.json();
+      btn.disabled = false;
+      if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
+      currentClip.likes = data.likes;
+      btn.classList.toggle('liked', data.liked);
+      document.getElementById('clip-player-likes').textContent = formatLikes(currentClip.likes);
+    }catch(e){ btn.disabled = false; toast('❌ Impossible de contacter le serveur NUNI.'); }
+    return;
+  }
   const liked = btn.classList.toggle('liked');
   currentClip.likes += liked ? 1 : -1;
   document.getElementById('clip-player-likes').textContent = formatLikes(currentClip.likes);
