@@ -2722,9 +2722,7 @@ async function handlePhotoUpload(e, kind){
   });
   const url = `url(${localPreviewUrl})`;
   if(kind === 'avatar'){
-    const dash = document.getElementById('avatar-preview-dash');
-    dash.style.backgroundImage = url; dash.textContent = '';
-    document.querySelectorAll('.artist-avatar').forEach(el=>{ el.style.backgroundImage = url; el.textContent = ''; });
+    applyAvatarEverywhere(localPreviewUrl);
   } else {
     const dash = document.getElementById('cover-preview-dash');
     dash.style.backgroundImage = url;
@@ -2754,21 +2752,62 @@ async function handlePhotoUpload(e, kind){
     const data = await res.json();
     if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
     currentUser.avatar_url = cloudUrl;
-    toast('✅ Photo de profil enregistrée — visible sur votre page artiste.');
+    applyAvatarEverywhere(cloudUrl);
+    toast('✅ Photo de profil enregistrée — visible partout sur NUNI.');
   }catch(e){
     toast('❌ Impossible d\'envoyer la photo : ' + (e.message || 'erreur inconnue'));
   }
 }
-function handleProfileAvatarUpload(e){
+function applyAvatarEverywhere(url){
+  document.querySelectorAll('.artist-avatar, .user-chip .avatar').forEach(el=>{
+    el.style.backgroundImage = `url(${url})`;
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+    el.textContent = '';
+  });
+  const avatarDash = document.getElementById('avatar-preview-dash');
+  if(avatarDash){ avatarDash.style.backgroundImage = `url(${url})`; avatarDash.textContent = ''; }
+}
+
+// Point d'entrée unique pour changer sa photo de profil, quel que soit le bouton utilisé
+// (menu profil en haut à droite, ou "Photos de mon profil artiste" dans le Dashboard) —
+// avant, ces deux boutons ne se parlaient jamais : chacun ne mettait à jour qu'un seul
+// endroit à l'écran, sans jamais rien enregistrer réellement ni synchroniser le reste.
+async function handleProfileAvatarUpload(e){
   const file = e.target.files[0];
   if(!file) return;
+
   const reader = new FileReader();
-  reader.onload = ()=>{
-    document.querySelectorAll('.user-chip .avatar').forEach(el=>{ el.style.backgroundImage = `url(${reader.result})`; el.textContent=''; });
-    toast('Photo de profil mise à jour.');
-  };
-  reader.readAsDataURL(file);
+  const localPreviewUrl = await new Promise(resolve=>{
+    reader.onload = ()=> resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+  applyAvatarEverywhere(localPreviewUrl); // aperçu immédiat, partout
   e.target.value = '';
+
+  if(!realAuthToken){
+    toast('Connectez-vous pour que cette photo soit enregistrée.');
+    return;
+  }
+  if(currentUser && currentUser.account_type !== 'artist'){
+    toast('Photo mise à jour pour cette session — l\'enregistrement permanent est pour l\'instant réservé aux comptes Artiste.');
+    return;
+  }
+  toast('Envoi de la photo en cours…');
+  try{
+    const cloudUrl = await uploadFileToCloudinary(file, 'image');
+    const res = await fetch(NUNI_API_BASE + '/api/artist/avatar', {
+      method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ avatarUrl: cloudUrl })
+    });
+    const data = await res.json();
+    if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
+    currentUser.avatar_url = cloudUrl;
+    applyAvatarEverywhere(cloudUrl); // remplace l'aperçu local par la vraie URL définitive
+    toast('✅ Photo de profil enregistrée — visible partout sur NUNI.');
+  }catch(e){
+    toast('❌ Impossible d\'envoyer la photo : ' + (e.message || 'erreur inconnue'));
+  }
 }
 
 /* ============ FULL-SCREEN PLAYER ============ */
@@ -3596,6 +3635,7 @@ function applyAccountType(){
   document.querySelectorAll('.tab-consumer-only').forEach(el=> el.style.display = isArtist ? 'none' : '');
   const chipLabel = document.querySelector('.user-chip span');
   if(chipLabel) chipLabel.textContent = currentUser ? (currentUser.first_name + ' ' + currentUser.last_name.charAt(0) + '.') : (isArtist ? 'Bibi M.' : 'Auditeur');
+  if(currentUser && currentUser.avatar_url){ applyAvatarEverywhere(currentUser.avatar_url); }
   const artistMenuItem = document.getElementById('profile-menu-artist-space');
   if(artistMenuItem) artistMenuItem.style.display = isArtist ? '' : 'none';
   const switchBtn = document.getElementById('account-switch-btn');
