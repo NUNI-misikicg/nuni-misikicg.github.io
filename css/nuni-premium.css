@@ -160,7 +160,149 @@ body::before{
 .btn-ghost{ border-radius: 999px; }
 .btn-icon{ border-radius: var(--radius-s); }
 
-/* ============ MICRO-INTERACTIONS AU SCROLL — subtiles, jamais brutales ============ */
+/* ============ PHOTOS DE PROFIL ARTISTE — dimensions corrigées ============
+   Avant : la pochette de couverture ("wide") était un rectangle 220×96 très plat, presque
+   illisible, sans texture visible par défaut. Ici : un vrai format bannière, plus grand,
+   avec un dégradé de secours toujours visible tant qu'aucune photo n'est importée. */
+.photo-upload-row{ gap:28px; align-items:flex-start; }
+.photo-preview{
+  border-radius: var(--radius-m) !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+.photo-preview.wide{
+  width: 100% !important;
+  max-width: 480px;
+  height: 190px !important;
+  background-image: none;
+  background-color: transparent;
+  background: linear-gradient(135deg, var(--terre-cuite), var(--cacao)) !important;
+}
+.photo-upload-item:has(.photo-preview.wide){ flex: 1 1 100%; max-width: 480px; align-items: stretch; }
+.photo-upload-item:has(.photo-preview.wide) .btn{ align-self: flex-start; }
 @media (prefers-reduced-motion: no-preference){
   .shelf-row .track-card{ will-change: transform; }
+}
+
+/* ============================================================
+   LECTEUR PLEIN ÉCRAN — habillage premium (logique JS inchangée)
+   ------------------------------------------------------------
+   On garde toute la mécanique existante (palette auto extraite de
+   la pochette, halo, paroles synchronisées, mode Vibe, file
+   d'attente...) — ici on ne fait que redessiner l'enveloppe visuelle :
+   pochette plus grande et plus arrondie, bouton lecture plus imposant
+   avec le dégradé terre-cuite/or, pastilles en verre dépoli, paroles
+   plus aérées, badges audio plus élégants.
+============================================================ */
+
+/* Pochette : plus grande, coins très arrondis, ombre plus chaude */
+.fp-cover-wrap, .fp-cover{
+  width: 280px !important;
+  height: 280px !important;
+}
+.fp-cover{
+  border-radius: 36px !important;
+  box-shadow: 0 34px 80px -18px rgba(0,0,0,0.6), 0 0 0 1px rgba(244,238,225,0.06);
+}
+.full-player.immersion .fp-cover-wrap, .full-player.immersion .fp-cover{
+  width: 340px !important; height: 340px !important;
+}
+
+/* Halo : plus doux, couleurs chaudes cohérentes avec la palette */
+.fp-halo{ opacity: .34; filter: blur(58px); }
+html.is-playing .full-player .fp-halo{ opacity: .5; }
+
+/* Titre et méta : hiérarchie plus marquée, respire davantage */
+.fp-title{ font-size: clamp(28px, 4.6vw, 38px); letter-spacing: -0.015em; margin-bottom: 8px; }
+.fp-artist-row{ margin-bottom: 12px; font-size: 15.5px; }
+.fp-meta{ margin-bottom: 3px; }
+.fp-info-pills{ margin-top: 10px; margin-bottom: 4px; }
+.fp-info-pills .fp-info-pill{
+  display: inline-block; padding: 4px 12px; margin: 0 4px 6px 0;
+  border-radius: 999px; font-size: 10.5px; letter-spacing: .3px;
+  background: rgba(244,238,225,0.08); backdrop-filter: blur(8px);
+  color: var(--text-dim); border: 1px solid var(--border);
+}
+
+/* Barre de progression : plus fine, plus élégante */
+.fp-progress{ margin-top: 8px; margin-bottom: 20px; max-width: 440px; }
+.fp-progress .progress-track{ height: 4px; border-radius: 999px; background: rgba(244,238,225,0.12); }
+.fp-progress .progress-fill{ background: var(--grad-envol); border-radius: 999px; }
+
+/* Bouton lecture principal : plus grand, dégradé signature, ombre chaude */
+.fp-play{
+  width: 64px !important; height: 64px !important;
+  background: var(--grad-envol) !important;
+  box-shadow: 0 16px 36px -10px rgba(179,81,46,.55);
+  border: none;
+}
+.fp-play svg{ width: 24px !important; height: 24px !important; color: #14100C; }
+.fp-controls button:not(.fp-play){ opacity: .85; transition: opacity .3s ease, transform .3s ease; }
+.fp-controls button:not(.fp-play):hover{ opacity: 1; transform: scale(1.08); }
+
+/* Pastilles secondaires (vitesse, qualité, paroles, file d'attente) — effet verre dépoli */
+.fp-pill{
+  border-radius: 999px;
+  background: rgba(244,238,225,0.06);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+  padding: 9px 16px;
+}
+.fp-pill.is-active{
+  background: var(--grad-envol);
+  box-shadow: 0 8px 20px -6px rgba(179,81,46,.5);
+}
+
+/* Actions secondaires (like, playlist, télécharger, partager...) */
+.fp-actions-row .btn-icon{
+  border-radius: 999px;
+  background: rgba(244,238,225,0.05);
+  width: 46px; height: 46px;
+}
+.fp-actions-row .btn-icon:hover{ transform: translateY(-3px); }
+
+/* Bouton "Soutenir cet artiste" : pilule dorée premium */
+.fp-support-btn{
+  border-radius: 999px !important;
+  background: var(--grad-envol);
+  box-shadow: 0 14px 32px -10px rgba(179,81,46,.5);
+  padding: 14px 28px;
+  font-weight: 600;
+}
+
+/* Paroles : plus aérées, ligne active bien mise en avant */
+.fp-lyrics-lines{ gap: 20px; }
+.fp-lyrics-lines p{ font-size: 18px; }
+.fp-lyrics-lines p.is-current{
+  font-size: 21px;
+  background: var(--grad-envol);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* File d'attente : cartes en verre dépoli plutôt que plates */
+.fp-queue-item{ border-radius: var(--radius-s); }
+.fp-queue-item:hover{ background: rgba(244,238,225,0.06); }
+.fp-queue-item.is-current{ background: rgba(201,162,75,.12); }
+.fp-queue-cov{ border-radius: 10px; }
+
+/* Mur des fans, bio, infos techniques : cartes cohérentes avec le reste */
+.fp-tech-grid > div{
+  background: rgba(244,238,225,0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  padding: 12px 14px;
+}
+
+/* Assistant IA flottant : pilule dorée discrète */
+.ai-assistant-btn{
+  border-radius: 999px;
+  background: rgba(11,9,8,0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-strong);
+}
+
+/* Badge "Artiste vérifié" : cohérent avec la nouvelle identité or/cuivre */
+.badge-verified{
+  background: rgba(201,162,75,.16);
+  border: 1px solid rgba(201,162,75,.3);
 }
