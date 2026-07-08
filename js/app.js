@@ -816,6 +816,11 @@ function enterApp(view){
     loadPaymentsHistory();
     const momoInput = document.getElementById('momo-number-input');
     if(momoInput) momoInput.value = (currentUser && currentUser.momo_number) || '';
+    const avatarDash = document.getElementById('avatar-preview-dash');
+    if(avatarDash && currentUser && currentUser.avatar_url){
+      avatarDash.style.backgroundImage = `url(${currentUser.avatar_url})`;
+      avatarDash.textContent = '';
+    }
   }
   ['catalog','clips','ads','library','artist','dashboard','admin'].forEach(v=>{
     const el = document.getElementById('view-'+v);
@@ -857,31 +862,51 @@ function openArtistPage(name){
   document.getElementById('artist-page-meta').textContent = profile.meta;
   document.getElementById('artist-page-bio').textContent = profile.bio;
   document.getElementById('artist-page-badge').style.display = reallyVerified ? 'inline-flex' : 'none';
-  document.getElementById('artist-page-avatar').textContent = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const artistPageAvatarEl = document.getElementById('artist-page-avatar');
+  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  if(isOwnArtistPage && currentUser.avatar_url){
+    artistPageAvatarEl.style.backgroundImage = `url(${currentUser.avatar_url})`;
+    artistPageAvatarEl.textContent = '';
+  } else {
+    artistPageAvatarEl.style.backgroundImage = '';
+    artistPageAvatarEl.textContent = initials;
+  }
   document.getElementById('artist-page-calendar-title').textContent = 'Calendrier des sorties — ' + name;
   renderCertificationButton(isOwnArtistPage, reallyVerified);
 
   // Statistiques réelles de l'en-tête artiste (avant : "2,4M" / "186K" / "9 480" codés en dur,
   // identiques pour tout le monde et jamais reliés à aucune vraie donnée).
   const statStreamsEl = document.getElementById('artist-stat-streams');
-  const statFollowersEl = document.getElementById('artist-stat-followers');
   const statSupportsEl = document.getElementById('artist-stat-supports');
   const artistTracksForStats = tracks.filter(t=>t.a===name);
   const realStreamsSum = artistTracksForStats.reduce((sum,t)=> sum + (t.isReal ? Number(t.streams)||0 : 0), 0);
   if(statStreamsEl) statStreamsEl.textContent = realStreamsSum > 0 ? realStreamsSum.toLocaleString('fr-FR') : '0';
-  if(isOwnArtistPage){
-    if(statFollowersEl) statFollowersEl.textContent = (currentUser.follower_count || 0).toLocaleString('fr-FR');
-  } else if(statFollowersEl){
-    statFollowersEl.textContent = '—'; // pas encore de vraie donnée disponible pour un artiste tiers
-  }
   // "Soutiens reçus" n'est relié à aucun vrai système de pourboires/soutiens pour l'instant —
   // on l'affiche honnêtement à "—" plutôt qu'un chiffre inventé.
   if(statSupportsEl) statSupportsEl.textContent = '—';
 
   const artistTracks = tracks.filter(t=>t.a===name);
   const realTrackOfArtist = artistTracks.find(t=>t.artistId);
-  currentArtistPageRealId = realTrackOfArtist ? realTrackOfArtist.artistId : null;
+  currentArtistPageRealId = realTrackOfArtist ? realTrackOfArtist.artistId : (isOwnArtistPage ? currentUser.id : null);
   document.getElementById('artist-page-support-btn').setAttribute('onclick', `openSupportArtistModal(${currentArtistPageRealId || 'null'}, ${JSON.stringify(name)})`);
+
+  // Vrai nombre de followers — visible pour n'importe quel visiteur, pas seulement sur sa
+  // propre page. Se met aussi à jour tout de suite après un clic sur "Suivre" (voir toggleFollow).
+  const statFollowersEl = document.getElementById('artist-stat-followers');
+  if(statFollowersEl){
+    if(currentArtistPageRealId){
+      fetch(NUNI_API_BASE + '/api/artist/' + currentArtistPageRealId + '/public-stats')
+        .then(r=>r.json()).then(data=>{
+          if(typeof data.follower_count === 'number') statFollowersEl.textContent = data.follower_count.toLocaleString('fr-FR');
+          if(data.avatar_url && !(isOwnArtistPage && currentUser.avatar_url)){
+            artistPageAvatarEl.style.backgroundImage = `url(${data.avatar_url})`;
+            artistPageAvatarEl.textContent = '';
+          }
+        }).catch(()=>{});
+    } else {
+      statFollowersEl.textContent = '—';
+    }
+  }
 
   // Vrai statut de suivi — avant, le bouton affichait toujours "Suivre" par défaut, même si
   // le compte connecté suivait déjà cet artiste, faute de vérification à l'ouverture.
@@ -2069,6 +2094,10 @@ function toggleFollow(btn){
       if(data.error){ toast('❌ ' + data.error); return; }
       btn.textContent = data.following ? 'Suivi ✓' : 'Suivre';
       if(data.following) hapticPing();
+      // Le compteur de followers affiché sur le profil se met à jour tout de suite, sans
+      // attendre un rechargement — avant, ce chiffre renvoyé par le serveur était ignoré.
+      const statFollowersEl = document.getElementById('artist-stat-followers');
+      if(statFollowersEl && typeof data.followersCount === 'number') statFollowersEl.textContent = data.followersCount.toLocaleString('fr-FR');
       toast(data.following ? 'Vous suivez maintenant cet artiste.' : 'Vous ne suivez plus cet artiste.');
     }).catch(()=>{ btn.disabled = false; toast('❌ Impossible de contacter le serveur NUNI.'); });
     return;
@@ -2681,26 +2710,54 @@ function handleAudioUpload(e){
   if(files.length) toast(`${files.length} fichier(s) audio importé(s) — testez le son avec le lecteur ci-dessous avant de publier.`);
   e.target.value = '';
 }
-function handlePhotoUpload(e, kind){
+async function handlePhotoUpload(e, kind){
   const file = e.target.files[0];
   if(!file) return;
+
+  // Aperçu local immédiat, en attendant l'envoi réel
   const reader = new FileReader();
-  reader.onload = ()=>{
-    const url = `url(${reader.result})`;
-    if(kind === 'avatar'){
-      const dash = document.getElementById('avatar-preview-dash');
-      dash.style.backgroundImage = url; dash.textContent = '';
-      document.querySelectorAll('.artist-avatar').forEach(el=>{ el.style.backgroundImage = url; el.textContent = ''; });
-    } else {
-      const dash = document.getElementById('cover-preview-dash');
-      dash.style.backgroundImage = url;
-      const cover = document.querySelector('.artist-cover');
-      if(cover) cover.style.backgroundImage = url;
-    }
-    toast('Photo mise à jour — visible sur votre profil artiste.');
-  };
-  reader.readAsDataURL(file);
+  const localPreviewUrl = await new Promise(resolve=>{
+    reader.onload = ()=> resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+  const url = `url(${localPreviewUrl})`;
+  if(kind === 'avatar'){
+    const dash = document.getElementById('avatar-preview-dash');
+    dash.style.backgroundImage = url; dash.textContent = '';
+    document.querySelectorAll('.artist-avatar').forEach(el=>{ el.style.backgroundImage = url; el.textContent = ''; });
+  } else {
+    const dash = document.getElementById('cover-preview-dash');
+    dash.style.backgroundImage = url;
+    const cover = document.querySelector('.artist-cover');
+    if(cover) cover.style.backgroundImage = url;
+  }
   e.target.value = '';
+
+  // Envoi réel — avant, cette photo restait purement locale : elle disparaissait dès qu'on
+  // quittait l'onglet Artiste puis qu'on y revenait (openArtistPage réaffichait toujours les
+  // initiales), et n'était jamais visible pour les autres visiteurs ni après un rechargement.
+  if(kind !== 'avatar'){
+    toast('Photo de couverture mise à jour localement — l\'enregistrement réel de la couverture arrive bientôt.');
+    return;
+  }
+  if(!realAuthToken){
+    toast('Connectez-vous avec un vrai compte Artiste pour que cette photo soit enregistrée.');
+    return;
+  }
+  toast('Envoi de la photo en cours…');
+  try{
+    const cloudUrl = await uploadFileToCloudinary(file, 'image');
+    const res = await fetch(NUNI_API_BASE + '/api/artist/avatar', {
+      method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ avatarUrl: cloudUrl })
+    });
+    const data = await res.json();
+    if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
+    currentUser.avatar_url = cloudUrl;
+    toast('✅ Photo de profil enregistrée — visible sur votre page artiste.');
+  }catch(e){
+    toast('❌ Impossible d\'envoyer la photo : ' + (e.message || 'erreur inconnue'));
+  }
 }
 function handleProfileAvatarUpload(e){
   const file = e.target.files[0];
