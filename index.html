@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/corners.css">
 <link rel="stylesheet" href="css/nuni-premium.css">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -1130,7 +1131,15 @@
 <div class="mimi-widget" id="mimi-widget">
   <div class="mimi-panel" id="mimi-panel">
     <div class="mimi-panel-head">
-      <div class="mimi-avatar">🕊️</div>
+      <div class="mimi-avatar">
+        <div class="mimi-avatar-ring"></div>
+        <div class="mimi-avatar-stage">
+          <img src="assets/mimi-avatar.png" alt="Mimi" class="mimi-avatar-photo">
+          <div class="mimi-eyelid left"></div>
+          <div class="mimi-eyelid right"></div>
+          <div class="mimi-mouth-shadow"></div>
+        </div>
+      </div>
       <div>
         <div class="mimi-name">MIMI</div>
         <div class="mimi-sub">Assistant musique congolaise</div>
@@ -1148,14 +1157,21 @@
       <button onclick="mimiAsk('Parle-moi de Franco')">Franco Luambo</button>
     </div>
     <div class="mimi-input-row">
-      <input type="text" id="mimi-input" placeholder="Posez votre question sur la musique congolaise…" onkeydown="if(event.key==='Enter') mimiSend()">
+      <input type="text" id="mimi-input" placeholder="Posez votre question sur la musique congolaise…" onkeydown="if(event.key==='Enter') mimiSend()" onfocus="mimiFace('listening')" onblur="mimiFace('idle')">
       <button class="btn-icon" onclick="mimiSend()" aria-label="Envoyer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>
       </button>
     </div>
   </div>
   <button class="mimi-bubble" id="mimi-bubble" onclick="toggleMimi()" aria-label="Ouvrir MIMI">
-    <span class="mimi-bubble-emoji">🕊️</span>
+    <div class="mimi-avatar mimi-avatar-bubble">
+      <div class="mimi-avatar-stage">
+        <img src="assets/mimi-avatar.png" alt="Mimi" class="mimi-avatar-photo">
+        <div class="mimi-eyelid left"></div>
+        <div class="mimi-eyelid right"></div>
+        <div class="mimi-mouth-shadow"></div>
+      </div>
+    </div>
   </button>
 </div>
 

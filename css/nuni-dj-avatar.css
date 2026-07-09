@@ -1,0 +1,143 @@
+/* ============================================================
+   NUNI — Avatar DJ animé : styles
+   Utilise les variables de nuni-premium.css si présentes,
+   avec des couleurs de secours identiques sinon.
+============================================================ */
+
+.nuni-dj-avatar-stage {
+  position: relative;
+  perspective: 900px;
+  border-radius: 50%;
+  overflow: visible;
+  user-select: none;
+}
+
+.nuni-dj-avatar-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-style: preserve-3d;
+  overflow: visible;
+}
+
+.dja-head {
+  transition: filter 0.3s ease;
+}
+
+/* ---- Halo dynamique derrière la tête ---- */
+.dja-halo {
+  fill: var(--or, #C9A24B);
+  opacity: 0.2;
+  filter: blur(14px);
+}
+
+/* ---- Afro ---- */
+.dja-hair-fill,
+.dja-hair-puff {
+  fill: #17110C;
+}
+.dja-hair-puff { opacity: 0.96; }
+
+/* ---- Visage ---- */
+.dja-face {
+  fill: #B5773F;
+}
+
+/* ---- Sourcils ---- */
+.dja-brow {
+  fill: none;
+  stroke: #1B140D;
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: transform 0.12s ease-out;
+}
+
+/* ---- Lunettes ---- */
+.dja-glasses-bridge {
+  stroke: var(--or, #C9A24B);
+  stroke-width: 4;
+}
+.dja-lens {
+  fill: #0B0908;
+}
+.dja-lens-ring {
+  fill: none;
+  stroke: var(--or, #C9A24B);
+  stroke-width: 5;
+}
+.dja-glint {
+  fill: rgba(244, 238, 225, 0.85);
+  transition: transform 0.08s linear;
+}
+
+/* ---- Nez / moustache / bouc ---- */
+.dja-nose {
+  fill: none;
+  stroke: rgba(27, 20, 13, 0.55);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.dja-mustache,
+.dja-goatee {
+  fill: #17110C;
+}
+
+/* ---- Bouche ---- */
+.dja-lips {
+  fill: #5C3520;
+}
+.dja-mouth-cavity {
+  fill: #2A140C;
+  transition: rx 0.03s linear, ry 0.03s linear;
+}
+.dja-mouth-group {
+  transition: transform 0.15s ease-out;
+}
+
+/* ---- Écouteurs ---- */
+.dja-band-outer {
+  fill: none;
+  stroke: #17110C;
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+.dja-band-inner {
+  fill: none;
+  stroke: var(--or, #C9A24B);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.dja-cup-ring {
+  fill: #17110C;
+  stroke: var(--or, #C9A24B);
+  stroke-width: 4;
+}
+.dja-cup-pad {
+  fill: #221A13;
+}
+.dja-cup {
+  transition: filter 0.08s linear;
+}
+
+/* ---- Mode DJ : accents plus expressifs ---- */
+.nuni-dj-avatar-stage.is-dj-mode .dja-halo {
+  filter: blur(18px) saturate(1.15);
+}
+.nuni-dj-avatar-stage.is-dj-mode .dja-lens-ring {
+  stroke: var(--or-2, #E3BE6D);
+}
+
+/* Badge optionnel affiché sous l'avatar pour indiquer le mode DJ actif */
+.nuni-dj-avatar-label {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  color: var(--text-dim, #B8AA96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dja-head, .dja-mouth-group, .dja-brow, .dja-glint, .dja-cup {
+    transition: none !important;
+  }
+}

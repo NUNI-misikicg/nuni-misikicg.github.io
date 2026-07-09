@@ -1,0 +1,122 @@
+/* ============================================================
+   NUNI — MIMI : animation par calques sur la vraie photo
+   ------------------------------------------------------------
+   Base = photo réelle (assets/mimi-avatar.png), inchangée.
+   Par-dessus : deux paupières (teinte peau échantillonnée sur
+   la photo, dégradé pour se fondre), une ombre de bouche pour
+   suggérer le mouvement pendant que Mimi "parle", une respiration
+   douce sur l'ensemble, et un halo qui change selon l'état
+   (écoute / réflexion / parole / content).
+   Coordonnées des calques mesurées directement sur la photo
+   source (1254x1254px) : yeux ~49% de hauteur, bouche ~75%.
+============================================================ */
+
+.mimi-avatar{
+  position:relative;
+  width:96px;
+  height:96px;
+  flex-shrink:0;
+}
+.mimi-avatar.mimi-avatar-bubble{
+  width:100%;
+  height:100%;
+}
+
+.mimi-avatar-ring{
+  position:absolute;
+  inset:-4px;
+  border-radius:50%;
+  border:2px solid transparent;
+  pointer-events:none;
+  transition:border-color .3s ease, box-shadow .3s ease;
+}
+
+.mimi-avatar-stage{
+  position:relative;
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  overflow:hidden;
+  animation:mmBreathe 4.2s ease-in-out infinite;
+}
+
+.mimi-avatar-photo{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+/* ---- Paupières (clignement) ---- */
+.mimi-eyelid{
+  position:absolute;
+  border-radius:50%;
+  background:radial-gradient(ellipse 60% 60% at 50% 40%, #8a5330 0%, #703e20 55%, transparent 85%);
+  transform:scaleY(0);
+  opacity:0;
+  pointer-events:none;
+}
+.mimi-eyelid.left{ left:37.4%; top:46.4%; width:13%; height:6%; }
+.mimi-eyelid.right{ left:54.75%; top:45.5%; width:12.5%; height:6%; }
+.mimi-avatar-stage.blink .mimi-eyelid{ animation:mmBlink .16s ease-in-out; }
+
+/* ---- Ombre de bouche (pulse pendant que Mimi "parle") ---- */
+.mimi-mouth-shadow{
+  position:absolute;
+  left:38.2%;
+  top:71.5%;
+  width:24%;
+  height:7%;
+  border-radius:50%;
+  background:radial-gradient(ellipse at center, rgba(20,10,4,.55) 0%, rgba(20,10,4,0) 75%);
+  opacity:0;
+  transform:scaleY(.5);
+  pointer-events:none;
+}
+.mimi-avatar.is-talking .mimi-mouth-shadow{ animation:mmTalk .34s ease-in-out infinite; }
+
+/* ---- Halo selon l'état ---- */
+.mimi-avatar.is-listening .mimi-avatar-ring{
+  border-color:var(--or,#c9a24b);
+  animation:mmPulseRing 1.6s ease-in-out infinite;
+}
+.mimi-avatar.is-thinking .mimi-avatar-ring{
+  border-color:var(--terre-cuite,#b3512e);
+  animation:mmPulseRing 2.2s ease-in-out infinite;
+}
+.mimi-avatar.is-talking .mimi-avatar-ring{
+  border-color:var(--or-2,#e3be6d);
+  box-shadow:0 0 10px rgba(201,162,75,.5);
+}
+.mimi-avatar.is-happy .mimi-avatar-ring{
+  border-color:var(--emeraude,#1e7a4c);
+  animation:mmFlash .5s ease-in-out;
+}
+
+@keyframes mmBreathe{
+  0%,100%{ transform:translateY(0) scale(1); }
+  50%{ transform:translateY(-1.5%) scale(1.012); }
+}
+@keyframes mmBlink{
+  0%,100%{ transform:scaleY(0); opacity:0; }
+  40%,60%{ transform:scaleY(1); opacity:1; }
+}
+@keyframes mmTalk{
+  0%,100%{ opacity:.15; transform:scaleY(.5); }
+  50%{ opacity:.55; transform:scaleY(1.15); }
+}
+@keyframes mmPulseRing{
+  0%,100%{ opacity:.35; transform:scale(1); }
+  50%{ opacity:.9; transform:scale(1.06); }
+}
+@keyframes mmFlash{
+  0%{ opacity:0; transform:scale(.9); }
+  40%{ opacity:1; transform:scale(1.08); }
+  100%{ opacity:0; transform:scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .mimi-avatar-stage, .mimi-avatar-ring, .mimi-eyelid, .mimi-mouth-shadow{ animation:none !important; }
+}

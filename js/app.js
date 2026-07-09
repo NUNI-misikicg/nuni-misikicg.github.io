@@ -605,8 +605,32 @@ function closeAiModal(){
 }
 
 /* ============ MIMI — assistant musique congolaise ============ */
+/* ---- Animation de l'avatar : clignement auto + états (écoute/réflexion/parole/content) ---- */
+function mimiBlinkLoop(){
+  function blink(){
+    document.querySelectorAll('.mimi-avatar-stage').forEach(el=>{
+      el.classList.add('blink');
+      setTimeout(()=>el.classList.remove('blink'), 160);
+    });
+    setTimeout(blink, 2600 + Math.random()*3200);
+  }
+  setTimeout(blink, 1200);
+}
+function mimiFace(state){
+  document.querySelectorAll('.mimi-avatar').forEach(el=>{
+    el.classList.remove('is-listening','is-thinking','is-talking','is-happy');
+    if(state && state !== 'idle') el.classList.add('is-'+state);
+  });
+}
+mimiBlinkLoop();
+
 function toggleMimi(){
-  document.getElementById('mimi-widget').classList.toggle('open');
+  const widget = document.getElementById('mimi-widget');
+  widget.classList.toggle('open');
+  if(widget.classList.contains('open')){
+    mimiFace('happy');
+    setTimeout(()=>mimiFace('idle'), 900);
+  }
 }
 const mimiConversation = [
   { k: ['salut', 'bonjour', 'mbote', 'coucou', 'hello', 'bonsoir'],
@@ -658,6 +682,7 @@ function mimiAsk(question){
   userMsg.className = 'mimi-msg user';
   userMsg.textContent = question;
   box.appendChild(userMsg);
+  mimiFace('thinking');
 
   const q = question.toLowerCase();
   let answer = "Pour un début, je peux discuter simplement avec vous, vous recommander de la musique selon votre humeur, ou vous parler de nos grandes figures historiques (Grand Kallé, Franco, Tabu Ley, Papa Wemba...) et des styles comme la rumba ou le soukous 🕊️";
@@ -676,6 +701,10 @@ function mimiAsk(question){
     botMsg.innerHTML = answer;
     box.appendChild(botMsg);
     box.scrollTop = box.scrollHeight;
+    mimiFace('talking');
+    const plainLen = answer.replace(/<[^>]+>/g,'').length;
+    const talkMs = Math.min(3200, Math.max(700, plainLen*35));
+    setTimeout(()=>mimiFace('idle'), talkMs);
   }, 450);
   box.scrollTop = box.scrollHeight;
 }
