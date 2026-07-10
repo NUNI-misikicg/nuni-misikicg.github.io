@@ -2573,6 +2573,10 @@ function renderClips(){
   const grid = document.getElementById('clips-grid');
   if(!grid) return;
   grid.innerHTML = '';
+  if(!clips.length){
+    grid.innerHTML = `<p style="grid-column:1/-1; color:var(--text-faint); font-size:13px;">Aucun clip publié pour le moment sur NUNI — revenez bientôt !</p>`;
+    return;
+  }
   shuffleArray(clips).forEach(c=> grid.appendChild(clipCard(c)));
 }
 function renderArtistClips(artistName){
@@ -2586,20 +2590,9 @@ function renderArtistClips(artistName){
   }
   mine.forEach(c=> grid.appendChild(clipCard(c)));
 }
-function seedClips(){
-  const artistList = ['Bibi Mwana','Ndombe Junior','Kessy Tina','Mbote System','Les Anges du Rythme','Tcheza Nation'];
-  const pals = ['pal-1','pal-2','pal-3','pal-4','pal-5','pal-6'];
-  const titles = ['Clip officiel','Session live','Behind the scenes','Freestyle'];
-  artistList.forEach((a,i)=>{
-    clips.push({
-      id:'seed_'+i, title:`${titles[i%titles.length]} — ${a}`, artist:a, thumb:null, pal:pals[i%pals.length],
-      videoUrl:null, views: 8000+Math.floor(Math.random()*90000), likes: 300+Math.floor(Math.random()*4000),
-      date:'2026', dur: (2+Math.floor(Math.random()*3))+':'+String(10+Math.floor(Math.random()*49)).padStart(2,'0')
-    });
-  });
-  renderClips();
-}
-seedClips();
+// Avant : 6 clips factices ("Bibi Mwana", "Ndombe Junior"...) toujours affichés, mélangés
+// aux vrais clips publiés par les artistes. Retiré — seuls les vrais clips (loadRealClips,
+// plus bas) doivent apparaître sur cet onglet.
 
 async function loadRealClips(){
   try{
