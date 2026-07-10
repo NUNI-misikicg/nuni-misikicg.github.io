@@ -1022,8 +1022,32 @@ function openArtistPage(name){
   }
 
   const releaseRow = document.getElementById('artist-release-row');
-  if(releaseRow) releaseRow.innerHTML = '';
-  fillReleaseRow('artist-release-row', artistReleases);
+  if(releaseRow){
+    releaseRow.innerHTML = '';
+    if(currentArtistPageRealId){
+      fetch(NUNI_API_BASE + '/api/artist/' + currentArtistPageRealId + '/scheduled-releases')
+        .then(r=>r.json()).then(data=>{
+          const list = data.releases || [];
+          if(!list.length){
+            releaseRow.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucune sortie programmée pour le moment.</p>`;
+            return;
+          }
+          const mapped = list.map(r=>{
+            const d = new Date(r.scheduled_release_at);
+            const days = Math.max(0, Math.ceil((d - new Date()) / 86400000));
+            return {
+              d: String(d.getDate()).padStart(2,'0'),
+              m: d.toLocaleDateString('fr-FR', {month:'short'}).replace('.',''),
+              t: r.title, a: r.release_type || 'Single',
+              c: days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `Dans ${days} jours`,
+            };
+          });
+          fillReleaseRow('artist-release-row', mapped);
+        }).catch(()=>{
+          releaseRow.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Calendrier momentanément indisponible.</p>`;
+        });
+    }
+  }
 
   renderArtistClips(name);
 
@@ -1693,11 +1717,6 @@ const releases = [
   {d:'16', m:'Juil', t:'Sango Pesi', a:'Kessy Tina', c:'Dans 16 jours'},
   {d:'22', m:'Juil', t:'Mboka Na Biso', a:'Mbote System', c:'Dans 22 jours'},
 ];
-const artistReleases = [
-  {d:'04', m:'Juil', t:'Nzela ya Sika', a:'Single inédit', c:'Dans 4 jours'},
-  {d:'18', m:'Août', t:'Envol (Deluxe)', a:'Réédition album', c:'Dans 49 jours'},
-  {d:'02', m:'Oct', t:'Tournée Kinshasa', a:'Annonce de dates', c:'Dans 94 jours'},
-];
 function fillReleaseRow(id, list){
   const row = document.getElementById(id);
   if(!row) return;
@@ -1711,7 +1730,8 @@ function fillReleaseRow(id, list){
   });
 }
 fillReleaseRow('release-row', releases);
-fillReleaseRow('artist-release-row', artistReleases);
+// Le calendrier de la page artiste ('artist-release-row') se remplit désormais dynamiquement
+// avec les vraies sorties programmées, dans openArtistPage() — plus de données factices ici.
 
 /* ============ PLAYER LOGIC ============ */
 let playing = false, progressTimer, elapsed = 0, duration = 204; // 3:24
@@ -2661,6 +2681,10 @@ async function publishRelease(){
   const paroles = document.getElementById('rf-paroles').value.trim();
   const dateVal = document.getElementById('rf-date').value;
   const releaseLabel = dateVal ? new Date(dateVal).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) : "aujourd'hui";
+  // Programmation réelle — avant, ce champ ne servait qu'à afficher une étiquette de date,
+  // jamais envoyé au serveur comme vraie date de sortie : un morceau daté du futur était en
+  // réalité publié immédiatement, sans aucune vraie programmation.
+  const isScheduledForFuture = !!(dateVal && new Date(dateVal) > new Date());
   // Crédits réels — avant, ces 4 champs étaient affichés dans le formulaire mais jamais lus
   // ni envoyés au serveur (seuls titre/genre/paroles/date étaient utilisés).
   const description = document.getElementById('rf-description').value.trim();
@@ -2680,23 +2704,31 @@ async function publishRelease(){
       description: description || null, featuring: featuring || null, composer: composer || null, studio: studio || null,
     };
   });
-  tracks.unshift(...newTracks);
 
-  // figure automatiquement dans la zone artiste (discographie + tendances)
-  const isGroupedRelease = newTracks.length > 1 && newTracks[0].releaseType && newTracks[0].releaseType !== 'Single';
-  ['shelf-artist','shelf-artist-trending','shelf-new'].forEach(id=>{
-    const row = document.getElementById(id);
-    if(!row) return;
-    if(isGroupedRelease){
-      row.prepend(trackCard(newTracks[0])); // une seule pochette représente tout l'album/EP/mixtape
-    } else {
-      newTracks.slice().reverse().forEach(tr=> row.prepend(trackCard(tr)));
-    }
-  });
+  // Un morceau programmé pour une date future ne doit apparaître NULLE PART publiquement
+  // avant cette date (ni dans la discographie locale, ni lu automatiquement) — seul le
+  // calendrier des sorties doit le montrer, en "à venir".
+  if(isScheduledForFuture){
+    toast(`"${titre}" (${currentReleaseType}) programmé pour le ${releaseLabel} — il sera publié automatiquement à cette date, visible dès maintenant dans votre calendrier des sorties.`);
+  } else {
+    tracks.unshift(...newTracks);
+    // figure automatiquement dans la zone artiste (discographie + tendances)
+    const isGroupedRelease = newTracks.length > 1 && newTracks[0].releaseType && newTracks[0].releaseType !== 'Single';
+    ['shelf-artist','shelf-artist-trending','shelf-new'].forEach(id=>{
+      const row = document.getElementById(id);
+      if(!row) return;
+      if(isGroupedRelease){
+        row.prepend(trackCard(newTracks[0])); // une seule pochette représente tout l'album/EP/mixtape
+      } else {
+        newTracks.slice().reverse().forEach(tr=> row.prepend(trackCard(tr)));
+      }
+    });
+    toast(`"${titre}" (${currentReleaseType}) publié — disponible dans votre discographie. Lecture en cours…`);
+  }
 
-  toast(`"${titre}" (${currentReleaseType}) publié — disponible dans votre discographie. Lecture en cours…`);
-
-  // Envoi réel au serveur NUNI, pour que le morceau soit visible par tous les auditeurs
+  // Envoi réel au serveur NUNI — scheduledReleaseAt fait la vraie différence : le serveur
+  // garde le morceau non-publié (published=0) jusqu'à cette date, puis le publie lui-même
+  // automatiquement (job en arrière-plan côté serveur, vérifié chaque minute).
   if(realAuthToken){
     (async ()=>{
       let successCount = 0;
@@ -2706,7 +2738,7 @@ async function publishRelease(){
       try{
         cloudCoverUrl = await uploadFileToCloudinary(coverFile, 'image');
       }catch(e){
-        toast(`❌ Envoi de la pochette impossible : ${e.message}. Les morceaux restent visibles uniquement dans votre navigateur.`);
+        toast(`❌ Envoi de la pochette impossible : ${e.message}. ${isScheduledForFuture ? 'La programmation a échoué.' : 'Les morceaux restent visibles uniquement dans votre navigateur.'}`);
         currentUser.track_count = (currentUser.track_count || 0);
         return;
       }
@@ -2723,6 +2755,7 @@ async function publishRelease(){
               coverUrl: cloudCoverUrl, audioUrl: cloudAudioUrl, lyrics: paroles || null,
               composer: composer || null, featuring: featuring || null, studio: studio || null,
               description: description || null, releaseDate: dateVal || null,
+              scheduledReleaseAt: isScheduledForFuture ? dateVal : null,
             })
           });
           if(res.ok){
@@ -2735,13 +2768,15 @@ async function publishRelease(){
         }catch(e){ failCount++; lastError = e.message || 'Connexion au serveur impossible.'; }
       }
       if(failCount === 0){
-        toast('Vos morceaux ont bien été envoyés sur le serveur NUNI — visibles par tous les auditeurs.');
+        toast(isScheduledForFuture
+          ? 'Programmation confirmée sur le serveur NUNI.'
+          : 'Vos morceaux ont bien été envoyés sur le serveur NUNI — visibles par tous les auditeurs.');
       } else if(successCount > 0){
         toast(`⚠️ ${successCount} morceau(x) envoyé(s), ${failCount} échec(s) : ${lastError}`);
       } else {
-        toast(`❌ Aucun morceau envoyé au serveur : ${lastError}. Ils restent visibles uniquement dans votre navigateur.`);
+        toast(`❌ Aucun morceau envoyé au serveur : ${lastError}.`);
       }
-      currentUser.track_count = (currentUser.track_count || 0) + successCount;
+      currentUser.track_count = (currentUser.track_count || 0) + (isScheduledForFuture ? 0 : successCount);
       // Retire les morceaux "temporaires" (aperçu local immédiat à la publication) une fois
       // que loadRealTracks() a rechargé la vraie version depuis le serveur — sinon les deux
       // coexistaient indéfiniment dans `tracks`, causant un doublon visuel (même morceau
@@ -2753,7 +2788,7 @@ async function publishRelease(){
       await loadRealTracks();
       refreshMainShelves();
       if(currentUser && currentUser.account_type === 'artist' && document.getElementById('view-artist').style.display !== 'none'){
-        openArtistPage(currentUser.artist_name); // reconstruit proprement la page si elle est déjà ouverte
+        openArtistPage(currentUser.artist_name); // reconstruit proprement la page si elle est déjà ouverte (recharge aussi le calendrier)
       }
     })();
   }
@@ -2774,9 +2809,12 @@ async function publishRelease(){
   coverPreview.style.backgroundImage = '';
   coverPreview.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 16l4.5-4.5a2 2 0 0 1 2.8 0L16 16M14 14l1.5-1.5a2 2 0 0 1 2.8 0L20 14M4 6h16v12H4z"/></svg>';
 
-  // lire immédiatement le son importé pour vérifier qu'il tourne bien
-  playTrack(newTracks[0]);
-  openFullPlayer();
+  // lire immédiatement le son importé pour vérifier qu'il tourne bien — seulement s'il est
+  // réellement publié tout de suite (pas pour un morceau programmé pour plus tard)
+  if(!isScheduledForFuture){
+    playTrack(newTracks[0]);
+    openFullPlayer();
+  }
 }
 function handleAudioUpload(e){
   let files = Array.from(e.target.files || []);
