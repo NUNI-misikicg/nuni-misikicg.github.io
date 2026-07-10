@@ -842,6 +842,7 @@ function enterApp(view){
   if(view === 'library') renderLibrary();
   if(view === 'dashboard'){
     loadArtistStats();
+    loadDashboardChart();
     loadPaymentsHistory();
     const momoInput = document.getElementById('momo-number-input');
     if(momoInput) momoInput.value = (currentUser && currentUser.momo_number) || '';
@@ -3176,21 +3177,37 @@ function setupFpCoverTilt(){
 }
 setupFpCoverTilt();
 
-/* ============ DASHBOARD CHART ============ */
-const monthly = [
-  {m:'Jan', v:31},{m:'Fév', v:38},{m:'Mar', v:42},{m:'Avr', v:36},{m:'Mai', v:44},{m:'Juin', v:48}
-];
-const max = Math.max(...monthly.map(m=>m.v));
-const chart = document.getElementById('bar-chart');
-monthly.forEach(m=>{
-  const col = document.createElement('div');
-  col.className = 'bar-col';
-  col.innerHTML = `<div class="bar-fill" style="height:0%" data-h="${(m.v/max*100)}"></div><div class="m-lbl">${m.m}</div>`;
-  chart.appendChild(col);
-});
-setTimeout(()=>{
-  document.querySelectorAll('.bar-fill').forEach(b=> b.style.height = b.dataset.h + '%');
-}, 300);
+/* ============ DASHBOARD CHART — vrais streams par mois, plus de données inventées ============
+   Avant : const monthly = [{m:'Jan', v:31}, ...] codé en dur, identique pour tout le monde.
+   Maintenant : vrai regroupement des écoutes de CET artiste par mois, via le nouvel endpoint
+   /api/artist/stats/monthly (6 derniers mois, y compris les mois à 0 écoute). */
+async function loadDashboardChart(){
+  const chart = document.getElementById('bar-chart');
+  if(!chart) return;
+  chart.innerHTML = '';
+  if(!realAuthToken) return;
+  let monthly;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/artist/stats/monthly', {
+      headers:{ 'Authorization':'Bearer ' + realAuthToken }
+    });
+    if(!res.ok) return;
+    const data = await res.json();
+    monthly = data.monthly;
+  }catch(e){ return; /* pas grave si le serveur est momentanément indisponible */ }
+  if(!monthly || !monthly.length) return;
+
+  const max = Math.max(1, ...monthly.map(m=>m.v));
+  monthly.forEach(m=>{
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    col.innerHTML = `<div class="bar-fill" style="height:0%" data-h="${(m.v/max*100)}"></div><div class="m-lbl">${m.m}</div>`;
+    chart.appendChild(col);
+  });
+  setTimeout(()=>{
+    document.querySelectorAll('#bar-chart .bar-fill').forEach(b=> b.style.height = b.dataset.h + '%');
+  }, 300);
+}
 
 updateProgress();
 
