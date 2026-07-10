@@ -1030,8 +1030,11 @@ function openArtistPage(name){
   const releaseRow = document.getElementById('artist-release-row');
   if(releaseRow){
     releaseRow.innerHTML = '';
-    if(currentArtistPageRealId){
-      fetch(NUNI_API_BASE + '/api/artist/' + currentArtistPageRealId + '/scheduled-releases')
+    const scheduledUrl = (isOwnArtistPage && realAuthToken)
+      ? NUNI_API_BASE + '/api/artist/scheduled-releases'
+      : (currentArtistPageRealId ? NUNI_API_BASE + '/api/artist/' + currentArtistPageRealId + '/scheduled-releases' : null);
+    if(scheduledUrl){
+      fetch(scheduledUrl, isOwnArtistPage && realAuthToken ? { headers:{ 'Authorization':'Bearer ' + realAuthToken } } : {})
         .then(r=>r.json()).then(data=>{
           const list = data.releases || [];
           if(!list.length){
