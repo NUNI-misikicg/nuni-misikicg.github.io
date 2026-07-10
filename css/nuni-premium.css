@@ -345,7 +345,7 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
 }
 
 /* ============ RACCOURCI PHOTO — clic direct sur l'avatar de sa propre page artiste ============ */
-.artist-avatar.is-editable{ transition: filter .25s ease; }
+.artist-avatar.is-editable{ transition: filter .25s ease; position: relative; }
 .artist-avatar.is-editable:hover{ filter: brightness(0.7); }
 .artist-avatar.is-editable::after{
   content: '📷 Changer';
@@ -358,6 +358,24 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
   pointer-events: none;
 }
 .artist-avatar.is-editable:hover::after{ opacity: 1; }
+
+/* ============ RACCOURCI PHOTO — même principe pour la bannière de sa propre page artiste ============ */
+.artist-cover.is-editable{ transition: filter .25s ease; }
+.artist-cover.is-editable:hover{ filter: brightness(0.7); }
+.artist-cover.is-editable::after{
+  content: '📷 Changer la couverture — 1600×400px recommandé';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.4);
+  color: #fff; font-size: 13px; font-weight: 700;
+  text-align: center;
+  padding: 0 20px;
+  border-radius: inherit;
+  opacity: 0; transition: opacity .25s ease;
+  pointer-events: none;
+  z-index: 3;
+}
+.artist-cover.is-editable:hover::after{ opacity: 1; }
 
 /* ============ DIMENSIONS DES AVATARS — page Artiste + nav en haut à droite ============ */
 .artist-avatar{
