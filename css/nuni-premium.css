@@ -210,10 +210,10 @@ body::before{
 .photo-preview.wide{
   width: 100% !important;
   max-width: 480px;
-  height: 190px !important;
-  background-image: none;
-  background-color: transparent;
-  background: linear-gradient(135deg, var(--terre-cuite), var(--cacao)) !important;
+  height: 120px !important;
+  background: linear-gradient(135deg, var(--terre-cuite), var(--cacao));
+  background-size: cover !important;
+  background-position: center !important;
 }
 .photo-upload-item:has(.photo-preview.wide){ flex: 1 1 100%; max-width: 480px; align-items: stretch; }
 .photo-upload-item:has(.photo-preview.wide) .btn{ align-self: flex-start; }
