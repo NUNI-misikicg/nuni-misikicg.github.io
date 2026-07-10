@@ -1007,6 +1007,19 @@ function openArtistPage(name){
   fillShelf('shelf-artist', artistTracks.length ? artistTracks : tracks.slice(0,4));
   fillShelf('shelf-artist-trending', [...artistTracks].sort((a,b)=>(b.likes||0)-(a.likes||0)));
   fillShelf('shelf-artist-albums', artistTracks);
+  if(isOwnArtistPage){
+    document.querySelectorAll('#shelf-artist .track-card, #shelf-artist-trending .track-card, #shelf-artist-albums .track-card').forEach(card=>{
+      const cover = card.querySelector('.cover');
+      if(!cover || cover.querySelector('.track-delete-btn') || !card.dataset.trackId) return;
+      const delBtn = document.createElement('button');
+      delBtn.className = 'track-delete-btn';
+      delBtn.title = 'Supprimer ce morceau';
+      delBtn.textContent = '🗑️';
+      delBtn.style.cssText = 'position:absolute; top:8px; right:8px; z-index:4; width:28px; height:28px; border-radius:50%; background:rgba(0,0,0,.65); color:#fff; border:none; cursor:pointer; font-size:13px;';
+      delBtn.onclick = (e)=>{ e.stopPropagation(); deleteMyTrack(card.dataset.trackId); };
+      cover.appendChild(delBtn);
+    });
+  }
 
   const releaseRow = document.getElementById('artist-release-row');
   if(releaseRow) releaseRow.innerHTML = '';
@@ -2729,7 +2742,19 @@ async function publishRelease(){
         toast(`❌ Aucun morceau envoyé au serveur : ${lastError}. Ils restent visibles uniquement dans votre navigateur.`);
       }
       currentUser.track_count = (currentUser.track_count || 0) + successCount;
-      loadRealTracks();
+      // Retire les morceaux "temporaires" (aperçu local immédiat à la publication) une fois
+      // que loadRealTracks() a rechargé la vraie version depuis le serveur — sinon les deux
+      // coexistaient indéfiniment dans `tracks`, causant un doublon visuel (même morceau
+      // affiché deux fois, partout où `tracks` est utilisé : page artiste, accueil, etc.)
+      newTracks.forEach(nt=>{
+        const idx = tracks.indexOf(nt);
+        if(idx !== -1) tracks.splice(idx, 1);
+      });
+      await loadRealTracks();
+      refreshMainShelves();
+      if(currentUser && currentUser.account_type === 'artist' && document.getElementById('view-artist').style.display !== 'none'){
+        openArtistPage(currentUser.artist_name); // reconstruit proprement la page si elle est déjà ouverte
+      }
     })();
   }
 
@@ -2927,6 +2952,24 @@ async function saveFeaturedTracks(){
     toast('✅ Sélection enregistrée — visible sur votre page artiste.');
   }catch(e){
     toast('❌ Impossible d\'enregistrer la sélection : ' + (e.message || 'erreur inconnue'));
+  }
+}
+// Suppression d'un morceau — notamment utile pour corriger une publication en double.
+async function deleteMyTrack(trackId){
+  if(!trackId || !realAuthToken) return;
+  if(!confirm('Supprimer définitivement ce morceau ? Cette action est irréversible.')) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/tracks/' + trackId, {
+      method:'DELETE', headers:{ 'Authorization':'Bearer ' + realAuthToken }
+    });
+    const data = await res.json();
+    if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
+    toast('✅ Morceau supprimé.');
+    await loadRealTracks();
+    refreshMainShelves();
+    if(currentUser && currentUser.account_type === 'artist') openArtistPage(currentUser.artist_name);
+  }catch(e){
+    toast('❌ Suppression impossible : ' + (e.message || 'erreur inconnue'));
   }
 }
 
