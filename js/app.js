@@ -855,6 +855,7 @@ function enterApp(view){
     if(coverDash && currentUser && currentUser.banner_url){
       coverDash.style.backgroundImage = `url(${currentUser.banner_url})`;
     }
+    loadFeaturedPicker();
   }
   ['catalog','clips','ads','library','artist','dashboard','admin'].forEach(v=>{
     const el = document.getElementById('view-'+v);
@@ -935,6 +936,30 @@ function openArtistPage(name){
   const realTrackOfArtist = artistTracks.find(t=>t.artistId);
   currentArtistPageRealId = realTrackOfArtist ? realTrackOfArtist.artistId : (isOwnArtistPage ? currentUser.id : null);
   document.getElementById('artist-page-support-btn').setAttribute('onclick', `openSupportArtistModal(${currentArtistPageRealId || 'null'}, ${JSON.stringify(name)})`);
+
+  // Sons en vedette — sélectionnés par l'artiste lui-même parmi ses morceaux déjà publiés.
+  // Section entièrement masquée s'il n'a encore rien choisi (pas de rangée vide inutile).
+  const featuredSection = document.getElementById('artist-featured-section');
+  const featuredRow = document.getElementById('shelf-artist-featured');
+  if(featuredSection && featuredRow){
+    if(currentArtistPageRealId){
+      fetch(NUNI_API_BASE + '/api/artist/' + currentArtistPageRealId + '/featured-tracks')
+        .then(r=>r.json()).then(data=>{
+          const list = data.tracks || [];
+          featuredRow.innerHTML = '';
+          if(!list.length){ featuredSection.style.display = 'none'; return; }
+          list.map(r=>({
+            t: r.title, a: r.artist_name || name, p:'pal-1', album: r.album || r.title,
+            genre: r.genre || 'Afro', streams: String(r.streams||0), likes: r.likes||0,
+            cover: r.cover_url || null, audioUrl: r.audio_url || null, isReal:true,
+            releaseType: r.release_type || 'Single', realId: r.id, artistId: currentArtistPageRealId,
+          })).forEach(tr=> featuredRow.appendChild(trackCard(tr)));
+          featuredSection.style.display = '';
+        }).catch(()=>{ featuredSection.style.display = 'none'; });
+    } else {
+      featuredSection.style.display = 'none';
+    }
+  }
 
   // Vrai nombre de followers — visible pour n'importe quel visiteur, pas seulement sur sa
   // propre page. Se met aussi à jour tout de suite après un clic sur "Suivre" (voir toggleFollow).
@@ -2846,6 +2871,63 @@ function applyBannerEverywhere(url){
   if(dash){ dash.style.backgroundImage = `url(${url})`; }
   const cover = document.querySelector('.artist-cover');
   if(cover){ cover.style.backgroundImage = `url(${url})`; }
+}
+
+// ============ SONS EN VEDETTE — l'artiste choisit lui-même quoi mettre en avant ============
+// Avant : aucune sélection possible, la page artiste ne montrait que la Discographie
+// complète, sans que l'artiste puisse choisir de mettre certains morceaux/albums en avant.
+let featuredTrackIds = []; // sélection en cours dans le panneau du Dashboard
+function renderFeaturedPicker(){
+  const list = document.getElementById('featured-picker-list');
+  if(!list) return;
+  const myTracks = dedupeAlbums(tracks.filter(t=> t.isReal && currentUser && t.artistId === currentUser.id));
+  if(!myTracks.length){
+    list.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Publiez d'abord un morceau pour pouvoir le mettre en vedette.</p>`;
+    return;
+  }
+  list.innerHTML = myTracks.map(t=>`
+    <label style="display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--border); border-radius:10px; cursor:pointer;">
+      <input type="checkbox" value="${t.realId}" ${featuredTrackIds.includes(t.realId) ? 'checked' : ''} onchange="toggleFeaturedTrack(${t.realId}, this.checked)">
+      <div style="width:34px; height:34px; border-radius:8px; background-image:url(${t.cover||''}); background-size:cover; background-position:center; flex-shrink:0;"></div>
+      <span style="font-size:13.5px;">${t.t}</span>
+    </label>`).join('');
+}
+function toggleFeaturedTrack(id, checked){
+  if(checked){
+    if(featuredTrackIds.length >= 6){
+      toast('Maximum 6 sons en vedette — décochez-en un avant d\'en ajouter un autre.');
+      renderFeaturedPicker(); // remet la case décochée à l'écran
+      return;
+    }
+    featuredTrackIds.push(id);
+  } else {
+    featuredTrackIds = featuredTrackIds.filter(x=> x !== id);
+  }
+}
+async function loadFeaturedPicker(){
+  if(!currentUser || currentUser.account_type !== 'artist') return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/artist/' + currentUser.id + '/featured-tracks');
+    if(res.ok){
+      const data = await res.json();
+      featuredTrackIds = (data.tracks || []).map(t=> t.id);
+    }
+  }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
+  renderFeaturedPicker();
+}
+async function saveFeaturedTracks(){
+  if(!realAuthToken){ toast('Connectez-vous pour enregistrer votre sélection.'); return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/artist/featured-tracks', {
+      method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ trackIds: featuredTrackIds })
+    });
+    const data = await res.json();
+    if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
+    toast('✅ Sélection enregistrée — visible sur votre page artiste.');
+  }catch(e){
+    toast('❌ Impossible d\'enregistrer la sélection : ' + (e.message || 'erreur inconnue'));
+  }
 }
 
 // Point d'entrée unique pour changer sa photo de profil, quel que soit le bouton utilisé
