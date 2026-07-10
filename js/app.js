@@ -1615,12 +1615,13 @@ async function loadRealTracks(){
       album: r.album || r.title, genre: r.genre || 'Afro',
       year: new Date(r.created_at).getFullYear(),
       streams: String(r.streams || 0),
-      release: new Date(r.created_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}),
+      release: (r.release_date ? new Date(r.release_date) : new Date(r.created_at)).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}),
       verified: !!r.is_verified, likes: r.likes || 0,
       cover: r.cover_url || null, audioUrl: r.audio_url || null, isReal: true,
       releaseType: r.release_type || 'Single',
       artistId: r.artist_id,
       lyrics: r.lyrics || null,
+      composer: r.composer || null, featuring: r.featuring || null, studio: r.studio || null, description: r.description || null,
       realId: r.id,
     }));
     tracks.unshift(...mapped);
@@ -2604,6 +2605,12 @@ async function publishRelease(){
   const paroles = document.getElementById('rf-paroles').value.trim();
   const dateVal = document.getElementById('rf-date').value;
   const releaseLabel = dateVal ? new Date(dateVal).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) : "aujourd'hui";
+  // Crédits réels — avant, ces 4 champs étaient affichés dans le formulaire mais jamais lus
+  // ni envoyés au serveur (seuls titre/genre/paroles/date étaient utilisés).
+  const description = document.getElementById('rf-description').value.trim();
+  const featuring = document.getElementById('rf-feat').value.trim();
+  const composer = document.getElementById('rf-auteur').value.trim();
+  const studio = document.getElementById('rf-studio').value.trim();
 
   const artistDisplayName = (currentUser && currentUser.artist_name) ? currentUser.artist_name : 'Bibi Mwana';
   const filesForUpload = [...uploadedFiles];
@@ -2614,6 +2621,7 @@ async function publishRelease(){
       streams: '0', release: releaseLabel, verified: true, likes: 0,
       cover: coverUrl, audioUrl: URL.createObjectURL(file), releaseType: currentReleaseType,
       lyrics: paroles || null,
+      description: description || null, featuring: featuring || null, composer: composer || null, studio: studio || null,
     };
   });
   tracks.unshift(...newTracks);
@@ -2657,6 +2665,8 @@ async function publishRelease(){
             body: JSON.stringify({
               title: perTrackTitle, album: titre, genre: genre, releaseType: currentReleaseType,
               coverUrl: cloudCoverUrl, audioUrl: cloudAudioUrl, lyrics: paroles || null,
+              composer: composer || null, featuring: featuring || null, studio: studio || null,
+              description: description || null, releaseDate: dateVal || null,
             })
           });
           if(res.ok){
@@ -3144,13 +3154,16 @@ function openFpCredits(){
   body.innerHTML = `
     <div class="pi-sub-card">
       <div class="pi-sub-row"><span>Artiste principal</span><b>${tr.a}</b></div>
+      <div class="pi-sub-row"><span>Featuring</span><b>${tr.featuring || '—'}</b></div>
+      <div class="pi-sub-row"><span>Compositeur / Auteur</span><b>${tr.composer || '—'}</b></div>
+      <div class="pi-sub-row"><span>Studio d'enregistrement</span><b>${tr.studio || '—'}</b></div>
       <div class="pi-sub-row"><span>Album / Sortie</span><b>${tr.album || '—'}</b></div>
       <div class="pi-sub-row"><span>Genre</span><b>${tr.genre || '—'}</b></div>
       <div class="pi-sub-row"><span>Année</span><b>${tr.year || '—'}</b></div>
       <div class="pi-sub-row"><span>Type de sortie</span><b>${tr.releaseType || 'Single'}</b></div>
       <div class="pi-sub-row"><span>Distribution</span><b>NUNI</b></div>
     </div>
-    <p style="color:var(--text-faint); font-size:11.5px; margin-top:12px;">Crédits détaillés (auteur, compositeur, studio) disponibles prochainement lorsque les artistes les renseignent à la publication.</p>`;
+    ${tr.description ? `<p style="color:var(--text-dim); font-size:13px; margin-top:14px; line-height:1.5;">${tr.description}</p>` : ''}`;
   document.getElementById('credits-modal-overlay').classList.add('show');
 }
 function closeFpCredits(){
