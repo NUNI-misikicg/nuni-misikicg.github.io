@@ -31,7 +31,7 @@
   <div class="splash-halo"></div>
   <div class="splash-ring"></div>
   <div class="splash-notes" id="splash-notes"></div>
-  <img src="assets/logo.png" alt="NUNI" class="splash-logo" id="splash-logo" onerror="this.style.display='none'; document.getElementById('splash-fallback').style.display='flex';">
+  <img src="assets/logo-clean.png" alt="NUNI" class="splash-logo" id="splash-logo" onerror="this.style.display='none'; document.getElementById('splash-fallback').style.display='flex';">
   <div class="splash-fallback" id="splash-fallback">NUNI</div>
   <div class="splash-status-row">
     <span class="splash-status-icon" id="splash-status-icon">🔗</span>
@@ -335,9 +335,25 @@
 <!-- ============ SCREEN 1 : HOME ============ -->
 <section class="screen active" id="screen-home">
   <div class="home-wrap">
+    <div class="home-fog" aria-hidden="true">
+      <span class="fog-blob fog-1"></span>
+      <span class="fog-blob fog-2"></span>
+      <span class="fog-blob fog-3"></span>
+    </div>
+    <div class="home-particles" aria-hidden="true">
+      <span class="particle p1"></span>
+      <span class="particle p2"></span>
+      <span class="particle p3"></span>
+      <span class="particle p4"></span>
+      <span class="particle p5"></span>
+      <span class="particle p6"></span>
+      <span class="particle p7"></span>
+      <span class="particle p8"></span>
+      <span class="particle p9"></span>
+    </div>
     <div class="home-topbar">
       <div class="nuni-logo">
-        <img src="assets/logo.png" alt="NUNI" style="width:42px;height:42px;border-radius:50%;display:block;">
+        <img src="assets/logo-clean.png" alt="NUNI" style="width:42px;height:42px;display:block;">
         <div class="wordmark-lockup">
           <span class="wordmark">NUNI</span>
           <span class="wordmark-tagline">MIZIKI</span>
@@ -349,10 +365,12 @@
       </button>
     </div>
 
-    <img src="assets/logo.png" alt="NUNI" class="bird-hero">
+    <div class="bird-hero-wrap">
+      <img src="assets/logo-clean.png" alt="NUNI" class="bird-hero">
+    </div>
 
     <p class="home-eyebrow">La plateforme qui finance directement la musique congolaise</p>
-    <h1 class="home-title">La musique congolaise<br><em>mérite son envol.</em></h1>
+    <h1 class="home-title"><span class="title-line1">La musique congolaise</span><br><em class="title-line2">mérite son envol.</em></h1>
     <p class="home-sub"><span id="rotating-msg">Chaque écoute change une vie.</span></p>
 
     <div class="home-actions">
@@ -451,7 +469,7 @@
   </div>
   <nav class="app-topnav">
     <div class="nuni-logo" style="cursor:pointer" onclick="logoutUser()" title="Retour à l'accueil (vous serez déconnecté)">
-      <img src="assets/logo.png" alt="NUNI" style="width:28px;height:28px;border-radius:50%;display:block;">
+      <img src="assets/logo-clean.png" alt="NUNI" style="width:28px;height:28px;display:block;">
       <span class="wordmark" style="font-size:17px">NUNI</span>
       <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
     </div>

@@ -88,8 +88,16 @@ body{
   position: relative;
   background-image:
     radial-gradient(circle at 15% 8%, rgba(201,162,75,0.05) 0%, transparent 45%),
-    radial-gradient(circle at 85% 92%, rgba(179,81,46,0.05) 0%, transparent 45%);
+    radial-gradient(circle at 85% 92%, rgba(179,81,46,0.05) 0%, transparent 45%),
+    radial-gradient(circle at 50% 45%, rgba(58,36,22,0.05) 0%, transparent 55%);
   background-attachment: fixed;
+}
+html[data-theme="dark"] body{
+  background-image:
+    radial-gradient(circle at 15% 8%, rgba(201,162,75,0.05) 0%, transparent 45%),
+    radial-gradient(circle at 85% 92%, rgba(179,81,46,0.05) 0%, transparent 45%),
+    radial-gradient(circle at 50% 45%, rgba(58,36,22,0.05) 0%, transparent 55%),
+    linear-gradient(180deg, var(--noir) 0%, var(--cacao) 50%, var(--noir) 100%);
 }
 body::before{
   content:'';
@@ -159,6 +167,35 @@ body::before{
 }
 .btn-ghost{ border-radius: 999px; }
 .btn-icon{ border-radius: var(--radius-s); }
+
+/* ============ BOUTONS — reflet lumineux au survol ============
+   L'élévation au survol et la compression au clic (scale .97) existaient déjà dans
+   style.css. Il manquait le reflet qui traverse le bouton — un rayon de lumière fin,
+   incliné, qui balaie de gauche à droite au survol. */
+.btn{
+  position:relative;
+  overflow:hidden;
+  transition:transform .3s ease, box-shadow .3s ease, opacity .3s ease !important;
+}
+.btn::after{
+  content:'';
+  position:absolute;
+  top:0;
+  left:-60%;
+  width:35%;
+  height:100%;
+  background:linear-gradient(115deg, transparent 0%, rgba(255,255,255,.4) 50%, transparent 100%);
+  transform:skewX(-20deg);
+  pointer-events:none;
+  transition:left .6s ease;
+}
+.btn:hover::after{ left:130%; }
+.btn-ghost::after{
+  background:linear-gradient(115deg, transparent 0%, rgba(255,255,255,.16) 50%, transparent 100%);
+}
+@media (prefers-reduced-motion: reduce){
+  .btn::after{ display:none; }
+}
 
 /* ============ PHOTOS DE PROFIL ARTISTE — dimensions corrigées ============
    Avant : la pochette de couverture ("wide") était un rectangle 220×96 très plat, presque
@@ -338,4 +375,195 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
   height: 34px !important;
   background-size: cover !important;
   background-position: center !important;
+}
+
+/* ============ LOGO ACCUEIL — plus de cercle blanc, juste une lueur discrète ============
+   L'ancien assets/logo.png avait un anneau blanc intégré à l'image (impossible à retirer
+   en CSS). Remplacé par assets/logo-clean.png (même artwork, fond transparent, cercle
+   découpé proprement). Ici on ajoute juste ce qu'il faut pour que le logo semble flotter :
+   un halo doré très doux derrière, qui respire lentement, et une ombre diffuse chaude. */
+.bird-hero-wrap{
+  position:relative;
+  display:inline-flex;
+  margin-bottom:22px;
+}
+.bird-hero-wrap::before{
+  content:'';
+  position:absolute;
+  inset:-30px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(201,162,75,.22) 0%, rgba(201,162,75,.08) 45%, transparent 72%);
+  filter:blur(18px);
+  z-index:-1;
+  animation:birdHeroGlow 5s ease-in-out infinite;
+}
+.bird-hero{
+  margin-bottom:0 !important;
+  box-shadow:0 20px 45px -14px rgba(0,0,0,.55), 0 0 30px -6px rgba(201,162,75,.25) !important;
+  animation: badgeIn .7s .15s var(--ease) forwards, birdHeroBreathe 5s ease-in-out .85s infinite !important;
+  transform-origin:center;
+}
+@keyframes birdHeroBreathe{
+  0%,100%{ transform:scale(.98); }
+  50%{ transform:scale(1); }
+}
+@media (prefers-reduced-motion: reduce){
+  .bird-hero{ animation:badgeIn .7s .15s var(--ease) forwards !important; }
+}
+
+/* ============ TITRE — apparition en deux temps ============
+   Ligne 1 : simple fondu. Ligne 2 ("mérite son envol.") : glisse doucement vers le
+   haut en s'estompant, juste après. Le reste de la séquence (sous-titre, boutons)
+   est repoussé un peu plus tard pour laisser le titre respirer avant d'enchaîner. */
+.home-title{
+  opacity:1 !important;
+  animation:none !important;
+}
+.title-line1{
+  display:inline-block;
+  opacity:0;
+  animation:titleFadeIn .7s .65s ease-out forwards;
+}
+.title-line2{
+  display:inline-block;
+  opacity:0;
+  transform:translateY(16px);
+  animation:titleSlideUp .85s 1.15s cubic-bezier(.16,.9,.3,1) forwards;
+}
+@keyframes titleFadeIn{
+  from{ opacity:0; }
+  to{ opacity:1; }
+}
+@keyframes titleSlideUp{
+  from{ opacity:0; transform:translateY(16px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+.home-sub{ animation-delay:1.7s !important; }
+.home-actions{ animation-delay:2s !important; }
+@media (prefers-reduced-motion: reduce){
+  .title-line1, .title-line2{ animation:none !important; opacity:1 !important; transform:none !important; }
+}
+@keyframes birdHeroGlow{
+  0%,100%{ opacity:.7; transform:scale(1); }
+  50%{ opacity:1; transform:scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce){
+  .bird-hero-wrap::before{ animation:none; }
+}
+
+/* ============ BRUME CINÉMATIQUE — accueil ============
+   3 nappes très floues, très transparentes (5-10% d'opacité visible), qui dérivent
+   lentement en boucle. Purement décoratif : z-index négatif + isolation sur .home-wrap
+   pour rester strictement derrière le texte et les boutons, jamais au-dessus. */
+.home-wrap{ isolation:isolate; }
+.home-fog{
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  overflow:hidden;
+  pointer-events:none;
+}
+.fog-blob{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(80px);
+  opacity:.09;
+  will-change:transform;
+}
+.fog-1{
+  width:520px; height:420px; left:-10%; top:8%;
+  background:radial-gradient(circle, rgba(201,162,75,.9), transparent 70%);
+  animation:fogDrift1 42s ease-in-out infinite;
+}
+.fog-2{
+  width:480px; height:480px; right:-12%; top:38%;
+  background:radial-gradient(circle, rgba(179,81,46,.9), transparent 70%);
+  animation:fogDrift2 55s ease-in-out infinite;
+}
+.fog-3{
+  width:600px; height:360px; left:20%; bottom:-15%;
+  background:radial-gradient(circle, rgba(58,36,22,.95), transparent 72%);
+  animation:fogDrift3 48s ease-in-out infinite;
+}
+@keyframes fogDrift1{
+  0%,100%{ transform:translate(0,0) scale(1); }
+  50%{ transform:translate(6%,4%) scale(1.08); }
+}
+@keyframes fogDrift2{
+  0%,100%{ transform:translate(0,0) scale(1); }
+  50%{ transform:translate(-5%,-6%) scale(1.05); }
+}
+@keyframes fogDrift3{
+  0%,100%{ transform:translate(0,0) scale(1); }
+  50%{ transform:translate(4%,-3%) scale(1.1); }
+}
+@media (max-width:640px){
+  .fog-blob{ filter:blur(50px); }
+}
+@media (prefers-reduced-motion: reduce){
+  .fog-blob{ animation:none; }
+}
+
+/* ============ PARTICULES LUMINEUSES — accueil ============
+   9 points de lumière très fins (or / ambre / cuivre) qui montent lentement,
+   dérivent un peu horizontalement, puis s'estompent. animation-delay négatif pour
+   qu'elles soient déjà dispersées à l'affichage plutôt que de partir toutes du bas
+   en même temps. Très peu nombreuses, jamais un effet "feu d'artifice". */
+.home-particles{
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  overflow:hidden;
+  pointer-events:none;
+}
+.particle{
+  position:absolute;
+  bottom:-20px;
+  width:4px; height:4px;
+  border-radius:50%;
+  opacity:0;
+  animation:particleRise linear infinite;
+}
+.p1{ left:6%;  width:3px; height:3px; background:var(--or-2,#e3be6d); box-shadow:0 0 6px 1px rgba(227,190,109,.7); animation-duration:19s; animation-delay:-2s; }
+.p2{ left:16%; width:4px; height:4px; background:var(--cuivre,#b5652f); box-shadow:0 0 7px 1px rgba(181,101,47,.65); animation-duration:23s; animation-delay:-9s; }
+.p3{ left:28%; width:3px; height:3px; background:var(--or-soft,#f0dba6); box-shadow:0 0 5px 1px rgba(240,219,166,.7); animation-duration:16s; animation-delay:-5s; }
+.p4{ left:41%; width:5px; height:5px; background:var(--or-2,#e3be6d); box-shadow:0 0 8px 2px rgba(227,190,109,.6); animation-duration:26s; animation-delay:-14s; }
+.p5{ left:54%; width:3px; height:3px; background:var(--cuivre,#b5652f); box-shadow:0 0 6px 1px rgba(181,101,47,.65); animation-duration:18s; animation-delay:-3s; }
+.p6{ left:65%; width:4px; height:4px; background:var(--or-soft,#f0dba6); box-shadow:0 0 7px 1px rgba(240,219,166,.65); animation-duration:22s; animation-delay:-11s; }
+.p7{ left:76%; width:3px; height:3px; background:var(--or-2,#e3be6d); box-shadow:0 0 6px 1px rgba(227,190,109,.7); animation-duration:20s; animation-delay:-7s; }
+.p8{ left:87%; width:4px; height:4px; background:var(--cuivre,#b5652f); box-shadow:0 0 7px 1px rgba(181,101,47,.6); animation-duration:24s; animation-delay:-17s; }
+.p9{ left:94%; width:3px; height:3px; background:var(--or-soft,#f0dba6); box-shadow:0 0 5px 1px rgba(240,219,166,.7); animation-duration:17s; animation-delay:-1s; }
+@keyframes particleRise{
+  0%{ transform:translateY(0) translateX(0); opacity:0; }
+  8%{ opacity:.55; }
+  50%{ transform:translateY(-360px) translateX(12px); opacity:.4; }
+  92%{ opacity:0; }
+  100%{ transform:translateY(-560px) translateX(-8px); opacity:0; }
+}
+@media (prefers-reduced-motion: reduce){
+  .particle{ animation:none; opacity:0; }
+}
+
+/* ============ ÉCLAIRAGE DYNAMIQUE — accueil ============
+   Le fond de .home-wrap (style.css) utilisait encore un dégradé violet codé en dur,
+   jamais adapté lors de la refonte "Afrique moderne" (les variables --violet ont été
+   réassignées, mais cette valeur était en rgba() brut, pas en var()). On le remplace
+   ici par deux halos façon projecteurs très doux (doré / cuivre / brun profond) qui
+   dérivent lentement, comme demandé — "deux projecteurs invisibles". */
+.home-wrap{
+  background:
+    radial-gradient(55% 46% at 18% 12%, rgba(201,162,75,.24), transparent 62%),
+    radial-gradient(52% 44% at 86% 84%, rgba(179,81,46,.20), transparent 60%),
+    radial-gradient(40% 35% at 50% 100%, rgba(58,36,22,.4), transparent 65%),
+    var(--bg) !important;
+  background-size:150% 150% !important;
+  animation: homeLightsDrift 46s ease-in-out infinite alternate !important;
+}
+@keyframes homeLightsDrift{
+  0%{ background-position:0% 0%, 100% 100%, 50% 100%, 0 0; }
+  50%{ background-position:10% 8%, 90% 92%, 46% 96%, 0 0; }
+  100%{ background-position:2% 4%, 96% 96%, 54% 100%, 0 0; }
+}
+@media (prefers-reduced-motion: reduce){
+  .home-wrap{ animation:none !important; }
 }
