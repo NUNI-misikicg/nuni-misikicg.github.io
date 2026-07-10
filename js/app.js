@@ -840,7 +840,7 @@ function enterApp(view){
   document.getElementById('demo-nav').classList.remove('no-player');
   document.getElementById('mimi-widget').classList.remove('no-player');
   if(view === 'catalog'){ updateGreeting(); renderContinueListening(); }
-  if(view === 'clips') renderClips();
+  if(view === 'clips') loadRealClips(); // recharge les vrais clips à chaque ouverture (loadRealClips appelle renderClips())
   if(view === 'library') renderLibrary();
   if(view === 'artist' && currentUser && currentUser.account_type === 'artist' && !isOpeningArtistPage){
     openArtistPage(currentUser.artist_name); // sinon l'onglet ne fait qu'afficher l'ancien contenu, jamais rafraîchi
@@ -2545,16 +2545,22 @@ function clipCard(clip){
   card.dataset.clipId = clip.id;
   const thumbStyle = clip.thumb ? `background-image:url(${clip.thumb}); background-size:cover; background-position:center;` : '';
   const palClass = clip.thumb ? '' : (clip.pal || 'pal-1');
+  const initials = (clip.artist||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const avatarStyle = clip.artistAvatarUrl
+    ? `background-image:url(${clip.artistAvatarUrl}); background-size:cover; background-position:center;`
+    : `background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:11px; font-family:var(--font-data);`;
   card.innerHTML = `
-    <div class="clip-thumb ${palClass}" style="${thumbStyle}">
+    <div class="clip-thumb ${palClass}" style="${thumbStyle}; position:relative;">
       <div class="play-fab"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
       <span class="dur">${clip.dur||'—:—'}</span>
+      <div class="clip-artist-avatar" title="Voir le profil de ${clip.artist}" style="position:absolute; bottom:8px; left:8px; width:30px; height:30px; border-radius:50%; border:2px solid rgba(255,255,255,.85); box-shadow:0 2px 8px rgba(0,0,0,.4); cursor:pointer; z-index:2; ${avatarStyle}">${clip.artistAvatarUrl ? '' : initials}</div>
     </div>
     <div class="clip-info">
       <div class="t">${clip.title}</div>
       <div class="a">${clip.artist}</div>
       <div class="meta"><span>👁️ ${formatLikes(clip.views)} vues</span><span>❤️ ${formatLikes(clip.likes)}</span></div>
     </div>`;
+  card.querySelector('.clip-artist-avatar').onclick = (e)=>{ e.stopPropagation(); openArtistPage(clip.artist); };
   card.onclick = ()=> openClipWatchPage(clip);
   return card;
 }
@@ -2608,6 +2614,7 @@ async function loadRealClips(){
       thumb: c.thumb_url || null, pal: 'pal-1', videoUrl: c.video_url || null,
       views: c.views || 0, likes: c.likes || 0, isReal: true,
       date: '', dur: '—:—',
+      artistId: c.artist_id, artistAvatarUrl: c.artist_avatar_url || null,
     }));
     clips.unshift(...mapped);
     renderClips();
