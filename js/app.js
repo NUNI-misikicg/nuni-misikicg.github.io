@@ -3848,7 +3848,7 @@ function runSearch(q){
   const box = document.getElementById('search-results');
   box.classList.add('open');
   const query = q.trim().toLowerCase();
-  if(!query){ box.innerHTML = '<div class="sr-empty">Tapez pour rechercher un titre, un artiste ou un album.</div>'; return; }
+  if(!query){ box.innerHTML = '<div class="sr-empty">Tapez pour rechercher un titre, un artiste, un album ou un clip.</div>'; return; }
 
   // artistes uniques correspondants (résultat prioritaire pour retrouver vite un artiste)
   const artistNames = [...new Set(tracks.map(t=>t.a))];
@@ -3858,7 +3858,15 @@ function runSearch(q){
     t.t.toLowerCase().includes(query) || t.a.toLowerCase().includes(query) || (t.album||'').toLowerCase().includes(query)
   ).slice(0, 6);
 
-  if(!artistMatches.length && !trackMatches.length){ box.innerHTML = '<div class="sr-empty">Aucun résultat pour "' + q + '".</div>'; return; }
+  // Clips — avant, la recherche ne portait que sur les morceaux/albums/artistes, les clips
+  // n'apparaissaient jamais, même quand le titre ou l'artiste correspondait exactement.
+  const clipMatches = clips.filter(c =>
+    (c.title||'').toLowerCase().includes(query) || (c.artist||'').toLowerCase().includes(query)
+  ).slice(0, 4);
+
+  if(!artistMatches.length && !trackMatches.length && !clipMatches.length){
+    box.innerHTML = '<div class="sr-empty">Aucun résultat pour "' + q + '".</div>'; return;
+  }
   box.innerHTML = '';
 
   artistMatches.forEach(name=>{
@@ -3886,6 +3894,17 @@ function runSearch(q){
     item.innerHTML = `<div class="sr-cover ${tr.cover ? '' : tr.p}" style="${coverStyle}"></div>
       <div><div class="sr-t">${tr.t}${badge}</div><div class="sr-a">${tr.a}${tr.album ? ' · ' + tr.album : ''}</div></div>`;
     item.onclick = ()=>{ enterApp('catalog'); handleTrackCardClick(tr); box.classList.remove('open'); document.getElementById('app-search-input').value=''; };
+    box.appendChild(item);
+  });
+
+  clipMatches.forEach(c=>{
+    const item = document.createElement('div');
+    item.className = 'sr-item';
+    const coverStyle = c.thumb ? `background-image:url(${c.thumb}); background-size:cover; background-position:center;` : '';
+    const clipBadge = `<span style="display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px; background:rgba(212,175,106,0.15); color:var(--accent, #D4AF6A); font-size:10px; font-weight:700; letter-spacing:0.5px; vertical-align:middle;">🎬 Clip</span>`;
+    item.innerHTML = `<div class="sr-cover ${c.thumb ? '' : (c.pal||'pal-1')}" style="${coverStyle}"></div>
+      <div><div class="sr-t">${c.title}${clipBadge}</div><div class="sr-a">${c.artist}</div></div>`;
+    item.onclick = ()=>{ enterApp('clips'); openClipWatchPage(c); box.classList.remove('open'); document.getElementById('app-search-input').value=''; };
     box.appendChild(item);
   });
 }
