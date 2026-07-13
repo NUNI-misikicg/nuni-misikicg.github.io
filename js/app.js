@@ -1693,8 +1693,37 @@ function fillShelf(id, list){
     row.appendChild(card);
   });
 }
+function parseStreamsCount(v){
+  if(typeof v === 'number') return v;
+  const s = String(v||'0').trim().toUpperCase();
+  if(s.endsWith('K')) return Math.round(parseFloat(s) * 1000);
+  if(s.endsWith('M')) return Math.round(parseFloat(s) * 1000000);
+  return parseInt(s.replace(/[^\d]/g,''), 10) || 0;
+}
+// "Top Congo" — avant : [...tracks].reverse().slice(0,5), qui ne trie par AUCUN critère réel
+// (juste l'ordre inverse du tableau), et mélangeait des morceaux de démo aux streams
+// inventés (ex: "264 K") avec les vrais morceaux (streams réels, souvent à 0 pour l'instant).
+// Ici : uniquement les VRAIS morceaux, triés par leur vrai nombre de streams, décroissant.
+function getTopStreamedTracks(n){
+  return tracks
+    .filter(t=> t.isReal)
+    .slice()
+    .sort((a,b)=> parseStreamsCount(b.streams) - parseStreamsCount(a.streams))
+    .slice(0, n);
+}
+function renderTopCongo(){
+  const row = document.getElementById('shelf-top');
+  if(!row) return;
+  row.innerHTML = '';
+  const top = getTopStreamedTracks(5);
+  if(!top.length){
+    row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez d'écoutes réelles pour établir un classement — revenez bientôt !</p>`;
+    return;
+  }
+  top.forEach(tr=> row.appendChild(trackCard(tr)));
+}
 fillShelf('shelf-new', tracks.slice(0,5));
-fillShelf('shelf-top', [...tracks].reverse().slice(0,5));
+renderTopCongo();
 fillShelf('shelf-playlists', tracks.slice(2,7));
 fillShelf('shelf-artist', tracks.filter(t=>t.a==='Bibi Mwana').concat(tracks.slice(0,4)));
 fillShelf('shelf-artist-trending', [...tracks.filter(t=>t.a==='Bibi Mwana')].sort((a,b)=> b.likes - a.likes));
@@ -1702,12 +1731,12 @@ fillShelf('shelf-artist-albums', tracks.filter(t=>t.a==='Bibi Mwana'));
 
 /* ============ VRAIS MORCEAUX PUBLIÉS (serveur NUNI) ============ */
 function refreshMainShelves(){
-  ['shelf-new','shelf-top','shelf-playlists'].forEach(id=>{
+  ['shelf-new','shelf-playlists'].forEach(id=>{
     const row = document.getElementById(id);
     if(row) row.innerHTML = '';
   });
   fillShelf('shelf-new', tracks.slice(0,5));
-  fillShelf('shelf-top', [...tracks].reverse().slice(0,5));
+  renderTopCongo();
   fillShelf('shelf-playlists', tracks.slice(2,7));
 }
 /* ============ RESYNCHRONISATION DES LIKES APRÈS CONNEXION ============
