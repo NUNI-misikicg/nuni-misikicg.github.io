@@ -2224,12 +2224,37 @@ let genreRadioFilter = null;
 function getCurrentPlaybackPool(){
   return genreRadioFilter ? tracks.filter(t=>t.genre===genreRadioFilter) : tracks;
 }
+// En mode DJ, avance dans la vraie file mélangée de l'ambiance choisie (djQueue) plutôt que
+// dans le catalogue entier — avant, dès le 2e morceau, le DJ "oubliait" son ambiance et
+// repassait sur n'importe quel morceau du catalogue, dans l'ordre brut. Quand la file est
+// épuisée, elle est re-mélangée pour continuer indéfiniment sans jamais se répéter à
+// l'identique d'un tour à l'autre (et sans recoller le dernier morceau joué au premier du tour suivant).
 function nextTrack(){
+  if(djMode && djQueue.length){
+    djQueuePos++;
+    if(djQueuePos >= djQueue.length){
+      const m = djModes.find(x=>x.id===djModeId);
+      const last = djQueue[djQueue.length-1];
+      const reshuffled = m.filter();
+      if(reshuffled.length > 1 && reshuffled[0].t === last.t && reshuffled[0].a === last.a){
+        reshuffled.push(reshuffled.shift());
+      }
+      djQueue = reshuffled;
+      djQueuePos = 0;
+    }
+    playTrack(djQueue[djQueuePos]);
+    return;
+  }
   const pool = getCurrentPlaybackPool();
   const i = pool.findIndex(t=>t.t===currentTrack.t);
   playTrack(pool[(i+1) % pool.length] || pool[0]);
 }
 function prevTrack(){
+  if(djMode && djQueue.length){
+    djQueuePos = (djQueuePos - 1 + djQueue.length) % djQueue.length;
+    playTrack(djQueue[djQueuePos]);
+    return;
+  }
   const pool = getCurrentPlaybackPool();
   const i = pool.findIndex(t=>t.t===currentTrack.t);
   playTrack(pool[(i-1+pool.length) % pool.length] || pool[0]);
@@ -3864,16 +3889,29 @@ function tunerTogglePlay(){
 
 /* ============ NUNI DJ (6 modes) ============ */
 const djModes = [
-  { id:'club', name:'Club', bpm:126, transition:'Beat Sync', filter: ()=>[...tracks].sort(()=>Math.random()-0.5) },
-  { id:'festival', name:'Festival', bpm:132, transition:'Drop enchaîné', filter: ()=>[...tracks].sort((a,b)=>(b.likes||0)-(a.likes||0)) },
-  { id:'chill', name:'Chill', bpm:92, transition:'Fondu doux', filter: ()=> tracks.filter(t=>t.genre==='Gospel' || t.genre==='Traditionnel').concat(tracks) },
-  { id:'afro', name:'Afro Party', bpm:118, transition:'Crossfade rythmé', filter: ()=> tracks.filter(t=>['Afro','Traditionnel'].includes(t.genre)).concat(tracks) },
-  { id:'rapcongo', name:'Rap Congo', bpm:96, transition:'Cut sec', filter: ()=> tracks.filter(t=>t.genre==='Rap') },
-  { id:'rumba', name:'Rumba Lounge', bpm:100, transition:'Mix très doux', filter: ()=> tracks.filter(t=>t.genre==='Rumba') },
+  { id:'club', name:'Club', bpm:126, transition:'Beat Sync', filter: ()=> shuffleArray(tracks) },
+  { id:'festival', name:'Festival', bpm:132, transition:'Drop enchaîné', filter: ()=> [...tracks].sort((a,b)=>(b.likes||0)-(a.likes||0)) },
+  { id:'chill', name:'Chill', bpm:92, transition:'Fondu doux', filter: ()=>{
+      const pool = tracks.filter(t=>t.genre==='Gospel' || t.genre==='Traditionnel');
+      return shuffleArray(pool.length ? pool : tracks);
+    } },
+  { id:'afro', name:'Afro Party', bpm:118, transition:'Crossfade rythmé', filter: ()=>{
+      const pool = tracks.filter(t=>['Afro','Traditionnel'].includes(t.genre));
+      return shuffleArray(pool.length ? pool : tracks);
+    } },
+  { id:'rapcongo', name:'Rap Congo', bpm:96, transition:'Cut sec', filter: ()=>{
+      const pool = tracks.filter(t=>t.genre==='Rap');
+      return shuffleArray(pool.length ? pool : tracks);
+    } },
+  { id:'rumba', name:'Rumba Lounge', bpm:100, transition:'Mix très doux', filter: ()=>{
+      const pool = tracks.filter(t=>t.genre==='Rumba');
+      return shuffleArray(pool.length ? pool : tracks);
+    } },
 ];
 let djModeId = 'club';
 let djPlaying = false;
 let djQueue = [];
+let djQueuePos = 0; // position actuelle dans djQueue — permet à nextTrack/prevTrack de rester dans la vraie file du mode DJ
 let djTimer = null;
 
 function renderDjModes(){
@@ -3898,6 +3936,7 @@ function startDjPlayback(){
   const m = djModes.find(x=>x.id===djModeId);
   djQueue = m.filter();
   if(!djQueue.length){ toast('Aucun titre disponible pour ce mode pour le moment.'); return; }
+  djQueuePos = 0;
   radioMode = false; genreRadioActive = null; djMode = true;
   usingRealAudio = false;
   playTrack(djQueue[0]);
