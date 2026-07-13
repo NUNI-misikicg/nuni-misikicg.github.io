@@ -1843,6 +1843,11 @@ let progressTimer, elapsed = 0, duration = 204; // 3:24
 let playbackSpeed = 1, qualityIndex = 1;
 let usingRealAudio = false;
 const realAudio = new Audio();
+// Requis pour que l'analyse Web Audio de l'avatar DJ (createMediaElementSource) ne
+// coupe pas le son des fichiers hébergés sur un autre domaine (Cloudinary) — sans ça,
+// certains navigateurs rendent la lecture totalement silencieuse dès qu'un graphe Web
+// Audio est branché sur un élément audio cross-origin non explicitement autorisé.
+realAudio.crossOrigin = 'anonymous';
 realAudio.volume = 0.85;
 realAudio.preload = 'auto';
 realAudio.addEventListener('loadedmetadata', ()=>{
@@ -3979,8 +3984,13 @@ function startDjPlayback(){
   if(typeof NuniDJAvatar !== 'undefined'){
     const container = document.getElementById('dj-avatar-container');
     if(container){
-      if(!djAvatarInstance) djAvatarInstance = new NuniDJAvatar(container, { djMode:true, size:180 });
-      djAvatarInstance.connect(realAudio);
+      try{
+        if(!djAvatarInstance) djAvatarInstance = new NuniDJAvatar(container, { djMode:true, size:180 });
+        djAvatarInstance.connect(realAudio);
+      }catch(e){
+        // Ne doit jamais couper le son réel — au pire, l'avatar reste statique.
+        console.warn('Avatar DJ non connecté (son réel non affecté) :', e);
+      }
     }
   }
 }
