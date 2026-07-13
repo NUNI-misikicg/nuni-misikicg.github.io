@@ -3984,8 +3984,63 @@ async function loadProgress(){
         ${data.next_level_name ? `<p style="font-size:11px; color:var(--text-faint); margin-top:6px;">Prochain niveau : ${data.next_level_name}</p>` : ''}`;
     }
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
+  loadChallenges();
 }
 loadProgress();
+
+/* ============ DÉFIS QUOTIDIENS / HEBDOMADAIRES ============
+   Étape 3 de la gamification. Récompense en XP, cliquée manuellement une fois le défi
+   complété (bouton "Récupérer"), pour donner un vrai geste de gratification. */
+async function loadChallenges(){
+  const wrap = document.getElementById('shelf-challenges');
+  const row = document.getElementById('challenges-row');
+  if(!wrap || !row) return;
+  if(!realAuthToken){ wrap.style.display = 'none'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/challenges', {
+      headers:{ 'Authorization':'Bearer ' + realAuthToken }
+    });
+    if(!res.ok) return;
+    const data = await res.json();
+    wrap.style.display = '';
+    row.innerHTML = '';
+    data.challenges.forEach(c=>{
+      const pct = Math.min(100, Math.round((c.progress / c.target) * 100));
+      const card = document.createElement('div');
+      card.className = 'challenge-card' + (c.claimed ? ' is-claimed' : '');
+      card.innerHTML = `
+        <div class="cc-top">
+          <span class="cc-tag">${c.period === 'weekly' ? 'Hebdo' : 'Quotidien'}</span>
+          <span class="cc-xp">+${c.xp} XP</span>
+        </div>
+        <div class="cc-title">${c.title}</div>
+        <div class="cc-bar-track"><div class="cc-bar-fill" style="width:${pct}%;"></div></div>
+        <div class="cc-foot">
+          <span>${c.progress}/${c.target}</span>
+          ${c.claimed
+            ? '<span>✓ Récupéré</span>'
+            : c.completed
+              ? `<button class="cc-claim" onclick="claimChallenge('${c.key}', this)">Récupérer</button>`
+              : '<span>En cours</span>'}
+        </div>`;
+      row.appendChild(card);
+    });
+  }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
+}
+
+async function claimChallenge(key, btn){
+  if(btn) btn.disabled = true;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/challenges/' + key + '/claim', {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer ' + realAuthToken }
+    });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || 'Impossible de récupérer la récompense.'); if(btn) btn.disabled = false; return; }
+    toast(data.message || 'Récompense récupérée !');
+    loadProgress();
+  }catch(e){ toast('Impossible de contacter le serveur.'); if(btn) btn.disabled = false; }
+}
 async function loadFeaturedArtists(){
   const row = document.getElementById('artist-suggest-row');
   if(!row) return;

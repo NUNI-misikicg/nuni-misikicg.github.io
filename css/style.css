@@ -423,6 +423,27 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .badge-chip.locked{ opacity:.4; }
 .badge-chip .n{ font-size:11.5px; font-weight:600; line-height:1.3; }
 .badge-chip .d{ font-size:10px; color:var(--text-faint); margin-top:4px; }
+
+.challenges-row{ display:flex; gap:14px; overflow-x:auto; padding-bottom:10px; }
+.challenge-card{
+  flex-shrink:0; width:220px; background:var(--bg-elev); border:1px solid var(--border);
+  border-radius:16px; padding:16px 18px; transition:transform .3s var(--ease);
+}
+.challenge-card:hover{ transform:translateY(-3px); }
+.challenge-card.is-claimed{ opacity:.55; }
+.challenge-card .cc-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+.challenge-card .cc-tag{ font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-faint); }
+.challenge-card .cc-xp{ font-size:11px; font-weight:700; color:var(--accent,#D4AF6A); }
+.challenge-card .cc-title{ font-size:13px; font-weight:600; margin-bottom:12px; line-height:1.3; min-height:34px; }
+.challenge-card .cc-bar-track{ height:6px; border-radius:999px; background:rgba(244,238,225,.1); overflow:hidden; margin-bottom:10px; }
+.challenge-card .cc-bar-fill{ height:100%; background:var(--grad-envol); border-radius:999px; transition:width .5s ease; }
+.challenge-card .cc-foot{ display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-faint); }
+.challenge-card .cc-claim{
+  background:var(--grad-envol); border:none; color:#241708; font-weight:700; font-size:11px;
+  padding:6px 14px; border-radius:999px; cursor:pointer; transition:transform .2s ease;
+}
+.challenge-card .cc-claim:hover{ transform:scale(1.05); }
+.challenge-card .cc-claim:disabled{ cursor:default; opacity:.6; transform:none; }
 .artist-suggest-card{
   flex-shrink:0; width:128px; text-align:center; background:var(--bg-elev); border:1px solid var(--border);
   border-radius:18px; padding:18px 12px;
