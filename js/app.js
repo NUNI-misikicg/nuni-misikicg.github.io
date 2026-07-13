@@ -3889,24 +3889,32 @@ function tunerTogglePlay(){
 }
 
 /* ============ NUNI DJ (6 modes) ============ */
+// Ne sélectionne que des morceaux avec un vrai fichier audio — les morceaux de démonstration
+// du catalogue (Mokili Ya Sika, Lokito...) n'ont pas de vrai son (pas de tr.audioUrl) : si le
+// DJ tombait dessus, on entendait la voix du DJ mais aucune musique (silence simulé).
+function realPlayableTracks(){ return tracks.filter(t=> !!t.audioUrl); }
 const djModes = [
-  { id:'club', name:'Club', bpm:126, transition:'Beat Sync', filter: ()=> shuffleArray(tracks) },
-  { id:'festival', name:'Festival', bpm:132, transition:'Drop enchaîné', filter: ()=> [...tracks].sort((a,b)=>(b.likes||0)-(a.likes||0)) },
+  { id:'club', name:'Club', bpm:126, transition:'Beat Sync', filter: ()=> shuffleArray(realPlayableTracks()) },
+  { id:'festival', name:'Festival', bpm:132, transition:'Drop enchaîné', filter: ()=> [...realPlayableTracks()].sort((a,b)=>(b.likes||0)-(a.likes||0)) },
   { id:'chill', name:'Chill', bpm:92, transition:'Fondu doux', filter: ()=>{
-      const pool = tracks.filter(t=>t.genre==='Gospel' || t.genre==='Traditionnel');
-      return shuffleArray(pool.length ? pool : tracks);
+      const all = realPlayableTracks();
+      const pool = all.filter(t=>t.genre==='Gospel' || t.genre==='Traditionnel');
+      return shuffleArray(pool.length ? pool : all);
     } },
   { id:'afro', name:'Afro Party', bpm:118, transition:'Crossfade rythmé', filter: ()=>{
-      const pool = tracks.filter(t=>['Afro','Traditionnel'].includes(t.genre));
-      return shuffleArray(pool.length ? pool : tracks);
+      const all = realPlayableTracks();
+      const pool = all.filter(t=>['Afro','Traditionnel'].includes(t.genre));
+      return shuffleArray(pool.length ? pool : all);
     } },
   { id:'rapcongo', name:'Rap Congo', bpm:96, transition:'Cut sec', filter: ()=>{
-      const pool = tracks.filter(t=>t.genre==='Rap');
-      return shuffleArray(pool.length ? pool : tracks);
+      const all = realPlayableTracks();
+      const pool = all.filter(t=>t.genre==='Rap');
+      return shuffleArray(pool.length ? pool : all);
     } },
   { id:'rumba', name:'Rumba Lounge', bpm:100, transition:'Mix très doux', filter: ()=>{
-      const pool = tracks.filter(t=>t.genre==='Rumba');
-      return shuffleArray(pool.length ? pool : tracks);
+      const all = realPlayableTracks();
+      const pool = all.filter(t=>t.genre==='Rumba');
+      return shuffleArray(pool.length ? pool : all);
     } },
 ];
 let djModeId = 'club';
@@ -3994,16 +4002,16 @@ function updateDjNowPlaying(){
 // été dites au moins une fois. La musique baisse brièvement pendant l'annonce, comme un vrai
 // micro de boîte de nuit qui coupe le son ambiant, puis remonte automatiquement après.
 const djVoiceLines = [
-  "Ça chauffe ce soir, NUNI DJ est dans la place !",
-  "On monte le son pour le Congo !",
-  "Restez avec nous, ça continue !",
-  "Ambiance Congo, ambiance NUNI !",
-  "On garde le rythme, personne ne bouge !",
-  "Le prochain son va faire trembler la salle !",
-  "NUNI DJ prend le contrôle de la soirée !",
-  "Un peu plus fort pour tous les fans du 242 et du 243 !",
-  "On enchaîne sans s'arrêter !",
-  "Merci d'être là, la fête continue avec NUNI !",
+  "Yo yo, NUNI DJ dans la place, on lâche rien !",
+  "Big up à tout Kin et Brazza ce soir !",
+  "Ambiance ya bien, tout le monde bouge !",
+  "One love, on garde le good vibe !",
+  "La sauce est chaude, restez avec nous !",
+  "Jah bless, on monte encore d'un cran !",
+  "242, 243, tout le monde répond présent !",
+  "Irie ! Le prochain son va faire mal !",
+  "On n'arrête rien, NUNI DJ tient le mic !",
+  "Respect à tous les vrais, la fête continue !",
 ];
 let djVoiceUsedIndexes = new Set();
 function djSpeak(force){
