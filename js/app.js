@@ -3981,12 +3981,62 @@ async function loadProgress(){
         <div style="height:8px; border-radius:999px; background:rgba(244,238,225,0.1); overflow:hidden;">
           <div style="height:100%; width:${data.progress_pct}%; background:var(--grad-envol); border-radius:999px; transition:width .6s ease;"></div>
         </div>
-        ${data.next_level_name ? `<p style="font-size:11px; color:var(--text-faint); margin-top:6px;">Prochain niveau : ${data.next_level_name}</p>` : ''}`;
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+          ${data.next_level_name ? `<p style="font-size:11px; color:var(--text-faint); margin:0;">Prochain niveau : ${data.next_level_name}</p>` : '<span></span>'}
+          <span style="font-size:12px; font-weight:700; color:var(--accent,#D4AF6A);">💎 ${data.nuni_points || 0} NUNI Points</span>
+        </div>`;
     }
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
   loadChallenges();
+  loadShop();
 }
 loadProgress();
+
+/* ============ BOUTIQUE NUNI POINTS ============
+   Étape 4 de la gamification. Articles cosmétiques achetés avec les points gagnés en
+   écoutant, en se connectant et en complétant des défis — jamais convertibles en FCFA. */
+async function loadShop(){
+  const wrap = document.getElementById('shelf-shop');
+  const row = document.getElementById('shop-row');
+  if(!wrap || !row) return;
+  if(!realAuthToken){ wrap.style.display = 'none'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/shop/items', {
+      headers:{ 'Authorization':'Bearer ' + realAuthToken }
+    });
+    if(!res.ok) return;
+    const data = await res.json();
+    wrap.style.display = '';
+    row.innerHTML = '';
+    data.items.forEach(it=>{
+      const icon = it.name.split(' ')[0];
+      const label = it.name.replace(/^\S+\s/, '');
+      const canAfford = data.points >= it.cost;
+      const card = document.createElement('div');
+      card.className = 'shop-card' + (it.owned ? ' is-owned' : '');
+      card.innerHTML = `
+        <div class="sc-ic">${icon}</div>
+        <div class="sc-n">${label}</div>
+        <div class="sc-cost">${it.owned ? 'Possédé' : '💎 ' + it.cost}</div>
+        ${it.owned ? '' : `<button class="sc-buy" ${canAfford ? '' : 'disabled'} onclick="buyShopItem('${it.key}', this)">Acheter</button>`}`;
+      row.appendChild(card);
+    });
+  }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
+}
+
+async function buyShopItem(key, btn){
+  if(btn) btn.disabled = true;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/shop/items/' + key + '/buy', {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer ' + realAuthToken }
+    });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || 'Achat impossible.'); if(btn) btn.disabled = false; return; }
+    toast(data.message || 'Article débloqué !');
+    loadProgress();
+  }catch(e){ toast('Impossible de contacter le serveur.'); if(btn) btn.disabled = false; }
+}
 
 /* ============ DÉFIS QUOTIDIENS / HEBDOMADAIRES ============
    Étape 3 de la gamification. Récompense en XP, cliquée manuellement une fois le défi
