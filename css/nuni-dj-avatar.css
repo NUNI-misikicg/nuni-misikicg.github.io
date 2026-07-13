@@ -141,3 +141,58 @@
     transition: none !important;
   }
 }
+
+/* ============================================================
+   Ambiance lumineuse "boîte de nuit" derrière l'avatar DJ
+   ------------------------------------------------------------
+   Volontairement PAS de vrai strobe (flash blanc rapide et à fort
+   contraste) — risque de crise chez les personnes photosensibles.
+   À la place : halos qui pulsent doucement + faisceaux qui tournent
+   lentement, teintés selon l'ambiance choisie (--dj-fx-c1/--dj-fx-c2)
+   et cadencés sur le BPM indicatif du mode (--dj-beat-duration).
+============================================================ */
+.dj-fx-stage {
+  --dj-fx-c1: #6E45A8;
+  --dj-fx-c2: #D4AF6A;
+  --dj-beat-duration: 0.9s;
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  padding: 20px 0;
+  background: radial-gradient(circle at 50% 25%, color-mix(in srgb, var(--dj-fx-c1) 22%, transparent) 0%, transparent 72%);
+  transition: background .6s ease;
+}
+.dj-fx-glow {
+  position: absolute;
+  inset: -25%;
+  background: radial-gradient(circle at 50% 40%, var(--dj-fx-c1) 0%, transparent 62%);
+  opacity: .28;
+  filter: blur(32px);
+  animation: djFxPulse var(--dj-beat-duration) ease-in-out infinite;
+  pointer-events: none;
+}
+.dj-fx-beam {
+  position: absolute;
+  top: -40%;
+  left: -25%;
+  width: 150%;
+  height: 230%;
+  background: linear-gradient(90deg, transparent 46%, var(--dj-fx-c2) 50%, transparent 54%);
+  opacity: .1;
+  pointer-events: none;
+}
+.dj-fx-beam.beam-1 { animation: djFxSweep 8s linear infinite; }
+.dj-fx-beam.beam-2 { animation: djFxSweep 12s linear infinite reverse; opacity: .07; }
+
+@keyframes djFxPulse {
+  0%, 100% { opacity: .22; transform: scale(1); }
+  50% { opacity: .45; transform: scale(1.07); }
+}
+@keyframes djFxSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dj-fx-glow, .dj-fx-beam { animation: none !important; }
+}

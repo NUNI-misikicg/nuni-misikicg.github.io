@@ -3926,11 +3926,31 @@ function renderDjModes(){
     wrap.appendChild(chip);
   });
 }
+// Couleurs par ambiance — cohérentes avec le mood de chaque mode DJ (violet nocturne pour
+// Club, rose/or plus vif pour Festival, tons chauds et doux pour Chill/Rumba, etc.)
+const DJ_FX_THEMES = {
+  club:      { c1:'#6E45A8', c2:'#D4AF6A' },
+  festival:  { c1:'#C9667A', c2:'#E8C77E' },
+  chill:     { c1:'#1E8449', c2:'#D4AF6A' },
+  afro:      { c1:'#1E8449', c2:'#E8C77E' },
+  rapcongo:  { c1:'#7A1E14', c2:'#1D2550' },
+  rumba:     { c1:'#C0392B', c2:'#D4AF6A' },
+};
+function applyDjFxTheme(){
+  const stage = document.getElementById('dj-fx-stage');
+  const m = djModes.find(x=>x.id===djModeId);
+  if(!stage || !m) return;
+  const theme = DJ_FX_THEMES[m.id] || DJ_FX_THEMES.club;
+  stage.style.setProperty('--dj-fx-c1', theme.c1);
+  stage.style.setProperty('--dj-fx-c2', theme.c2);
+  stage.style.setProperty('--dj-beat-duration', (60 / m.bpm) + 's');
+}
 function updateDjLabels(){
   const m = djModes.find(x=>x.id===djModeId);
   document.getElementById('dj-mode-label').textContent = m.name;
   document.getElementById('dj-transition-label').textContent = m.transition;
   document.getElementById('dj-bpm-label').textContent = m.bpm;
+  applyDjFxTheme();
 }
 let djAvatarInstance = null; // instance unique de NuniDJAvatar, créée à la première activation du mode DJ
 function startDjPlayback(){

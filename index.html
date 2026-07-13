@@ -317,7 +317,12 @@
 
     <!-- ---- NUNI DJ ---- -->
     <div id="tuner-pane-dj" style="display:none;">
-      <div id="dj-avatar-container" style="display:flex; justify-content:center; margin-bottom:14px;"></div>
+      <div class="dj-fx-stage" id="dj-fx-stage">
+        <div class="dj-fx-glow"></div>
+        <div class="dj-fx-beam beam-1"></div>
+        <div class="dj-fx-beam beam-2"></div>
+        <div id="dj-avatar-container" style="position:relative; z-index:2; display:flex; justify-content:center;"></div>
+      </div>
       <div class="dj-modes" id="dj-modes"></div>
       <div class="dj-panel">
         <div class="dj-live-badge"><span class="dot"></span>EN DIRECT</div>
