@@ -2060,6 +2060,7 @@ function playTrack(tr){
   // Petit mouvement de tête / pulsation des sourcils de l'avatar DJ à chaque changement de
   // morceau — seulement en mode DJ, là où l'avatar est visible et connecté.
   if(djMode && djAvatarInstance) djAvatarInstance.triggerTransition();
+  if(djMode) djSpeak(false);
 
   listeningHistory.unshift({ track: tr, at: Date.now() });
   listeningHistory = listeningHistory.slice(0, 60);
@@ -3968,18 +3969,60 @@ function updateDjNowPlaying(){
   const remaining = Math.max(0, duration - elapsed);
   document.getElementById('dj-remaining-label').textContent = fmt(remaining);
 }
+// ---------- Voix du DJ NUNI (synthèse vocale du navigateur, sans API payante) ----------
+// 10 phrases d'ambiance, jamais deux fois de suite la même tant que les 10 n'ont pas toutes
+// été dites au moins une fois. La musique baisse brièvement pendant l'annonce, comme un vrai
+// micro de boîte de nuit qui coupe le son ambiant, puis remonte automatiquement après.
+const djVoiceLines = [
+  "Ça chauffe ce soir, NUNI DJ est dans la place !",
+  "On monte le son pour le Congo !",
+  "Restez avec nous, ça continue !",
+  "Ambiance Congo, ambiance NUNI !",
+  "On garde le rythme, personne ne bouge !",
+  "Le prochain son va faire trembler la salle !",
+  "NUNI DJ prend le contrôle de la soirée !",
+  "Un peu plus fort pour tous les fans du 242 et du 243 !",
+  "On enchaîne sans s'arrêter !",
+  "Merci d'être là, la fête continue avec NUNI !",
+];
+let djVoiceUsedIndexes = new Set();
+function djSpeak(force){
+  if(!djMode || !('speechSynthesis' in window)) return;
+  if(!force && Math.random() > 0.4) return; // ne parle pas à chaque morceau, sinon ça devient vite lassant
+  if(djVoiceUsedIndexes.size >= djVoiceLines.length) djVoiceUsedIndexes.clear();
+  let idx;
+  do { idx = Math.floor(Math.random() * djVoiceLines.length); } while(djVoiceUsedIndexes.has(idx));
+  djVoiceUsedIndexes.add(idx);
+
+  try{
+    window.speechSynthesis.cancel(); // évite d'empiler plusieurs annonces si on parle trop vite
+    const utter = new SpeechSynthesisUtterance(djVoiceLines[idx]);
+    utter.lang = 'fr-FR';
+    utter.pitch = 0.9;
+    utter.rate = 1.05;
+    const originalVolume = realAudio.volume;
+    utter.onstart = ()=>{ if(usingRealAudio) realAudio.volume = Math.max(0.12, originalVolume * 0.22); };
+    utter.onend = ()=>{ if(usingRealAudio) realAudio.volume = originalVolume; };
+    utter.onerror = ()=>{ if(usingRealAudio) realAudio.volume = originalVolume; };
+    window.speechSynthesis.speak(utter);
+  }catch(e){ /* synthèse vocale indisponible sur ce navigateur : pas bloquant */ }
+}
+
 function djTogglePlay(){
   djPlaying = !djPlaying;
   const btn = document.getElementById('dj-play-btn');
   if(djPlaying){
     btn.textContent = '⏸ DJ en cours';
     startDjPlayback();
+    djVoiceUsedIndexes.clear();
+    djSpeak(true); // annonce toujours au lancement
     toast('NUNI DJ activé — enchaînement automatique selon le mode ' + djModes.find(x=>x.id===djModeId).name + '.');
   } else {
     btn.textContent = '▶ Lancer le DJ';
     djMode = false;
     clearInterval(djTimer);
     if(djAvatarInstance) djAvatarInstance.stop();
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
     if(playing) togglePlay();
     toast('NUNI DJ arrêté.');
   }
