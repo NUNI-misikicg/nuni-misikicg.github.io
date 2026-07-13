@@ -3914,7 +3914,17 @@ function tunerTogglePlay(){
 // Ne sélectionne que des morceaux avec un vrai fichier audio — les morceaux de démonstration
 // du catalogue (Mokili Ya Sika, Lokito...) n'ont pas de vrai son (pas de tr.audioUrl) : si le
 // DJ tombait dessus, on entendait la voix du DJ mais aucune musique (silence simulé).
-function realPlayableTracks(){ return tracks.filter(t=> !!t.audioUrl); }
+// Deux instrumentaux fournis directement (hébergés en statique dans le dépôt Nuni site,
+// pas via Cloudinary — évite tout souci CORS pour ces fichiers-là). Classés "Afro" d'après
+// leur nom de fichier (AFRO_TYPE_BEAT, Instru Afro Mélodique) — à corriger si le genre ne
+// correspond pas une fois entendu.
+const DJ_BONUS_TRACKS = [
+  { t: 'Maasai (Afro Drill)', a: 'NUNI DJ Set', p: 'pal-4', genre: 'Afro', likes: 0, streams: '0',
+    audioUrl: 'assets/dj-tracks/maasai-afro-drill.mp3', isReal: false },
+  { t: 'Boucan (Instru Afro Mélodique)', a: 'NUNI DJ Set', p: 'pal-6', genre: 'Afro', likes: 0, streams: '0',
+    audioUrl: 'assets/dj-tracks/boucan-afro-melodique.mp3', isReal: false },
+];
+function realPlayableTracks(){ return tracks.filter(t=> !!t.audioUrl).concat(DJ_BONUS_TRACKS); }
 const djModes = [
   { id:'club', name:'Club', bpm:126, transition:'Beat Sync', filter: ()=> shuffleArray(realPlayableTracks()) },
   { id:'festival', name:'Festival', bpm:132, transition:'Drop enchaîné', filter: ()=> [...realPlayableTracks()].sort((a,b)=>(b.likes||0)-(a.likes||0)) },
@@ -4047,9 +4057,85 @@ const djVoiceLines = [
   "Respect à tous les vrais, la fête continue !",
 ];
 let djVoiceUsedIndexes = new Set();
+// Vraies notes vocales du DJ (hébergées en statique dans Nuni site, assets/dj-voice/) — la
+// synthèse vocale du navigateur ne sert plus qu'en repli si ces fichiers ne sont pas encore
+// en place (ex: juste après une mise à jour, le temps que le déploiement se termine).
+const djVoiceClips = [
+  'assets/dj-voice/voice-01.mp3',
+  'assets/dj-voice/voice-02.mp3',
+  'assets/dj-voice/voice-03.mp3',
+  'assets/dj-voice/voice-04.mp3',
+  'assets/dj-voice/voice-05.mp3',
+  'assets/dj-voice/voice-06.mp3',
+  'assets/dj-voice/voice-07.mp3',
+  'assets/dj-voice/voice-08.mp3',
+];
+// Set "hype" catégorisé — découpé aux vraies pauses de silence détectées dans l'enregistrement
+// (analyse réelle du signal), la catégorie de chaque morceau est une estimation basée sur le
+// texte fourni et l'ordre chronologique, pas une transcription mot-à-mot vérifiée.
+const djVoiceCategories = {
+  intro: ['assets/dj-voice-hype/intro-01.mp3'],
+  hype: ['assets/dj-voice-hype/hype-01.mp3'],
+  crowd: ['assets/dj-voice-hype/crowd-01.mp3', 'assets/dj-voice-hype/crowd-02.mp3'],
+  drop: ['assets/dj-voice-hype/drop-01.mp3', 'assets/dj-voice-hype/drop-02.mp3'],
+  outro: ['assets/dj-voice-hype/outro-01.mp3'],
+};
+// Ducking musique/voix précis : -8 dB pendant la voix, fondu d'entrée 200ms, fondu de
+// sortie 300ms — plutôt qu'une coupure nette de volume.
+const DJ_DUCK_DB = -8;
+const DJ_DUCK_FACTOR = Math.pow(10, DJ_DUCK_DB / 20); // ≈ 0.398
+let djDuckRampTimer = null;
+function rampRealAudioVolume(to, ms){
+  if(djDuckRampTimer) clearInterval(djDuckRampTimer);
+  const from = realAudio.volume;
+  const steps = Math.max(4, Math.round(ms / 25));
+  let i = 0;
+  djDuckRampTimer = setInterval(()=>{
+    i++;
+    realAudio.volume = from + (to - from) * (i / steps);
+    if(i >= steps){ clearInterval(djDuckRampTimer); djDuckRampTimer = null; realAudio.volume = to; }
+  }, 25);
+}
+function duckMusicForVoice(){ if(usingRealAudio) rampRealAudioVolume(userVolume * DJ_DUCK_FACTOR, 200); }
+function restoreMusicAfterVoice(){ if(usingRealAudio) rampRealAudioVolume(userVolume, 300); }
+
+let djVoiceClipAudio = null;
+let djVoiceClipUsedIndexes = new Set();
 function djSpeak(force){
-  if(!djMode || !('speechSynthesis' in window)) return;
+  if(!djMode) return;
   if(!force && Math.random() > 0.4) return; // ne parle pas à chaque morceau, sinon ça devient vite lassant
+
+  // Tout lancement du DJ : une intro dédiée si disponible, plutôt qu'une phrase au hasard.
+  if(force && djVoiceCategories.intro.length){
+    playDjVoiceClip(djVoiceCategories.intro[0]);
+    return;
+  }
+
+  // Sinon : tirage dans hype/crowd/drop (catégorisé) + le set générique, sans répéter le
+  // même clip tant que le stock n'est pas épuisé.
+  const pool = [...djVoiceCategories.hype, ...djVoiceCategories.crowd, ...djVoiceCategories.drop, ...djVoiceClips];
+  if(pool.length){
+    if(djVoiceClipUsedIndexes.size >= pool.length) djVoiceClipUsedIndexes.clear();
+    let idx;
+    do { idx = Math.floor(Math.random() * pool.length); } while(djVoiceClipUsedIndexes.has(idx));
+    djVoiceClipUsedIndexes.add(idx);
+    playDjVoiceClip(pool[idx]);
+    return;
+  }
+  djSpeakFallbackTTS(force);
+}
+function playDjVoiceClip(src){
+  if(!djVoiceClipAudio) djVoiceClipAudio = new Audio();
+  djVoiceClipAudio.pause();
+  djVoiceClipAudio.src = src;
+  djVoiceClipAudio.currentTime = 0;
+  djVoiceClipAudio.onplay = duckMusicForVoice;
+  djVoiceClipAudio.onended = restoreMusicAfterVoice;
+  djVoiceClipAudio.onerror = ()=>{ restoreMusicAfterVoice(); djSpeakFallbackTTS(false); }; // fichier introuvable : repli TTS
+  djVoiceClipAudio.play().catch(()=>{ restoreMusicAfterVoice(); djSpeakFallbackTTS(false); });
+}
+function djSpeakFallbackTTS(force){
+  if(!('speechSynthesis' in window)) return;
   if(djVoiceUsedIndexes.size >= djVoiceLines.length) djVoiceUsedIndexes.clear();
   let idx;
   do { idx = Math.floor(Math.random() * djVoiceLines.length); } while(djVoiceUsedIndexes.has(idx));
@@ -4061,9 +4147,9 @@ function djSpeak(force){
     utter.lang = 'fr-FR';
     utter.pitch = 0.9;
     utter.rate = 1.05;
-    utter.onstart = ()=>{ if(usingRealAudio) realAudio.volume = Math.max(0.12, userVolume * 0.22); };
-    utter.onend = ()=>{ if(usingRealAudio) realAudio.volume = userVolume; };
-    utter.onerror = ()=>{ if(usingRealAudio) realAudio.volume = userVolume; };
+    utter.onstart = duckMusicForVoice;
+    utter.onend = restoreMusicAfterVoice;
+    utter.onerror = restoreMusicAfterVoice;
     window.speechSynthesis.speak(utter);
   }catch(e){ /* synthèse vocale indisponible sur ce navigateur : pas bloquant */ }
 }
@@ -4154,6 +4240,9 @@ function djTogglePlay(){
     djCrossfadeTriggered = false;
     if(djAvatarInstance) djAvatarInstance.stop();
     if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    if(djVoiceClipAudio) djVoiceClipAudio.pause();
+    if(djVoiceCategories.outro.length) playDjVoiceClip(djVoiceCategories.outro[0]); // petit mot de fin, si dispo
+    if(djDuckRampTimer){ clearInterval(djDuckRampTimer); djDuckRampTimer = null; }
     realAudio.volume = userVolume; // filet de sécurité : jamais de volume coincé bas si on coupe le DJ en pleine phrase
     if(playing) togglePlay();
     toast('NUNI DJ arrêté.');
