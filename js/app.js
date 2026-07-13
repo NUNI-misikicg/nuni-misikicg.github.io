@@ -2057,6 +2057,10 @@ function playTrack(tr){
   applyCoverTo(document.getElementById('player-cover'), tr);
   syncLikeButtons(tr);
 
+  // Petit mouvement de tête / pulsation des sourcils de l'avatar DJ à chaque changement de
+  // morceau — seulement en mode DJ, là où l'avatar est visible et connecté.
+  if(djMode && djAvatarInstance) djAvatarInstance.triggerTransition();
+
   listeningHistory.unshift({ track: tr, at: Date.now() });
   listeningHistory = listeningHistory.slice(0, 60);
 
@@ -3889,6 +3893,7 @@ function updateDjLabels(){
   document.getElementById('dj-transition-label').textContent = m.transition;
   document.getElementById('dj-bpm-label').textContent = m.bpm;
 }
+let djAvatarInstance = null; // instance unique de NuniDJAvatar, créée à la première activation du mode DJ
 function startDjPlayback(){
   const m = djModes.find(x=>x.id===djModeId);
   djQueue = m.filter();
@@ -3899,6 +3904,17 @@ function startDjPlayback(){
   updateDjNowPlaying();
   clearInterval(djTimer);
   djTimer = setInterval(updateDjNowPlaying, 1000);
+
+  // Avatar DJ animé, réactif en temps réel au vrai son en cours de lecture (analyse Web
+  // Audio) — remplace visuellement la pochette statique par un visage qui bouge avec la
+  // musique. Créé une seule fois, reconnecté à chaque activation du mode DJ.
+  if(typeof NuniDJAvatar !== 'undefined'){
+    const container = document.getElementById('dj-avatar-container');
+    if(container){
+      if(!djAvatarInstance) djAvatarInstance = new NuniDJAvatar(container, { djMode:true, size:180 });
+      djAvatarInstance.connect(realAudio);
+    }
+  }
 }
 function updateDjNowPlaying(){
   const tr = currentTrack;
@@ -3924,6 +3940,7 @@ function djTogglePlay(){
     btn.textContent = '▶ Lancer le DJ';
     djMode = false;
     clearInterval(djTimer);
+    if(djAvatarInstance) djAvatarInstance.stop();
     if(playing) togglePlay();
     toast('NUNI DJ arrêté.');
   }
