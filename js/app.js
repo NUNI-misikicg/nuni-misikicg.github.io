@@ -1441,6 +1441,10 @@ const tracks = [
   {t:'Combat Quotidien', a:'Mbote System', p:'pal-1', album:'Système', genre:'Rap', year:2025, streams:'98 K', release:'14 Nov 2025', verified:false, likes:4020},
   {t:'Soki Nakomi', a:'Ndombe Junior', p:'pal-1', album:'Kin Vibes', genre:'Afro', year:2025, streams:'264 K', release:'03 Sep 2025', verified:true, likes:11080},
 ];
+let currentTrack = tracks[0]; // déclaré ici, tout de suite après tracks — trackCard() y fait
+                                // référence dès les tout premiers appels à fillShelf() plus bas,
+                                // qui plantaient sinon (ReferenceError: accès avant initialisation).
+let playing = false; // même raison — trackCard() teste aussi "playing", donc doit exister avant fillShelf()
 function formatLikes(n){ return n >= 1000 ? (n/1000).toFixed(1).replace('.0','') + 'K' : n; }
 const fans = ['MK','PJ','TN','AL','RB','DS','FC'];
 function ensureAlbumViewStyles(){
@@ -1802,8 +1806,7 @@ fillReleaseRow('release-row', releases);
 // avec les vraies sorties programmées, dans openArtistPage() — plus de données factices ici.
 
 /* ============ PLAYER LOGIC ============ */
-let playing = false, progressTimer, elapsed = 0, duration = 204; // 3:24
-let currentTrack = tracks[0];
+let progressTimer, elapsed = 0, duration = 204; // 3:24
 let playbackSpeed = 1, qualityIndex = 1;
 let usingRealAudio = false;
 const realAudio = new Audio();
