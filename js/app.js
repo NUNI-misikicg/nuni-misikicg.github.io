@@ -2056,6 +2056,7 @@ function playTrack(tr){
   document.getElementById('player-artist').textContent = tr.a;
   applyCoverTo(document.getElementById('player-cover'), tr);
   syncLikeButtons(tr);
+  realAudio.volume = userVolume; // garantit un volume normal, même si un ducking DJ précédent n'a pas été restauré proprement
 
   // Petit mouvement de tête / pulsation des sourcils de l'avatar DJ à chaque changement de
   // morceau — seulement en mode DJ, là où l'avatar est visible et connecté.
@@ -2215,11 +2216,13 @@ function setupFpProgressScrub(){
   });
 }
 setupFpProgressScrub();
+let userVolume = 0.85; // vrai niveau voulu par la personne — jamais écrasé par le ducking du DJ
 function setVolume(e){
   const rect = e.currentTarget.getBoundingClientRect();
   const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   document.querySelectorAll('#volume-fill, #volume-fill-fp').forEach(v=> v.style.width = (pct*100) + '%');
   realAudio.volume = pct;
+  userVolume = pct;
 }
 let genreRadioFilter = null;
 function getCurrentPlaybackPool(){
@@ -4039,10 +4042,9 @@ function djSpeak(force){
     utter.lang = 'fr-FR';
     utter.pitch = 0.9;
     utter.rate = 1.05;
-    const originalVolume = realAudio.volume;
-    utter.onstart = ()=>{ if(usingRealAudio) realAudio.volume = Math.max(0.12, originalVolume * 0.22); };
-    utter.onend = ()=>{ if(usingRealAudio) realAudio.volume = originalVolume; };
-    utter.onerror = ()=>{ if(usingRealAudio) realAudio.volume = originalVolume; };
+    utter.onstart = ()=>{ if(usingRealAudio) realAudio.volume = Math.max(0.12, userVolume * 0.22); };
+    utter.onend = ()=>{ if(usingRealAudio) realAudio.volume = userVolume; };
+    utter.onerror = ()=>{ if(usingRealAudio) realAudio.volume = userVolume; };
     window.speechSynthesis.speak(utter);
   }catch(e){ /* synthèse vocale indisponible sur ce navigateur : pas bloquant */ }
 }
@@ -4062,6 +4064,7 @@ function djTogglePlay(){
     clearInterval(djTimer);
     if(djAvatarInstance) djAvatarInstance.stop();
     if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    realAudio.volume = userVolume; // filet de sécurité : jamais de volume coincé bas si on coupe le DJ en pleine phrase
     if(playing) togglePlay();
     toast('NUNI DJ arrêté.');
   }
