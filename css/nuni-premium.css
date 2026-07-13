@@ -613,3 +613,57 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
 @media (prefers-reduced-motion: reduce){
   .track-card.is-now-playing .play-fab-eq i{ animation:none; height:70%; }
 }
+
+/* ============================================================
+   Bannière hero premium (accueil) — vraie image générée,
+   dans l'esprit Apple Music / Spotify Premium avec identité NUNI.
+============================================================ */
+.premium-hero{
+  position:relative;
+  border-radius:24px;
+  overflow:hidden;
+  min-height:400px;
+  margin-bottom:32px;
+  background-size:cover;
+  background-position:center;
+  display:flex;
+  align-items:flex-end;
+  box-shadow:0 20px 50px rgba(0,0,0,0.4);
+  border:1px solid rgba(212,175,106,0.18);
+}
+.premium-hero-overlay{
+  position:absolute; inset:0;
+  background:linear-gradient(90deg, rgba(7,7,7,0.92) 0%, rgba(7,7,7,0.55) 45%, rgba(7,7,7,0.15) 75%),
+             linear-gradient(0deg, rgba(7,7,7,0.85) 0%, rgba(7,7,7,0.1) 55%);
+}
+.premium-hero-content{
+  position:relative; z-index:1;
+  padding:36px 40px;
+  max-width:520px;
+}
+.premium-hero-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(30,122,76,0.18); color:#6fd39a;
+  border:1px solid rgba(111,211,154,0.35);
+  font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+  padding:5px 12px; border-radius:20px; margin-bottom:16px;
+}
+.premium-hero-title{
+  font-family:var(--font-display); color:#fff; font-size:38px; font-weight:800; line-height:1.08;
+  margin-bottom:14px;
+}
+.premium-hero-title em{ font-style:normal; background:var(--grad-envol); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.premium-hero-sub{ color:rgba(255,255,255,0.72); font-size:15px; margin-bottom:18px; }
+.premium-hero-tags{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; }
+.premium-hero-tags span{
+  font-size:12px; font-weight:600; color:rgba(255,255,255,0.85);
+  background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16);
+  padding:6px 14px; border-radius:999px; cursor:pointer; transition:background .2s ease;
+}
+.premium-hero-tags span:hover{ background:rgba(212,175,106,0.22); border-color:rgba(212,175,106,0.4); }
+.premium-hero-actions{ display:flex; gap:12px; flex-wrap:wrap; }
+@media (max-width:640px){
+  .premium-hero{ min-height:340px; }
+  .premium-hero-content{ padding:24px; max-width:100%; }
+  .premium-hero-title{ font-size:28px; }
+}

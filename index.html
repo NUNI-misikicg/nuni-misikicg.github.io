@@ -552,6 +552,25 @@
       <div><h1 id="catalog-greeting-title" class="greeting-anim">Bonsoir 👋</h1><p id="catalog-greeting-sub" class="greeting-anim" style="animation-delay:.08s">Voici ce qui fait vibrer le Congo cette semaine.</p></div>
     </div>
 
+    <div class="premium-hero" id="premium-hero-accueil" style="background-image:url('assets/hero/hero-accueil.jpg');">
+      <div class="premium-hero-overlay"></div>
+      <div class="premium-hero-content">
+        <span class="premium-hero-badge">🔥 TOP DU MOMENT</span>
+        <h2 class="premium-hero-title">L'Afrique<br>en mode<br><em>vibration</em></h2>
+        <p class="premium-hero-sub">Les sons qui font bouger le continent.</p>
+        <div class="premium-hero-tags">
+          <span onclick="filterCatalogByGenre('Afro'); document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname').textContent==='Afro'));">Afro</span>
+          <span onclick="filterCatalogByGenre('Rap'); document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname').textContent==='Rap'));">Rap</span>
+          <span onclick="filterCatalogByGenre('Rumba'); document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname').textContent==='Rumba'));">Rumba</span>
+          <span onclick="filterCatalogByGenre('Gospel'); document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname').textContent==='Gospel'));">Gospel</span>
+        </div>
+        <div class="premium-hero-actions">
+          <button class="btn btn-primary" onclick="const top=getTopStreamedTracks(1)[0]; if(top){ playTrack(top); openFullPlayer(); } else { toast('Pas encore assez d\'écoutes pour établir un Top.'); }">▶ Écouter maintenant</button>
+          <button class="btn btn-ghost" onclick="filterCatalogByGenre('Top Congo'); document.querySelectorAll('.genre-tile').forEach((t,i)=>t.classList.toggle('is-active', t.querySelector('.gname').textContent==='Top Congo'));">📊 Top Congo</button>
+        </div>
+      </div>
+    </div>
+
     <div class="radio-banner">
       <div class="radio-banner-text">
         <span class="radio-badge" id="radio-badge"><span class="dot"></span>EN DIRECT</span>
