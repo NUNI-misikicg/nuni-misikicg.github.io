@@ -339,6 +339,8 @@ function openLoginModal(){
   overlay.classList.add('show');
   overlay.classList.add('is-preparing');
   setTimeout(()=> overlay.classList.remove('is-preparing'), 550);
+  // Réveille le serveur Render dès l'ouverture — voir le même commentaire dans openRedeemModal.
+  fetch(NUNI_API_BASE + '/api/stats/public').catch(()=>{});
 }
 function closeLoginModal(){
   document.getElementById('login-overlay').classList.remove('show');
@@ -360,9 +362,10 @@ async function submitLogin(){
   btn.disabled = true;
 
   try{
-    const res = await fetch(NUNI_API_BASE + '/api/login', {
-      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, password })
-    });
+    const res = await fetchWithRetry(NUNI_API_BASE + '/api/login',
+      { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) },
+      ()=>{ feedback.textContent = 'Le serveur se réveille, nouvel essai dans quelques secondes…'; }
+    );
     const data = await res.json();
     if(!res.ok){
       feedback.style.color = 'var(--rose-braise)';
@@ -506,6 +509,10 @@ function openRedeemModal(){
   document.getElementById('redeem-feedback').innerHTML = '';
   document.getElementById('redeem-submit-btn').disabled = false; // sinon un ancien essai pouvait laisser le bouton bloqué
   redeemRequestId++; // annule tout essai précédent encore en cours (voir submitRedeem)
+  // Réveille le serveur Render (plan gratuit, s'endort après 15 min d'inactivité) dès
+  // l'ouverture du modal — le temps que la personne tape son code à 6 caractères, le
+  // serveur a de bonnes chances d'être déjà réveillé au moment du vrai clic.
+  fetch(NUNI_API_BASE + '/api/stats/public').catch(()=>{});
   if(realAuthToken){
     document.getElementById('redeem-email').closest('.field').style.display = 'none';
     document.getElementById('redeem-password').closest('.field').style.display = 'none';
@@ -519,6 +526,20 @@ function closeRedeemModal(){
   document.getElementById('redeem-overlay').classList.remove('show');
 }
 let redeemRequestId = 0; // protège contre un essai précédent qui répondrait en retard et écraserait un essai plus récent
+
+// Sur le plan gratuit de Render, le serveur peut mettre 30-50s à se réveiller après une
+// période d'inactivité — un premier essai peut échouer pile pendant ce réveil. Plutôt que
+// d'afficher tout de suite une erreur, on retente automatiquement une fois après un délai.
+async function fetchWithRetry(url, options, onRetrying){
+  try{
+    return await fetch(url, options);
+  }catch(e){
+    if(onRetrying) onRetrying();
+    await new Promise(r=> setTimeout(r, 4000));
+    return await fetch(url, options); // 2e essai — si celui-ci échoue aussi, l'erreur remonte normalement
+  }
+}
+
 async function submitRedeem(){
   const myRequestId = ++redeemRequestId;
   const feedback = document.getElementById('redeem-feedback');
@@ -533,9 +554,10 @@ async function submitRedeem(){
     if(!realAuthToken){
       const email = document.getElementById('redeem-email').value.trim();
       const password = document.getElementById('redeem-password').value;
-      const loginRes = await fetch(NUNI_API_BASE + '/api/login', {
-        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password})
-      });
+      const loginRes = await fetchWithRetry(NUNI_API_BASE + '/api/login',
+        { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password}) },
+        ()=>{ if(myRequestId === redeemRequestId) feedback.textContent = 'Le serveur se réveille, nouvel essai dans quelques secondes…'; }
+      );
       const loginData = await loginRes.json();
       if(myRequestId !== redeemRequestId) return; // un essai plus récent a pris le relais entre-temps
       if(!loginRes.ok){
@@ -553,11 +575,10 @@ async function submitRedeem(){
       saveSession(loginData.token, loginData.user, !rememberBox || rememberBox.checked);
     }
 
-    const res = await fetch(NUNI_API_BASE + '/api/subscribe/redeem', {
-      method:'POST',
-      headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
-      body: JSON.stringify({code})
-    });
+    const res = await fetchWithRetry(NUNI_API_BASE + '/api/subscribe/redeem',
+      { method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken}, body: JSON.stringify({code}) },
+      ()=>{ if(myRequestId === redeemRequestId) feedback.textContent = 'Le serveur se réveille, nouvel essai dans quelques secondes…'; }
+    );
     const data = await res.json();
     if(myRequestId !== redeemRequestId) return; // un essai plus récent a pris le relais entre-temps
     if(!res.ok){
