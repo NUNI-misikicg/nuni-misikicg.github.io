@@ -1919,7 +1919,7 @@ function renderTopCongo(){
   }
   top.forEach(tr=> row.appendChild(trackCard(tr)));
 }
-fillShelf('shelf-new', tracks.slice(0,5));
+fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
 renderTopCongo();
 fillShelf('shelf-artist', tracks.filter(t=>t.a==='Bibi Mwana').concat(tracks.slice(0,4)));
 fillShelf('shelf-artist-trending', [...tracks.filter(t=>t.a==='Bibi Mwana')].sort((a,b)=> b.likes - a.likes));
@@ -1929,7 +1929,7 @@ fillShelf('shelf-artist-albums', tracks.filter(t=>t.a==='Bibi Mwana'));
 function refreshMainShelves(){
   const row = document.getElementById('shelf-new');
   if(row) row.innerHTML = '';
-  fillShelf('shelf-new', tracks.slice(0,5));
+  fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
   renderTopCongo();
 }
 /* ============ RESYNCHRONISATION DES LIKES APRÈS CONNEXION ============
@@ -2000,6 +2000,16 @@ async function loadRealTracks(){
     }));
     tracks.unshift(...mapped);
     refreshMainShelves();
+    // Le lecteur démarrait sur un morceau de démo sans vrai fichier audio (silence simulé si
+    // on appuyait sur ▶ avant d'avoir cliqué un vrai morceau) — dès que de vrais morceaux sont
+    // chargés, et si rien n'a encore été lancé, on bascule le lecteur sur le premier vrai son.
+    if(!playing && !usingRealAudio && !currentTrack.isReal && mapped.length){
+      currentTrack = mapped[0];
+      document.getElementById('player-title').textContent = currentTrack.t;
+      document.getElementById('player-artist').textContent = currentTrack.a;
+      applyCoverTo(document.getElementById('player-cover'), currentTrack);
+      syncFullPlayer();
+    }
   }catch(e){ /* pas grave si le serveur est indisponible, le catalogue de démo reste affiché */ }
 }
 loadRealTracks();
@@ -2070,7 +2080,7 @@ realAudio.addEventListener('timeupdate', ()=>{
     }
   }
 });
-realAudio.addEventListener('ended', ()=>{ if(usingRealAudio) nextTrack(); });
+realAudio.addEventListener('ended', ()=>{ if(usingRealAudio) handleTrackEnded(); });
 realAudio.addEventListener('error', ()=>{
   if(!usingRealAudio) return;
   const codes = {1:'lecture annulée', 2:'erreur réseau', 3:'fichier illisible (décodage impossible)', 4:'format audio non supporté par le navigateur'};
@@ -2340,7 +2350,7 @@ function togglePlay(){
   if(playing){
     progressTimer = setInterval(()=>{
       elapsed += 1;
-      if(elapsed >= duration){ nextTrack(); return; }
+      if(elapsed >= duration){ handleTrackEnded(); return; }
       updateProgress();
     }, 1000);
   } else {
@@ -2457,7 +2467,10 @@ function setVolume(e){
 }
 let genreRadioFilter = null;
 function getCurrentPlaybackPool(){
-  return genreRadioFilter ? tracks.filter(t=>t.genre===genreRadioFilter) : tracks;
+  // Le lecteur ne doit jamais avancer sur une maquette de démonstration sans vrai fichier
+  // audio (silence simulé) — uniquement de vrais morceaux publiés sur NUNI.
+  const realTracks = tracks.filter(t=>t.isReal);
+  return genreRadioFilter ? realTracks.filter(t=>t.genre===genreRadioFilter) : realTracks;
 }
 // En mode DJ, avance dans la vraie file mélangée de l'ambiance choisie (djQueue) plutôt que
 // dans le catalogue entier — avant, dès le 2e morceau, le DJ "oubliait" son ambiance et
@@ -2478,12 +2491,26 @@ function djAdvanceQueue(){
   }
   return djQueue[djQueuePos];
 }
+// Fin naturelle d'un morceau : respecte "Répéter" (relance le même son). Le bouton "Suivant"
+// cliqué manuellement, lui, avance toujours réellement — comme sur Spotify/Apple Music,
+// "Répéter" n'empêche jamais un skip volontaire, seulement la fin naturelle du morceau.
+function handleTrackEnded(){
+  if(repeatOn){ playTrack(currentTrack); return; }
+  nextTrack();
+}
 function nextTrack(){
   if(djMode && djQueue.length){
     playTrack(djAdvanceQueue());
     return;
   }
   const pool = getCurrentPlaybackPool();
+  if(shuffleOn && pool.length > 1){
+    // Vraie lecture aléatoire — jamais le même morceau deux fois de suite par hasard.
+    let next;
+    do{ next = pool[Math.floor(Math.random() * pool.length)]; } while(next.t === currentTrack.t && pool.length > 1);
+    playTrack(next);
+    return;
+  }
   const i = pool.findIndex(t=>t.t===currentTrack.t);
   playTrack(pool[(i+1) % pool.length] || pool[0]);
 }
@@ -2551,15 +2578,27 @@ async function toggleLike(btn){
   syncLikeButtons(currentTrack);
   toast(willLike ? 'Ajouté à votre playlist Favoris — visible dans Bibliothèque.' : 'Retiré de votre playlist Favoris.');
 }
+/* Avant : ces deux boutons ne faisaient QUE changer leur propre couleur (juste celui cliqué,
+   mini-lecteur et plein écran désynchronisés entre eux) — aucun effet réel sur la lecture.
+   Ici : un vrai état partagé, qui influence vraiment nextTrack() et la fin de lecture, et
+   les deux boutons (mini + plein écran) restent toujours synchronisés visuellement. */
+let shuffleOn = false;
+let repeatOn = false;
+function syncShuffleRepeatButtons(){
+  document.querySelectorAll('[aria-label="Lecture aléatoire"]').forEach(b=> b.classList.toggle('is-toggled-on', shuffleOn));
+  document.querySelectorAll('[aria-label="Répéter"]').forEach(b=> b.classList.toggle('is-toggled-on', repeatOn));
+}
 function shuffleToggle(btn){
-  const activating = !btn.style.color;
-  btn.style.color = activating ? 'var(--accent)' : '';
-  if(activating){ pulseEl(btn); hapticPing(); }
+  shuffleOn = !shuffleOn;
+  syncShuffleRepeatButtons();
+  if(shuffleOn){ pulseEl(btn); hapticPing(); toast('Lecture aléatoire activée.'); }
+  else{ toast('Lecture aléatoire désactivée.'); }
 }
 function repeatToggle(btn){
-  const activating = !btn.style.color;
-  btn.style.color = activating ? 'var(--accent)' : '';
-  if(activating){ pulseEl(btn); hapticPing(); }
+  repeatOn = !repeatOn;
+  syncShuffleRepeatButtons();
+  if(repeatOn){ pulseEl(btn); hapticPing(); toast('Répéter ce morceau activé.'); }
+  else{ toast('Répéter désactivé.'); }
 }
 function toggleFollow(btn){
   const following = btn.textContent.trim() === 'Suivi ✓';

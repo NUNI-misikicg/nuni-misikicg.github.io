@@ -935,6 +935,8 @@ html.is-playing .player-track-info .t{ font-weight:700; }
 .player-controls{ display:flex; align-items:center; gap:18px; }
 .player-controls button{ display:flex; align-items:center; justify-content:center; color:var(--text-dim); transition:color .3s; }
 .player-controls button:hover{ color:var(--text); }
+.player-controls button.is-toggled-on,
+.fp-controls button.is-toggled-on{ color:var(--accent, #D4AF6A) !important; }
 .player-controls svg{ width:17px; height:17px; }
 .play-pause{
   width:36px; height:36px; border-radius:50%; background:var(--text); color:var(--bg); display:flex; align-items:center; justify-content:center;
