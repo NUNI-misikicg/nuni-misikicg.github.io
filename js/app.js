@@ -176,7 +176,15 @@ function goTo(screen){
   document.getElementById('mobile-tabbar').style.display = 'none';
   document.getElementById('demo-nav').classList.add('no-player');
   document.getElementById('mimi-widget').classList.add('no-player');
-  if(screen==='home'){ document.getElementById('screen-home').classList.add('active'); }
+  if(screen==='home'){
+    const homeScreen = document.getElementById('screen-home');
+    homeScreen.classList.add('active');
+    // Rejoue l'effet d'entrée à chaque fois (ex: après une déconnexion) — purement
+    // cosmétique, retiré après coup ; le contenu reste visible même si ça ne joue pas.
+    homeScreen.classList.remove('play-intro');
+    void homeScreen.offsetWidth; // force le navigateur à "oublier" l'état précédent avant de rejouer
+    homeScreen.classList.add('play-intro');
+  }
   if(screen==='plans'){ document.getElementById('screen-plans').classList.add('active'); }
   window.scrollTo({top:0, behavior:'smooth'});
 }
