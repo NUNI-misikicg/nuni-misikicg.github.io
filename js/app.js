@@ -1134,9 +1134,20 @@ function openArtistPage(name){
     const row = document.getElementById(id);
     if(row) row.innerHTML = '';
   });
-  fillShelf('shelf-artist', artistTracks.length ? artistTracks : tracks.slice(0,4));
-  fillShelf('shelf-artist-trending', [...artistTracks].sort((a,b)=>(b.likes||0)-(a.likes||0)));
-  fillShelf('shelf-artist-albums', artistTracks);
+  if(artistTracks.length){
+    fillShelf('shelf-artist', artistTracks);
+    fillShelf('shelf-artist-trending', [...artistTracks].sort((a,b)=>(b.likes||0)-(a.likes||0)));
+    fillShelf('shelf-artist-albums', artistTracks);
+  } else {
+    // Avant : un artiste sans aucun morceau publié affichait ici 4 morceaux d'AUTRES artistes
+    // (repli sur tracks.slice(0,4), le début du catalogue global) — trompeur, comme si ces
+    // morceaux lui appartenaient. Un vrai état vide honnête vaut mieux qu'une fausse discographie.
+    const emptyMsg = `<p style="font-size:12.5px; color:var(--text-faint); padding:8px 0;">${isOwnArtistPage ? "Vous n'avez encore rien publié — utilisez « Importer ma musique » dans le Dashboard." : "Cet artiste n'a encore rien publié sur NUNI."}</p>`;
+    ['shelf-artist','shelf-artist-trending','shelf-artist-albums'].forEach(id=>{
+      const row = document.getElementById(id);
+      if(row) row.innerHTML = emptyMsg;
+    });
+  }
   if(isOwnArtistPage){
     document.querySelectorAll('#shelf-artist .track-card, #shelf-artist-trending .track-card, #shelf-artist-albums .track-card').forEach(card=>{
       const cover = card.querySelector('.cover');
@@ -4396,16 +4407,9 @@ let radioMode = false;
 let djMode = false;
 let genreRadioActive = null;
 
-/* ============ ARTISTES À SUIVRE ============ */
-const suggestedArtists = [
-  {n:'Bibi Mwana', g:'Rumba · Afro'},
-  {n:'Ndombe Junior', g:'Afro'},
-  {n:'Kessy Tina', g:'Gospel'},
-  {n:'Mbote System', g:'Hip-Hop'},
-  {n:'Tcheza Nation', g:'Rap'},
-  {n:'Les Anges du Rythme', g:'Traditionnel'},
-];
-// artist-suggest-row est maintenant rempli dynamiquement par loadFeaturedArtists() plus bas.
+/* ============ ARTISTES À SUIVRE ============
+   artist-suggest-row est rempli dynamiquement par loadFeaturedArtists() plus bas
+   (l'ancien tableau statique suggestedArtists n'était plus utilisé nulle part). */
 
 /* ============ PROGRESSION RÉELLE (niveau, XP, badges) ============
    Avant : listenerBadges était un tableau codé en dur, identique pour tout le monde,
