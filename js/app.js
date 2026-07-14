@@ -1584,7 +1584,6 @@ let currentTrack = tracks[0]; // déclaré ici, tout de suite après tracks — 
                                 // qui plantaient sinon (ReferenceError: accès avant initialisation).
 let playing = false; // même raison — trackCard() teste aussi "playing", donc doit exister avant fillShelf()
 function formatLikes(n){ return n >= 1000 ? (n/1000).toFixed(1).replace('.0','') + 'K' : n; }
-const fans = ['MK','PJ','TN','AL','RB','DS','FC'];
 function ensureAlbumViewStyles(){
   if(document.getElementById('album-view-styles')) return;
   const style = document.createElement('style');
@@ -3518,14 +3517,35 @@ function updateLyricsHighlight(){
 }
 function renderFanWall(){
   const wall = document.getElementById('fan-wall');
-  if(!wall || wall.dataset.filled) return;
-  wall.dataset.filled = '1';
-  fans.forEach(f=>{
-    const d = document.createElement('div');
-    d.className = 'fan-avatar';
-    d.textContent = f;
-    wall.appendChild(d);
-  });
+  const section = wall ? wall.closest('.fp-section') : null;
+  if(!wall) return;
+  const artistId = currentTrack && currentTrack.artistId;
+  if(!artistId){
+    // Morceau de démonstration (pas de vrai artiste rattaché) : section masquée plutôt
+    // qu'un mur de fans inventé.
+    if(section) section.style.display = 'none';
+    return;
+  }
+  wall.dataset.artistId = artistId;
+  wall.innerHTML = '<p style="font-size:12px; color:var(--text-faint);">Chargement…</p>';
+  fetch(NUNI_API_BASE + '/api/artist/' + artistId + '/recent-followers').then(r=>r.json()).then(data=>{
+    if(String(artistId) !== wall.dataset.artistId) return; // le morceau a changé entre-temps
+    const list = data.followers || [];
+    if(section) section.style.display = list.length ? '' : 'none';
+    wall.innerHTML = '';
+    list.forEach(f=>{
+      const d = document.createElement('div');
+      d.className = 'fan-avatar';
+      if(f.avatar_url){
+        d.style.backgroundImage = `url(${f.avatar_url})`;
+        d.style.backgroundSize = 'cover';
+        d.style.backgroundPosition = 'center';
+      } else {
+        d.textContent = (f.first_name || '?').slice(0,2).toUpperCase();
+      }
+      wall.appendChild(d);
+    });
+  }).catch(()=>{ if(section) section.style.display = 'none'; });
 }
 let fpLastTextKey = null;
 function syncFullPlayer(){
