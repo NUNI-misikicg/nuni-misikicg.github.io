@@ -669,3 +669,87 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
 }
 #top-congo-hero{ min-height:260px; margin-bottom:24px; }
 #top-congo-hero .premium-hero-title{ font-size:32px; }
+
+/* ============================================================
+   Lecteur plein écran — reskin "verre liquide" (Liquid Glass)
+   ------------------------------------------------------------
+   Aucun changement de structure ni de logique JS : uniquement un
+   habillage visuel par-dessus l'existant (paroles, file d'attente,
+   DJ, palette extraite de la pochette... tout continue de fonctionner
+   normalement). Palette or/émeraude NUNI, pas le magenta/violet/cyan
+   du prototype d'origine.
+============================================================ */
+:root{ --ease-spring: cubic-bezier(.34,1.56,.64,1); }
+
+/* Ouverture avec léger rebond, façon "spring physics" */
+.full-player.open{ animation: fpLiquidIn .6s var(--ease-spring); }
+@keyframes fpLiquidIn{
+  from{ opacity:0; transform:translateY(46px) scale(.97); }
+  to{ opacity:1; transform:translateY(0) scale(1); }
+}
+
+/* Fond ambiant plus saturé et plus "liquide" (la couleur vient toujours de la vraie
+   pochette via NuniPalette — on intensifie juste le traitement visuel) */
+.full-player .fp-bg-stack{ filter:blur(85px) saturate(1.7); opacity:.7; }
+html[data-theme="light"] .full-player .fp-bg-stack{ opacity:.4; }
+
+/* Pochette : légère respiration + reflet de verre, cohérent avec le prototype */
+.full-player .fp-cover{ border-radius:32px; box-shadow:0 34px 80px -18px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12); }
+
+/* Boutons et pastilles en verre dépoli, dorés au survol/actif */
+.full-player .btn-icon,
+.full-player .fp-pill,
+.full-player .player-controls button:not(.fp-play){
+  background:rgba(255,255,255,0.07);
+  backdrop-filter:blur(18px) saturate(160%);
+  -webkit-backdrop-filter:blur(18px) saturate(160%);
+  border:1px solid rgba(255,255,255,0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+  transition: background .3s var(--ease), border-color .3s var(--ease), transform .2s var(--ease-spring);
+}
+.full-player .btn-icon:hover,
+.full-player .fp-pill:hover{
+  background:rgba(212,175,106,0.16);
+  border-color:rgba(212,175,106,0.4);
+  transform:translateY(-2px);
+}
+.full-player .fp-pill.is-active{
+  background:var(--grad-envol); border-color:transparent; color:#0A0A10; box-shadow:0 8px 22px -6px rgba(212,175,106,0.5);
+}
+.full-player .fp-play{
+  background:var(--grad-envol);
+  box-shadow:0 14px 34px -10px rgba(212,175,106,0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+  border:none;
+  transition: transform .25s var(--ease-spring), box-shadow .3s var(--ease);
+}
+.full-player .fp-play:hover{ transform:scale(1.06); }
+.full-player .fp-play:active{ transform:scale(0.94); }
+
+/* Barre de progression "liquide" — remplissage doré/émeraude avec un curseur goutte
+   qui suit la tête de lecture, visible en permanence (pas seulement au survol) */
+.full-player .progress-track{
+  height:6px; border-radius:999px;
+  background:rgba(255,255,255,0.1);
+  backdrop-filter:blur(8px);
+  overflow:visible;
+}
+.full-player .progress-fill{
+  background:linear-gradient(90deg, var(--emeraude,#1E8449), var(--or,#D4AF6A));
+  border-radius:999px;
+  box-shadow:0 0 12px rgba(212,175,106,0.55);
+}
+.full-player .progress-fill::after{
+  content:''; position:absolute; right:-7px; top:50%; transform:translateY(-50%);
+  width:16px; height:16px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #fff, var(--or,#D4AF6A) 65%, var(--emeraude,#1E8449));
+  box-shadow:0 3px 10px rgba(0,0,0,.4), 0 0 0 3px rgba(255,255,255,0.12);
+  transition:transform .15s var(--ease);
+}
+.full-player .progress-track:hover .progress-fill::after,
+.full-player .progress-track.is-scrubbing .progress-fill::after{ transform:translateY(-50%) scale(1.25); }
+
+/* Glisser vers le bas pour fermer — indicateur visuel façon feuille de verre (poignée) */
+.full-player .fp-topbar::before{
+  content:''; position:absolute; left:50%; top:8px; transform:translateX(-50%);
+  width:36px; height:4px; border-radius:4px; background:rgba(255,255,255,0.25);
+}
