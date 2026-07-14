@@ -967,7 +967,7 @@ function enterApp(view){
   if(view === 'clips') loadRealClips(); // recharge les vrais clips à chaque ouverture (loadRealClips appelle renderClips())
   if(view === 'library') renderLibrary();
   if(view === 'artist' && currentUser && currentUser.account_type === 'artist' && !isOpeningArtistPage){
-    openArtistPage(currentUser.artist_name); // sinon l'onglet ne fait qu'afficher l'ancien contenu, jamais rafraîchi
+    openArtistPage(currentUser.artist_name, currentUser.id); // sinon l'onglet ne fait qu'afficher l'ancien contenu, jamais rafraîchi
     return; // openArtistPage rappelle enterApp('artist') lui-même (avec le garde-fou actif) pour finir l'affichage
   }
   if(view === 'dashboard'){
@@ -1019,8 +1019,16 @@ const artistProfiles = {
   'Tcheza Nation': { meta:'Rap · Brazzaville', bio:"Tcheza Nation s'impose sur la scène rap congolaise avec des textes engagés et une identité sonore urbaine affirmée.", verified:false },
 };
 let currentArtistPageRealId = null;
-function openArtistPage(name){
-  const isOwnArtistPage = !!(currentUser && currentUser.account_type === 'artist' && currentUser.artist_name === name);
+function openArtistPage(name, artistId){
+  // Avant : cette page était identifiée uniquement par le NOM affiché (chaîne de texte) —
+  // rien n'empêche deux vrais comptes artiste différents de choisir le même artist_name à
+  // l'inscription, ce qui mélangeait leurs morceaux sur une seule page et pouvait faire
+  // "suivre" le mauvais compte au hasard. Maintenant : dès qu'un vrai identifiant est
+  // disponible, tout le filtrage se fait par identifiant unique, jamais par texte. Le nom
+  // ne sert plus que pour les morceaux de démonstration (sans aucun vrai compte associé),
+  // qui n'ont jamais d'identifiant et ne représentent aucun vrai risque de collision.
+  artistId = artistId || null;
+  const isOwnArtistPage = !!(currentUser && currentUser.account_type === 'artist' && currentUser.id === artistId);
   const profile = artistProfiles[name] || { meta:'Artiste NUNI', bio:"Découvrez l'univers de "+name+" sur NUNI.", verified:false };
   const reallyVerified = isOwnArtistPage ? !!currentUser.is_verified : profile.verified;
   document.getElementById('artist-page-name').textContent = name;
@@ -1051,20 +1059,20 @@ function openArtistPage(name){
   document.getElementById('artist-page-calendar-title').textContent = 'Calendrier des sorties — ' + name;
   renderCertificationButton(isOwnArtistPage, reallyVerified);
 
-  // Statistiques réelles de l'en-tête artiste (avant : "2,4M" / "186K" / "9 480" codés en dur,
-  // identiques pour tout le monde et jamais reliés à aucune vraie donnée).
+  // Vrais morceaux de CET artiste précisément — par identifiant si on le connaît, par nom
+  // seulement en dernier recours (morceaux de démo sans compte réel rattaché).
+  const artistTracks = artistId ? tracks.filter(t=>t.artistId===artistId) : tracks.filter(t=>t.a===name);
+
+  // Statistiques réelles de l'en-tête artiste (avant : "2,4M" / "186K" / "9 480" codés en dur).
   const statStreamsEl = document.getElementById('artist-stat-streams');
   const statSupportsEl = document.getElementById('artist-stat-supports');
-  const artistTracksForStats = tracks.filter(t=>t.a===name);
-  const realStreamsSum = artistTracksForStats.reduce((sum,t)=> sum + (t.isReal ? Number(t.streams)||0 : 0), 0);
+  const realStreamsSum = artistTracks.reduce((sum,t)=> sum + (t.isReal ? Number(t.streams)||0 : 0), 0);
   if(statStreamsEl) statStreamsEl.textContent = realStreamsSum > 0 ? realStreamsSum.toLocaleString('fr-FR') : '0';
   // "Soutiens reçus" n'est relié à aucun vrai système de pourboires/soutiens pour l'instant —
   // on l'affiche honnêtement à "—" plutôt qu'un chiffre inventé.
   if(statSupportsEl) statSupportsEl.textContent = '—';
 
-  const artistTracks = tracks.filter(t=>t.a===name);
-  const realTrackOfArtist = artistTracks.find(t=>t.artistId);
-  currentArtistPageRealId = realTrackOfArtist ? realTrackOfArtist.artistId : (isOwnArtistPage ? currentUser.id : null);
+  currentArtistPageRealId = artistId;
   document.getElementById('artist-page-support-btn').setAttribute('onclick', `openSupportArtistModal(${currentArtistPageRealId || 'null'}, ${JSON.stringify(name)})`);
 
   // Sons en vedette — sélectionnés par l'artiste lui-même parmi ses morceaux déjà publiés.
@@ -1340,7 +1348,7 @@ async function requestVerification(){
     if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
     currentUser.verification_status = 'pending';
     toast('✅ ' + data.message);
-    openArtistPage(currentUser.artist_name);
+    openArtistPage(currentUser.artist_name, currentUser.id);
   }catch(e){ toast('❌ Impossible de contacter le serveur NUNI.'); }
 }
 
@@ -1645,7 +1653,7 @@ document.addEventListener('click', (e)=>{
   if(link && currentUser && currentUser.account_type === 'artist' && currentUser.artist_name){
     e.preventDefault();
     e.stopPropagation();
-    openArtistPage(currentUser.artist_name);
+    openArtistPage(currentUser.artist_name, currentUser.id);
   }
 }, true);
 
@@ -1723,7 +1731,7 @@ function openAlbumView(tr){
   `;
 
   overlay.querySelector('.av-close').onclick = closeOverlay;
-  overlay.querySelector('.av-artist-link').onclick = ()=>{ closeOverlay(); openArtistPage(tr.a); };
+  overlay.querySelector('.av-artist-link').onclick = ()=>{ closeOverlay(); openArtistPage(tr.a, tr.artistId); };
   overlay.querySelector('.av-play-all').onclick = ()=>{ playTrack(albumTracks[0]); closeOverlay(); };
   overlay.querySelector('.av-shuffle-btn').onclick = ()=>{
     const randomTrack = albumTracks[Math.floor(Math.random()*albumTracks.length)];
@@ -1806,7 +1814,7 @@ function trackCard(tr){
     <div class="likes">🎧 <span>${tr.streams||0}</span> · ♥ <span>${formatLikes(tr.likes||0)}</span></div>`;
   card.querySelector('.cover').onclick = ()=> handleTrackCardClick(tr);
   card.querySelector('.ttl').onclick = ()=> handleTrackCardClick(tr);
-  card.querySelector('.art').onclick = (e)=>{ e.stopPropagation(); openArtistPage(tr.a); };
+  card.querySelector('.art').onclick = (e)=>{ e.stopPropagation(); openArtistPage(tr.a, tr.artistId); };
   if(currentTrack && playing && trackKeyOf(currentTrack) === trackKeyOf(tr)) card.classList.add('is-now-playing');
   return card;
 }
@@ -2801,7 +2809,7 @@ function openClipWatchPage(clip){
   overlay.querySelector('.cw-artist-block').onclick = (e)=>{
     if(e.target.closest('.cw-follow-btn')) return;
     closeOverlay();
-    openArtistPage(clip.artist);
+    openArtistPage(clip.artist, clip.artistId);
   };
   const followBtn = overlay.querySelector('.cw-follow-btn');
   followBtn.onclick = (e)=>{
@@ -2918,7 +2926,7 @@ function clipCard(clip){
       <div class="a">${clip.artist}</div>
       <div class="meta"><span>👁️ ${formatLikes(clip.views)} vues</span><span>❤️ ${formatLikes(clip.likes)}</span></div>
     </div>`;
-  card.querySelector('.clip-artist-avatar').onclick = (e)=>{ e.stopPropagation(); openArtistPage(clip.artist); };
+  card.querySelector('.clip-artist-avatar').onclick = (e)=>{ e.stopPropagation(); openArtistPage(clip.artist, clip.artistId); };
   card.onclick = ()=> openClipWatchPage(clip);
   return card;
 }
@@ -3157,7 +3165,7 @@ async function publishRelease(){
       await loadRealTracks();
       refreshMainShelves();
       if(currentUser && currentUser.account_type === 'artist' && document.getElementById('view-artist').style.display !== 'none'){
-        openArtistPage(currentUser.artist_name); // reconstruit proprement la page si elle est déjà ouverte (recharge aussi le calendrier)
+        openArtistPage(currentUser.artist_name, currentUser.id); // reconstruit proprement la page si elle est déjà ouverte (recharge aussi le calendrier)
       }
     })();
   }
@@ -3374,7 +3382,7 @@ async function deleteMyTrack(trackId){
     toast('✅ Morceau supprimé.');
     await loadRealTracks();
     refreshMainShelves();
-    if(currentUser && currentUser.account_type === 'artist') openArtistPage(currentUser.artist_name);
+    if(currentUser && currentUser.account_type === 'artist') openArtistPage(currentUser.artist_name, currentUser.id);
   }catch(e){
     toast('❌ Suppression impossible : ' + (e.message || 'erreur inconnue'));
   }
@@ -4803,7 +4811,7 @@ async function openTop100ArtistsPage(){
         </div>
         <div class="t100-followers">${(a.follower_count||0).toLocaleString('fr-FR')} abonnés</div>
         <button class="t100-follow-btn">Suivre</button>`;
-      const goToArtist = ()=>{ closeOverlay(); openArtistPage(name); };
+      const goToArtist = ()=>{ closeOverlay(); openArtistPage(name, a.id); };
       row.querySelector('.t100-av').onclick = goToArtist;
       row.querySelector('.t100-info').onclick = goToArtist;
       const followBtn = row.querySelector('.t100-follow-btn');
@@ -4858,8 +4866,8 @@ async function loadFeaturedArtists(){
         <div class="n">${name}${a.is_verified ? ' ✅' : ''}</div>
         <div class="g">${a.top_genre || 'Artiste NUNI'}</div>
         <button>Suivre</button>`;
-      card.querySelector('.av').onclick = ()=> openArtistPage(name);
-      card.querySelector('.n').onclick = ()=> openArtistPage(name);
+      card.querySelector('.av').onclick = ()=> openArtistPage(name, a.id);
+      card.querySelector('.n').onclick = ()=> openArtistPage(name, a.id);
       card.querySelector('.n').style.cursor = 'pointer';
       card.querySelector('.av').style.cursor = 'pointer';
       const followBtn = card.querySelector('button');
@@ -5140,7 +5148,7 @@ function runSearch(q){
     item.innerHTML = `<div class="sr-cover" style="background:var(--grad-envol); display:flex; align-items:center; justify-content:center; border-radius:50%; font-family:var(--font-data); font-weight:700; color:#0A0A10; font-size:12px;">${initials}</div>
       <div><div class="sr-t">${name}</div><div class="sr-a">Artiste — écouter maintenant</div></div>`;
     item.onclick = ()=>{
-      openArtistPage(name);
+      openArtistPage(name, topTrack && topTrack.artistId);
       if(topTrack) playTrack(topTrack);
       box.classList.remove('open');
       document.getElementById('app-search-input').value='';
