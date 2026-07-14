@@ -2292,6 +2292,44 @@ function applyCoverTo(el, tr){
 
 let listeningHistory = [];
 let favoritesPlaylist = [];
+/* ============ ÉCRAN VERROUILLÉ / CENTRE DE CONTRÔLE — vraie intégration MediaSession ============
+   Avant : rien n'était branché, le téléphone affichait un titre générique et aucune vraie
+   pochette sur l'écran verrouillé/les notifications média. L'API MediaSession (standard web,
+   supportée par Safari iOS et Chrome Android) permet d'afficher les vraies infos et de
+   contrôler la lecture depuis l'écran verrouillé, sans avoir besoin d'une app native. */
+function updateMediaSession(tr){
+  if(!('mediaSession' in navigator)) return;
+  const artwork = tr.cover ? [
+    { src: tr.cover, sizes: '96x96', type: 'image/jpeg' },
+    { src: tr.cover, sizes: '256x256', type: 'image/jpeg' },
+    { src: tr.cover, sizes: '512x512', type: 'image/jpeg' },
+  ] : [
+    { src: 'assets/logo-clean.png', sizes: '512x512', type: 'image/png' },
+  ];
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: tr.t || 'NUNI',
+    artist: tr.a || 'NUNI Music',
+    album: tr.album || '',
+    artwork,
+  });
+}
+function setupMediaSessionHandlers(){
+  if(!('mediaSession' in navigator)) return;
+  navigator.mediaSession.setActionHandler('play', ()=>{ if(!playing) togglePlay(); });
+  navigator.mediaSession.setActionHandler('pause', ()=>{ if(playing) togglePlay(); });
+  navigator.mediaSession.setActionHandler('previoustrack', ()=> prevTrack());
+  navigator.mediaSession.setActionHandler('nexttrack', ()=> nextTrack());
+  try{
+    navigator.mediaSession.setActionHandler('seekto', (details)=>{
+      if(details.seekTime == null) return;
+      elapsed = details.seekTime;
+      if(usingRealAudio) realAudio.currentTime = elapsed;
+      updateProgress();
+    });
+  }catch(e){ /* pas supporté sur tous les navigateurs, pas bloquant */ }
+}
+setupMediaSessionHandlers();
+
 function playTrack(tr){
   // Un morceau change (manuellement, ou via le crossfade lui-même) : on annule tout
   // fondu enchaîné encore en cours pour ne jamais superposer deux transitions.
@@ -2304,6 +2342,7 @@ function playTrack(tr){
   document.getElementById('player-artist').textContent = tr.a;
   applyCoverTo(document.getElementById('player-cover'), tr);
   syncLikeButtons(tr);
+  updateMediaSession(tr);
   realAudio.volume = userVolume; // garantit un volume normal, même si un ducking DJ précédent n'a pas été restauré proprement
 
   // Petit mouvement de tête / pulsation des sourcils de l'avatar DJ à chaque changement de
@@ -2350,6 +2389,7 @@ function togglePlay(){
   playing = !playing;
   document.documentElement.classList.toggle('is-playing', playing);
   updateNowPlayingCards();
+  if('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
   const iconPath = playing
     ? '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>'
     : '<path d="M8 5v14l11-7z"/>';
@@ -2388,6 +2428,9 @@ function updateProgress(){
   }
   updateLyricsHighlight();
   updateFpRemainingPill();
+  if('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && isFinite(duration) && duration > 0){
+    try{ navigator.mediaSession.setPositionState({ duration, playbackRate: playbackSpeed || 1, position: Math.min(elapsed, duration) }); }catch(e){ /* pas bloquant */ }
+  }
 }
 /* ============ MICRO-INTERACTIONS RÉUTILISABLES (ondes, rebonds, pulsations, haptique) ============ */
 function spawnRipple(e, el){
