@@ -272,7 +272,13 @@ function readStoredSession(){
 }
 async function restoreSession(){
   const stored = readStoredSession();
-  if(!stored || !stored.token) return;
+  if(!stored || !stored.token){
+    // Personne n'est connecté : s'assurer que la tabbar mobile, la barre lecteur et Mimi
+    // restent cachées sur l'écran de connexion (avant, rien ne les cachait explicitement
+    // au tout premier chargement — elles ne l'étaient qu'après une déconnexion manuelle).
+    goTo('home');
+    return;
+  }
   try{
     const res = await fetch(NUNI_API_BASE + '/api/me', { headers:{ 'Authorization':'Bearer ' + stored.token } });
     if(!res.ok){
