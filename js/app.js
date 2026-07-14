@@ -1311,6 +1311,22 @@ genres.forEach((g,i)=>{
   genreGrid.appendChild(tile);
 });
 
+/* ============ BANNIÈRES HERO — gérées uniquement par l'admin ============
+   Plusieurs photos possibles par section, tirée au hasard à chaque visite. Repli sur
+   l'image statique du dépôt si l'admin n'a encore rien ajouté (jamais d'écran vide). */
+async function pickHeroImage(section, fallbackPath){
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/hero-images/' + section);
+    const data = await res.json();
+    if(data.images && data.images.length) return data.images[Math.floor(Math.random() * data.images.length)];
+  }catch(e){ /* pas grave, on garde l'image statique */ }
+  return fallbackPath;
+}
+pickHeroImage('accueil', 'assets/hero/hero-accueil.jpg').then(url=>{
+  const el = document.getElementById('premium-hero-accueil');
+  if(el) el.style.backgroundImage = `url('${url}')`;
+});
+
 function filterCatalogByGenre(genreName){
   const shelvesWrap = document.getElementById('genre-filtered-shelf');
   const defaultShelves = document.getElementById('default-shelves');
@@ -1346,7 +1362,8 @@ function filterCatalogByGenre(genreName){
       const leader = filtered[0];
       const totalListeners = filtered.reduce((s,t)=> s + parseStreamsCount(t.streams), 0);
       heroEl.style.display = 'flex';
-      heroEl.style.backgroundImage = "url('assets/hero/hero-topcongo.jpg')";
+      heroEl.style.backgroundImage = "url('assets/hero/hero-topcongo.jpg')"; // repli immédiat, remplacé dès que le tirage serveur répond
+      pickHeroImage('top-congo', 'assets/hero/hero-topcongo.jpg').then(url=>{ heroEl.style.backgroundImage = `url('${url}')`; });
       heroEl.innerHTML = `
         <div class="premium-hero-overlay"></div>
         <div class="premium-hero-content">
