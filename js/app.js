@@ -5264,21 +5264,26 @@ function openProfileInfo(type){
 
   else if(type === 'subscription'){
     icon.textContent = '💳'; title.textContent = 'Mon abonnement';
-    const start = new Date('2026-05-01');
-    const expiry = new Date('2026-08-01');
-    const fmtDate = d => d.toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'});
-    const daysLeft = Math.max(0, Math.ceil((expiry - new Date('2026-07-01')) / 86400000));
-    body.innerHTML = `
-      <div class="pi-sub-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-          <b>Pass Consommateur</b><span class="pi-status-badge">● Actif</span>
+    if(!currentUser){
+      body.innerHTML = `<div class="pi-empty">Connectez-vous pour voir votre abonnement.</div>`;
+    } else {
+      const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'}) : '—';
+      const isActive = currentUser.subscription_status === 'active';
+      const expiryDate = currentUser.subscription_expires_at ? new Date(currentUser.subscription_expires_at) : null;
+      const daysLeft = expiryDate ? Math.max(0, Math.ceil((expiryDate - new Date()) / 86400000)) : null;
+      const planLabel = currentUser.account_type === 'artist' ? 'Pass Artiste' : 'Pass Consommateur';
+      const statusLabel = isActive ? '● Actif' : (currentUser.subscription_status === 'expired' ? '● Expiré' : '● Inactif');
+      body.innerHTML = `
+        <div class="pi-sub-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <b>${planLabel}</b><span class="pi-status-badge">${statusLabel}</span>
+          </div>
+          <div class="pi-sub-row"><span>Membre depuis</span><b>${fmtDate(currentUser.created_at)}</b></div>
+          <div class="pi-sub-row"><span>${isActive ? 'Expiration' : 'Dernière expiration'}</span><b>${fmtDate(currentUser.subscription_expires_at)}</b></div>
+          ${daysLeft !== null && isActive ? `<div class="pi-sub-row"><span>Jours restants</span><b>${daysLeft} jours</b></div>` : ''}
         </div>
-        <div class="pi-sub-row"><span>Formule</span><b>Trimestriel — 650 FCFA</b></div>
-        <div class="pi-sub-row"><span>Début de l'abonnement</span><b>${fmtDate(start)}</b></div>
-        <div class="pi-sub-row"><span>Prochain paiement / expiration</span><b>${fmtDate(expiry)}</b></div>
-        <div class="pi-sub-row"><span>Jours restants</span><b>${daysLeft} jours</b></div>
-      </div>
-      <button class="btn btn-primary" style="width:100%; margin-top:16px;" onclick="closeProfileInfo(); goTo('plans');">Renouveler / changer de Pass</button>`;
+        <button class="btn btn-primary" style="width:100%; margin-top:16px;" onclick="closeProfileInfo(); goTo('plans');">Renouveler / changer de Pass</button>`;
+    }
   }
 
   else if(type === 'payments'){
@@ -5304,14 +5309,19 @@ function openProfileInfo(type){
 
   else if(type === 'promo'){
     icon.textContent = '🎁'; title.textContent = 'Codes promo';
-    const claimed = 18, total = 30;
-    body.innerHTML = `
-      <div class="pi-promo-counter">
-        <div class="n">${claimed} / ${total}</div>
-        <div class="l">codes déjà attribués aux 30 premiers inscrits</div>
-      </div>
-      <p style="font-size:12.5px; color:var(--text-dim); line-height:1.6; margin-bottom:14px;">Le code <b style="color:var(--accent)">NUNI30</b> offre une réduction exclusive et n'est réservé qu'aux <b>30 premiers utilisateurs</b> connectés sur la plateforme. Il reste <b style="color:var(--accent)">${total-claimed} places</b>.</p>
-      <button class="btn btn-primary" style="width:100%;" onclick="closeProfileInfo(); goTo('plans');">Utiliser mon code sur un Pass</button>`;
+    body.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Chargement…</p>`;
+    fetch(NUNI_API_BASE + '/api/promo/NUNI30/status').then(r=>{ if(!r.ok) throw new Error(); return r.json(); }).then(data=>{
+      const remaining = Math.max(0, data.max_uses - data.used_count);
+      body.innerHTML = `
+        <div class="pi-promo-counter">
+          <div class="n">${data.used_count} / ${data.max_uses}</div>
+          <div class="l">codes déjà attribués aux ${data.max_uses} premiers inscrits</div>
+        </div>
+        <p style="font-size:12.5px; color:var(--text-dim); line-height:1.6; margin-bottom:14px;">Le code <b style="color:var(--accent)">${data.code}</b> offre <b>-${data.discount_pct}%</b> et n'est réservé qu'aux <b>${data.max_uses} premiers utilisateurs</b> connectés sur la plateforme.${remaining > 0 ? ` Il reste <b style="color:var(--accent)">${remaining} places</b>.` : ' Il n\'y a plus de places disponibles.'}</p>
+        <button class="btn btn-primary" style="width:100%;" onclick="closeProfileInfo(); goTo('plans');">Utiliser mon code sur un Pass</button>`;
+    }).catch(()=>{
+      body.innerHTML = `<div class="pi-empty">Aucun code promo actif pour le moment — revenez bientôt !</div>`;
+    });
   }
 
   else if(type === 'language'){
