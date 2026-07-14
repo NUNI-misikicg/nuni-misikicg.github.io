@@ -2383,12 +2383,18 @@ function setupFpProgressScrub(){
 }
 setupFpProgressScrub();
 let userVolume = 0.85; // vrai niveau voulu par la personne — jamais écrasé par le ducking du DJ
+try{
+  const savedVolume = parseFloat(localStorage.getItem('nuni_volume'));
+  if(!isNaN(savedVolume) && savedVolume >= 0 && savedVolume <= 1){ userVolume = savedVolume; realAudio.volume = savedVolume; }
+}catch(e){ /* stockage indisponible : on garde le volume par défaut, pas bloquant */ }
+document.querySelectorAll('#volume-fill, #volume-fill-fp').forEach(v=> v.style.width = (userVolume*100) + '%');
 function setVolume(e){
   const rect = e.currentTarget.getBoundingClientRect();
   const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   document.querySelectorAll('#volume-fill, #volume-fill-fp').forEach(v=> v.style.width = (pct*100) + '%');
   realAudio.volume = pct;
   userVolume = pct;
+  try{ localStorage.setItem('nuni_volume', String(pct)); }catch(e){ /* pas bloquant */ }
 }
 let genreRadioFilter = null;
 function getCurrentPlaybackPool(){
