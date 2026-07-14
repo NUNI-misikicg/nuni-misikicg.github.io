@@ -934,6 +934,8 @@ function enterApp(view){
   document.getElementById('mobile-tabbar').style.removeProperty('display');
   document.getElementById('demo-nav').classList.remove('no-player');
   document.getElementById('mimi-widget').classList.remove('no-player');
+  loadNotifications();
+  if(!window.__notifPollingStarted){ window.__notifPollingStarted = true; setInterval(loadNotifications, 60000); }
   if(view === 'catalog'){ updateGreeting(); renderContinueListening(); loadProgress(); }
   if(view === 'clips') loadRealClips(); // recharge les vrais clips à chaque ouverture (loadRealClips appelle renderClips())
   if(view === 'library') renderLibrary();
@@ -5066,13 +5068,58 @@ function closeProfileInfo(){
   document.getElementById('profile-info-overlay').classList.remove('show');
 }
 
-/* ============ NOTIFICATIONS ============ */
+/* ============ NOTIFICATIONS — vraies données ============
+   Avant : 3 notifications codées en dur, identiques pour tout le monde, badge toujours
+   à "3". Ici : vraie liste chargée depuis /api/notifications, vrai badge non-lu, marquées
+   lues à l'ouverture du panneau. */
+function timeAgoFr(dateStr){
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if(mins < 1) return "à l'instant";
+  if(mins < 60) return `il y a ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if(hours < 24) return `il y a ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `il y a ${days} j`;
+}
+const notifIcons = { follower:'🎉', new_release:'🎵' };
+async function loadNotifications(){
+  if(!realAuthToken) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/notifications', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    if(!res.ok) return;
+    const data = await res.json();
+    const panel = document.getElementById('notif-panel');
+    const head = panel.querySelector('.notif-head');
+    panel.querySelectorAll('.notif-item').forEach(el=>el.remove());
+    if(!data.notifications.length){
+      panel.insertAdjacentHTML('beforeend', `<div class="notif-item"><div><p style="margin:0;">Aucune notification pour l'instant.</p></div></div>`);
+    } else {
+      data.notifications.forEach(n=>{
+        head.insertAdjacentHTML('afterend', `<div class="notif-item"><span class="ic">${notifIcons[n.type]||'🔔'}</span><div><b>${n.title}</b><p>${n.body} · ${timeAgoFr(n.created_at)}</p></div></div>`);
+      });
+    }
+  }catch(e){ console.error('Impossible de charger les notifications :', e); }
+
+  try{
+    const res2 = await fetch(NUNI_API_BASE + '/api/notifications/unread-count', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    if(res2.ok){
+      const { count } = await res2.json();
+      const dot = document.getElementById('notif-dot');
+      if(count > 0){ dot.textContent = count > 9 ? '9+' : String(count); dot.style.display = ''; }
+      else { dot.style.display = 'none'; }
+    }
+  }catch(e){ /* pas grave, le badge reste tel quel */ }
+}
+
 function toggleNotifPanel(){
   const panel = document.getElementById('notif-panel');
   panel.classList.toggle('open');
   if(panel.classList.contains('open')){
-    document.getElementById('notif-dot').dataset.zero = '1';
     document.getElementById('notif-dot').style.display = 'none';
+    if(realAuthToken){
+      fetch(NUNI_API_BASE + '/api/notifications/mark-read', { method:'POST', headers:{ 'Authorization':'Bearer '+realAuthToken } }).catch(()=>{});
+    }
   }
 }
 document.addEventListener('click', (e)=>{
