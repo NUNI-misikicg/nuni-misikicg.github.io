@@ -1354,7 +1354,10 @@ genres.forEach((g,i)=>{
     tile.classList.add('is-active');
     bounceEl(tile.querySelector('.genre-icon'));
     hapticPing();
-    filterCatalogByGenre(g.n);
+    if(g.n === 'Tout'){ filterCatalogByGenre('Tout'); }
+    else if(g.n === 'Nouveautés'){ openNewReleasesPage(); }
+    else if(g.n === 'Top Congo'){ openTopCongoPage(); }
+    else { openGenreCategoryPage(g.n); }
   });
   genreGrid.appendChild(tile);
 });
@@ -4767,70 +4770,97 @@ loadFeaturedArtists();
 // sur la page sans la recharger.
 setInterval(loadFeaturedArtists, 30*60*1000);
 
-// ---------- Nouveautés — page dédiée, vrais morceaux, ordre aléatoire ----------
-// Avant : "Tout voir" ne faisait rien (lien mort). Ici : un vrai overlay avec tous les
-// vrais morceaux publiés récemment (t.isReal), mélangés aléatoirement à chaque ouverture,
-// et qui se remélangent tout seuls toutes les 20s tant que la page reste ouverte.
-let newReleasesShuffleTimer = null;
-function ensureNewReleasesStyles(){
-  if(document.getElementById('newreleases-styles')) return;
+// ---------- Pages catégorie — grille plein écran réutilisable ----------
+// Avant : "Tout voir" ne faisait rien (Nouveautés, Top Congo) ou se contentait d'un
+// filtre inline sans titre dédié (genres). Ici : une seule fonction réutilisable pour
+// toutes les catégories, toujours de vrais morceaux (t.isReal), jamais de données inventées.
+let categoryShuffleTimer = null;
+function ensureCategoryPageStyles(){
+  if(document.getElementById('categorypage-styles')) return;
   const style = document.createElement('style');
-  style.id = 'newreleases-styles';
+  style.id = 'categorypage-styles';
   style.textContent = `
-    #newreleases-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
-    #newreleases-overlay.show{opacity:1;}
-    .nr-close{position:fixed; top:18px; right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
-    .nr-close:hover{background:rgba(255,255,255,0.16);}
-    .nr-wrap{max-width:1080px; margin:0 auto; padding:60px 24px 80px;}
-    .nr-title{color:#fff; font-size:26px; font-weight:800; margin-bottom:6px;}
-    .nr-sub{color:#8a8a94; font-size:13px; margin-bottom:28px;}
-    .nr-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:20px;}
-    .nr-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0; grid-column:1/-1;}
+    #categorypage-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #categorypage-overlay.show{opacity:1;}
+    .cp-close{position:fixed; top:18px; right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .cp-close:hover{background:rgba(255,255,255,0.16);}
+    .cp-wrap{max-width:1080px; margin:0 auto; padding:60px 24px 80px;}
+    .cp-title{color:#fff; font-size:26px; font-weight:800; margin-bottom:6px;}
+    .cp-sub{color:#8a8a94; font-size:13px; margin-bottom:28px;}
+    .cp-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:20px;}
+    .cp-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0; grid-column:1/-1;}
   `;
   document.head.appendChild(style);
 }
-function renderNewReleasesGrid(){
-  const grid = document.getElementById('nr-grid');
+function renderCategoryGrid(getList, shuffle){
+  const grid = document.getElementById('cp-grid');
   if(!grid) return;
-  const realNew = shuffleArray(tracks.filter(t=> t.isReal));
+  const list = shuffle ? shuffleArray(getList()) : getList();
   grid.innerHTML = '';
-  if(!realNew.length){
-    grid.innerHTML = `<div class="nr-empty">Aucune vraie sortie publiée pour le moment — revenez bientôt !</div>`;
+  if(!list.length){
+    grid.innerHTML = `<div class="cp-empty">Rien à afficher dans cette catégorie pour le moment — revenez bientôt !</div>`;
     return;
   }
-  realNew.forEach((tr,i)=>{
+  dedupeAlbums(list).forEach((tr,i)=>{
     const card = trackCard(tr);
     card.style.animationDelay = (i*0.04) + 's';
     card.classList.add('reveal-in');
     grid.appendChild(card);
   });
 }
-function openNewReleasesPage(){
-  ensureNewReleasesStyles();
-  let overlay = document.getElementById('newreleases-overlay');
+/* getList : fonction qui retourne le tableau de vrais morceaux au moment de l'appel (pas
+   un tableau figé) — permet de rester à jour si de nouveaux morceaux arrivent pendant que
+   la page est ouverte. shuffle=true fait tourner l'ordre toutes les 20s (ex: Nouveautés). */
+function openCategoryPage(title, description, getList, shuffle){
+  ensureCategoryPageStyles();
+  let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
-  overlay.id = 'newreleases-overlay';
+  overlay.id = 'categorypage-overlay';
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
   const closeOverlay = ()=>{
-    clearInterval(newReleasesShuffleTimer);
+    clearInterval(categoryShuffleTimer);
     overlay.classList.remove('show');
     document.body.style.overflow = '';
     setTimeout(()=> overlay.remove(), 200);
   };
   overlay.innerHTML = `
-    <button class="nr-close" title="Fermer">✕</button>
-    <div class="nr-wrap">
-      <div class="nr-title">Nouveautés</div>
-      <div class="nr-sub">Les vrais morceaux publiés récemment par les artistes NUNI — l'ordre change tout seul.</div>
-      <div class="nr-grid" id="nr-grid"></div>
+    <button class="cp-close" title="Fermer">✕</button>
+    <div class="cp-wrap">
+      <div class="cp-title">${title}</div>
+      <div class="cp-sub">${description}</div>
+      <div class="cp-grid" id="cp-grid"></div>
     </div>`;
-  overlay.querySelector('.nr-close').onclick = closeOverlay;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
   requestAnimationFrame(()=> overlay.classList.add('show'));
-  renderNewReleasesGrid();
-  clearInterval(newReleasesShuffleTimer);
-  newReleasesShuffleTimer = setInterval(renderNewReleasesGrid, 20000);
+  renderCategoryGrid(getList, shuffle);
+  clearInterval(categoryShuffleTimer);
+  if(shuffle) categoryShuffleTimer = setInterval(()=> renderCategoryGrid(getList, true), 20000);
+}
+function openNewReleasesPage(){
+  openCategoryPage(
+    'Nouveautés',
+    "Les vrais morceaux publiés récemment par les artistes NUNI — l'ordre change tout seul.",
+    ()=> tracks.filter(t=> t.isReal),
+    true,
+  );
+}
+function openTopCongoPage(){
+  openCategoryPage(
+    'Top Congo',
+    'Le classement réel des morceaux les plus écoutés sur NUNI, par vrais streams.',
+    ()=> getTopStreamedTracks(100),
+    false,
+  );
+}
+function openGenreCategoryPage(genreName){
+  openCategoryPage(
+    genreName,
+    `Tous les vrais morceaux ${genreName} publiés sur NUNI.`,
+    ()=> tracks.filter(t=> t.isReal && t.genre === genreName),
+    false,
+  );
 }
 
 /* ============ MOBILE TAB BAR ============ */
