@@ -49,6 +49,13 @@
     filter:drop-shadow(0 0 10px rgba(212,175,106,0.45));
   }
   .logo-txt{font-weight:700;letter-spacing:2px;font-size:14px;color:var(--text-dim);}
+  .back-btn{
+    width:34px;height:34px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:17px;text-decoration:none;
+    transition:background .2s ease, transform .2s ease;
+  }
+  .back-btn:hover{ background:rgba(212,175,106,0.16); transform:translateX(-2px); }
 
   .grid{display:grid;grid-template-columns:230px 1fr 300px;gap:22px;align-items:start;margin-top:10px;}
   @media (max-width:1100px){.grid{grid-template-columns:1fr;}}
@@ -296,7 +303,7 @@
   .profile-panel.show{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto;}
   .profile-close{position:absolute;top:14px;right:16px;background:none;border:none;color:#fff;font-size:20px;cursor:pointer;opacity:0.7;}
   .profile-close:hover{opacity:1;}
-  .profile-avatar{width:96px;height:96px;border-radius:20px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:30px;box-shadow:0 10px 30px rgba(0,0,0,0.4);}
+  .profile-avatar{width:96px;height:96px;border-radius:20px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:30px;box-shadow:0 10px 30px rgba(0,0,0,0.4);position:relative;overflow:hidden;}
   .profile-name{text-align:center;font-size:20px;font-weight:800;}
   .profile-sub{text-align:center;font-size:12px;color:var(--text-dim);margin-bottom:16px;}
   .profile-tabs{display:flex;gap:16px;justify-content:center;font-size:12.5px;color:var(--text-dim);margin-bottom:16px;}
@@ -322,6 +329,7 @@
 
   <header class="top">
     <div class="logo-row">
+      <a href="index.html" class="back-btn glass" title="Retour au catalogue" aria-label="Retour au catalogue">←</a>
       <img src="assets/logo-clean.png" alt="NUNI" class="logo-badge">
       <div class="logo-txt">NUNI</div>
     </div>
@@ -433,6 +441,17 @@ let artists = [];
 
 function initials(name){ return (name||'?').slice(0,2).toUpperCase(); }
 
+/* Vraie photo de profil quand disponible (avatar_url, uploadée sur Cloudinary comme
+   partout ailleurs sur NUNI) ; repli sur le dégradé + initiales seulement si absente. */
+function avatarMarkup(a){
+  if(a.avatar_url){
+    return `<div class="avatar" style="background:linear-gradient(135deg, ${a.color}, #0d0d16)">${initials(a.name)}<img src="${a.avatar_url}" alt="${a.name}" loading="lazy"
+        style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"
+        onerror="this.remove();"></div>`;
+  }
+  return `<div class="avatar" style="background:linear-gradient(135deg, ${a.color}, #0d0d16)">${initials(a.name)}</div>`;
+}
+
 let currentGenre = null; // null = classement général (toute la plateforme, 100% Congo)
 
 async function fetchTopArtists(){
@@ -492,7 +511,7 @@ function render(){
         inner += `<div class="gold-particles">${Array.from({length:8}).map((_,i)=>`<span class="gp" style="left:${10+i*10}%;animation-delay:${(i*0.4).toFixed(2)}s"></span>`).join('')}</div>`;
         inner += `<div class="wave-sweep"></div>`;
       }
-      inner += `<div class="avatar" style="background:linear-gradient(135deg, ${a.color}, #0d0d16)">${initials(a.name)}</div>`;
+      inner += avatarMarkup(a);
       inner += `<div class="name">${a.name} <span class="verified">✔</span></div>`;
       inner += `<div class="streams">🔥 <span class="n">${a.streams.toFixed(1)}</span>M streams</div>`;
       inner += `<div class="preview-tag">Aperçu dans 1s…</div>`;
@@ -553,7 +572,9 @@ const overlayBg = document.getElementById('overlayBg');
 const profilePanel = document.getElementById('profilePanel');
 function openProfile(a){
   document.getElementById('pAvatar').style.background = `linear-gradient(135deg, ${a.color}, #0d0d16)`;
-  document.getElementById('pAvatar').textContent = initials(a.name);
+  document.getElementById('pAvatar').innerHTML = a.avatar_url
+    ? `${initials(a.name)}<img src="${a.avatar_url}" alt="${a.name}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;border-radius:20px;" onerror="this.remove();">`
+    : initials(a.name);
   document.getElementById('pName').textContent = a.name;
   document.getElementById('pStreams').textContent = a.streams.toFixed(1)+'M';
   document.getElementById('pAuditeurs').textContent = (a.streams*0.15).toFixed(0)+'K';
