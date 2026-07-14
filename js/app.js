@@ -3569,7 +3569,21 @@ function syncFullPlayer(){
   }
   applyPlayerVisuals(tr);
   document.getElementById('fp-bio-avatar').textContent = tr.a.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  document.getElementById('fp-artist-stat').style.display = (tr.a === 'Bibi Mwana') ? 'flex' : 'none';
+  const bioProfile = artistProfiles[tr.a] || { bio:"Découvrez l'univers de "+tr.a+" sur NUNI." };
+  document.getElementById('fp-bio-text').textContent = bioProfile.bio;
+  // Avant : la carte "C'est votre morceau" ne s'affichait que pour la démo "Bibi Mwana",
+  // jamais pour un vrai artiste connecté écoutant son propre morceau. Et l'affirmation
+  // "Excellent démarrage cette semaine" était inventée, sans aucune vraie mesure derrière —
+  // on renvoie maintenant simplement vers le vrai tableau de bord, sans rien affirmer.
+  const isRealOwnTrack = !!(currentUser && currentUser.account_type === 'artist' && currentUser.artist_name === tr.a);
+  const statCard = document.getElementById('fp-artist-stat');
+  if(statCard){
+    statCard.style.display = isRealOwnTrack ? 'flex' : 'none';
+    if(isRealOwnTrack){
+      const desc = statCard.querySelector('.d');
+      if(desc) desc.innerHTML = `Voir vos vraies statistiques — <a href="#" onclick="event.preventDefault(); enterApp('dashboard'); closeFullPlayer();">tableau de bord</a>`;
+    }
+  }
   renderLyrics();
   updateLyricsHighlight();
   renderFanWall();
