@@ -3587,12 +3587,68 @@ function syncFullPlayer(){
   renderLyrics();
   updateLyricsHighlight();
   renderFanWall();
+  loadTechnicalInfo(tr);
   if(document.getElementById('fp-queue') && document.getElementById('fp-queue').classList.contains('open')) renderQueuePanel();
   // suggestions
   const similar = document.getElementById('fp-suggest-similar');
   const sameArtist = document.getElementById('fp-suggest-artist');
   if(similar){ similar.innerHTML=''; tracks.filter(t=>t.genre===tr.genre && t.t!==tr.t).slice(0,5).forEach(t=> similar.appendChild(trackCard(t))); if(!similar.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,5).forEach(t=> similar.appendChild(trackCard(t))); }
   if(sameArtist){ sameArtist.innerHTML=''; tracks.filter(t=>t.a===tr.a && t.t!==tr.t).forEach(t=> sameArtist.appendChild(trackCard(t))); if(!sameArtist.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,4).forEach(t=> sameArtist.appendChild(trackCard(t))); }
+}
+
+/* ============ INFOS TECHNIQUES RÉELLES DU FICHIER ============
+   Avant : Format/Débit/Échantillonnage/Taille étaient codés en dur ("FLAC", "1 411 kbps",
+   "44.1 kHz", "38,4 Mo"), identiques pour absolument tous les morceaux — jamais liés au
+   vrai fichier envoyé par l'artiste (souvent du MP3, pas du FLAC). Ici : la vraie taille
+   vient d'une requête HEAD réelle (en-tête Content-Length), le format de l'extension du
+   vrai fichier, et le débit est calculé (taille réelle / vraie durée) — étiqueté "estimé"
+   car c'est une moyenne, pas une mesure trame par trame. Rien n'est affiché si le morceau
+   n'a pas de vrai fichier (démo) ou si la mesure échoue — jamais de repli inventé.
+   L'échantillonnage a été retiré : aucun moyen fiable de l'obtenir sans décoder tout le
+   fichier (coûteux), donc pas de faux "44.1 kHz" générique à la place. */
+let techInfoRequestId = 0;
+async function loadTechnicalInfo(tr){
+  const myRequestId = ++techInfoRequestId;
+  const section = document.getElementById('fp-tech-section');
+  if(!section) return;
+  if(!tr.audioUrl){ section.style.display = 'none'; return; }
+  section.style.display = 'none'; // caché pendant la mesure, pas de vieille valeur affichée par erreur
+  try{
+    const res = await fetch(tr.audioUrl, { method:'HEAD' });
+    if(myRequestId !== techInfoRequestId) return; // le morceau a changé entre-temps
+    if(!res.ok) return;
+    const sizeBytes = parseInt(res.headers.get('content-length'), 10);
+    const contentType = res.headers.get('content-type') || '';
+    if(!sizeBytes) return;
+
+    const ext = (tr.audioUrl.split('.').pop() || '').split('?')[0].toUpperCase();
+    const formatLabel = contentType.includes('mpeg') || ext === 'MP3' ? 'MP3'
+      : contentType.includes('wav') || ext === 'WAV' ? 'WAV'
+      : contentType.includes('flac') || ext === 'FLAC' ? 'FLAC'
+      : contentType.includes('aac') || ext === 'AAC' || ext === 'M4A' ? 'AAC'
+      : (ext.length <= 5 ? ext : '—');
+
+    document.getElementById('fp-tech-format').textContent = formatLabel;
+    document.getElementById('fp-tech-size').textContent = (sizeBytes / (1024*1024)).toFixed(1).replace('.', ',') + ' Mo';
+
+    // Le débit dépend de la vraie durée — pas toujours connue tout de suite (le fichier peut
+    // encore être en train de charger ses métadonnées) ; on retente une fois, sans bloquer l'affichage du reste.
+    const withDuration = (d)=>{
+      if(!d || !isFinite(d)) { document.getElementById('fp-tech-bitrate').textContent = '—'; return; }
+      const kbps = Math.round((sizeBytes * 8) / d / 1000);
+      document.getElementById('fp-tech-bitrate').textContent = kbps.toLocaleString('fr-FR') + ' kbps';
+    };
+    if(usingRealAudio && isFinite(realAudio.duration) && realAudio.duration > 0){
+      withDuration(realAudio.duration);
+    } else {
+      document.getElementById('fp-tech-bitrate').textContent = '—';
+      realAudio.addEventListener('loadedmetadata', function once(){
+        realAudio.removeEventListener('loadedmetadata', once);
+        if(myRequestId === techInfoRequestId) withDuration(realAudio.duration);
+      });
+    }
+    section.style.display = '';
+  }catch(e){ /* mesure impossible (CORS, réseau) : section reste cachée, jamais de valeur inventée */ }
 }
 
 /* ============ VISUELS DU LECTEUR : fond dégradé + halo + pochette (via NuniPalette) ============ */
