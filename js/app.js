@@ -1908,13 +1908,32 @@ async function loadRealTracks(){
 }
 loadRealTracks();
 
-/* ============ RELEASE CALENDAR ============ */
-const releases = [
-  {d:'04', m:'Juil', t:'Nzela ya Sika', a:'Bibi Mwana', c:'Dans 4 jours'},
-  {d:'09', m:'Juil', t:'Kin la Belle', a:'Tcheza Nation', c:'Dans 9 jours'},
-  {d:'16', m:'Juil', t:'Sango Pesi', a:'Kessy Tina', c:'Dans 16 jours'},
-  {d:'22', m:'Juil', t:'Mboka Na Biso', a:'Mbote System', c:'Dans 22 jours'},
-];
+/* ============ RELEASE CALENDAR — vraies sorties, toute la plateforme ============ */
+function loadUpcomingReleases(){
+  const row = document.getElementById('release-row');
+  if(!row) return;
+  fetch(NUNI_API_BASE + '/api/releases/upcoming').then(r=>r.json()).then(data=>{
+    const list = data.releases || [];
+    row.innerHTML = '';
+    if(!list.length){
+      row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucune sortie programmée pour le moment.</p>`;
+      return;
+    }
+    const mapped = list.map(r=>{
+      const d = new Date(r.scheduled_release_at);
+      const days = Math.max(0, Math.ceil((d - new Date()) / 86400000));
+      return {
+        d: String(d.getDate()).padStart(2,'0'),
+        m: d.toLocaleDateString('fr-FR', {month:'short'}).replace('.',''),
+        t: r.title, a: r.artist_name || r.first_name || 'Artiste NUNI',
+        c: days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `Dans ${days} jours`,
+      };
+    });
+    fillReleaseRow('release-row', mapped);
+  }).catch(()=>{
+    row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Calendrier momentanément indisponible.</p>`;
+  });
+}
 function fillReleaseRow(id, list){
   const row = document.getElementById(id);
   if(!row) return;
@@ -1927,7 +1946,8 @@ function fillReleaseRow(id, list){
     row.appendChild(card);
   });
 }
-fillReleaseRow('release-row', releases);
+loadUpcomingReleases();
+setInterval(loadUpcomingReleases, 60000); // se resynchronise avec les vraies dates toutes les 60s
 // Le calendrier de la page artiste ('artist-release-row') se remplit désormais dynamiquement
 // avec les vraies sorties programmées, dans openArtistPage() — plus de données factices ici.
 
@@ -5082,7 +5102,7 @@ function timeAgoFr(dateStr){
   const days = Math.floor(hours / 24);
   return `il y a ${days} j`;
 }
-const notifIcons = { follower:'🎉', new_release:'🎵' };
+const notifIcons = { follower:'🎉', new_release:'🎵', follower_milestone:'🏆', absence_reminder:'👋' };
 async function loadNotifications(){
   if(!realAuthToken) return;
   try{
