@@ -336,6 +336,22 @@ function stopAllPlayback(){
     const playerBar = document.getElementById('player-bar');
     if(playerBar) playerBar.style.display = 'none';
     closeFullPlayer();
+    // Le mode DJ/Radio (et sa file de lecture) ne s'arrêtait pas ici — un compte qui se
+    // connectait juste après quelqu'un resté en mode DJ héritait silencieusement de sa file
+    // de morceaux et de son état, sans jamais avoir activé le DJ lui-même.
+    djMode = false; radioMode = false; genreRadioActive = null;
+    djPlaying = false; tunerPlaying = false;
+    djQueue = []; djQueuePos = 0;
+    clearInterval(djTimer);
+    if(djFadeTimer){ clearInterval(djFadeTimer); djFadeTimer = null; }
+    if(djFadeAudio) djFadeAudio.pause();
+    djCrossfadeTriggered = false;
+    if(djAvatarInstance) djAvatarInstance.stop();
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    if(djVoiceClipAudio) djVoiceClipAudio.pause();
+    if(djDuckRampTimer){ clearInterval(djDuckRampTimer); djDuckRampTimer = null; }
+    const radioBadge = document.getElementById('radio-badge');
+    if(radioBadge) radioBadge.style.display = 'none';
   }catch(e){ /* pas bloquant si un élément du lecteur n'existe pas encore au moment de l'appel */ }
 }
 // Vérification périodique en arrière-plan : si l'admin suspend/supprime ce compte pendant
