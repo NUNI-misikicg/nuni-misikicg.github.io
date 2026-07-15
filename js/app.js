@@ -2625,31 +2625,43 @@ function setupFpProgressScrub(){
     tip.style.left = (pct*100) + '%';
     tip.classList.add('show');
   };
-  track.addEventListener('mousemove', (e)=>{ if(!dragging) showTip(e.clientX); });
-  track.addEventListener('mouseleave', ()=>{ if(!dragging) tip.classList.remove('show'); });
-  track.addEventListener('mousedown', (e)=>{
+  const startDrag = (clientX)=>{
     dragging = true;
     track.classList.add('is-scrubbing');
-    showTip(e.clientX);
-    const { time } = posToTime(e.clientX);
+    showTip(clientX);
+    const { time } = posToTime(clientX);
     elapsed = Math.max(0, Math.min(duration, time));
     if(usingRealAudio) realAudio.currentTime = elapsed;
     updateProgress();
-  });
-  window.addEventListener('mousemove', (e)=>{
+  };
+  const moveDrag = (clientX)=>{
     if(!dragging) return;
-    showTip(e.clientX);
-    const { time } = posToTime(e.clientX);
+    showTip(clientX);
+    const { time } = posToTime(clientX);
     elapsed = Math.max(0, Math.min(duration, time));
     if(usingRealAudio) realAudio.currentTime = elapsed;
     updateProgress();
-  });
-  window.addEventListener('mouseup', ()=>{
+  };
+  const endDrag = ()=>{
     if(!dragging) return;
     dragging = false;
     track.classList.remove('is-scrubbing');
     tip.classList.remove('show');
-  });
+  };
+
+  track.addEventListener('mousemove', (e)=>{ if(!dragging) showTip(e.clientX); });
+  track.addEventListener('mouseleave', ()=>{ if(!dragging) tip.classList.remove('show'); });
+  track.addEventListener('mousedown', (e)=> startDrag(e.clientX));
+  window.addEventListener('mousemove', (e)=> moveDrag(e.clientX));
+  window.addEventListener('mouseup', endDrag);
+
+  // Avant : seuls les événements souris étaient gérés — impossible de faire glisser cette
+  // barre au doigt sur mobile/tablette (le tap fonctionnait via seek(), mais jamais le
+  // vrai glissé continu pour viser précisément un instant du morceau).
+  track.addEventListener('touchstart', (e)=>{ startDrag(e.touches[0].clientX); }, { passive:true });
+  track.addEventListener('touchmove', (e)=>{ moveDrag(e.touches[0].clientX); }, { passive:true });
+  track.addEventListener('touchend', endDrag);
+  track.addEventListener('touchcancel', endDrag);
 }
 setupFpProgressScrub();
 let userVolume = 1; // vrai niveau voulu par la personne — jamais écrasé par le ducking du DJ
