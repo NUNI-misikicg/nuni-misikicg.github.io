@@ -730,6 +730,9 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   transition:opacity .3s var(--ease), transform .35s var(--ease); border:1px solid rgba(255,255,255,.25);
 }
 .track-card:hover .play-fab{ opacity:1; transform:translateY(0) scale(1); }
+@media(hover:none){
+  .cover .play-fab{ opacity:.9; transform:translateY(0) scale(1); }
+}
 .cover .play-fab svg{ width:14px; height:14px; fill:#fff; }
 
 /* generated cover palettes */
@@ -1123,6 +1126,9 @@ html.is-playing .fp-title{ font-weight:800; }
 .fp-queue-info .t{ font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .fp-queue-info .a{ font-size:11px; color:var(--text-faint); }
 .fp-queue-empty{ font-size:12.5px; color:var(--text-faint); padding:6px 0; }
+.fp-queue-section-lbl{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); padding:10px 10px 4px; }
+.fp-queue-remove{ width:32px; height:32px; min-width:32px; border-radius:50%; background:rgba(255,255,255,.06); border:none; color:var(--text-faint); font-size:14px; cursor:pointer; flex-shrink:0; }
+.fp-queue-remove:hover{ background:rgba(255,80,80,.18); color:#ff6b6b; }
 
 .fp-lyrics{ max-width:480px; margin:10px auto 0; display:none; }
 .fp-lyrics.open{ display:block; }

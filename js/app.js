@@ -1293,7 +1293,7 @@ function openArtistPage(name, artistId){
       delBtn.className = 'track-delete-btn';
       delBtn.title = 'Supprimer ce morceau';
       delBtn.textContent = '🗑️';
-      delBtn.style.cssText = 'position:absolute; top:8px; right:8px; z-index:4; width:28px; height:28px; border-radius:50%; background:rgba(0,0,0,.65); color:#fff; border:none; cursor:pointer; font-size:13px;';
+      delBtn.style.cssText = 'position:absolute; top:6px; right:42px; z-index:4; width:28px; height:28px; border-radius:50%; background:rgba(0,0,0,.65); color:#fff; border:none; cursor:pointer; font-size:13px;';
       delBtn.onclick = (e)=>{ e.stopPropagation(); deleteMyTrack(card.dataset.trackId); };
       cover.appendChild(delBtn);
     });
@@ -1753,6 +1753,7 @@ function ensureAlbumViewStyles(){
     .av-row-title{flex:1; color:#EDEDED; font-size:14.5px; font-weight:500;}
     .av-row-play{width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#0A0A10; background:#D4AF6A; opacity:0; transition:opacity .15s ease;}
     .av-row:hover .av-row-play{opacity:1;}
+    @media(hover:none){ .av-row-play{opacity:.85;} }
     .av-list-panel{background:rgba(255,255,255,0.05); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:6px; overflow:hidden;}
     .av-row{opacity:0; animation:avRowIn .35s ease forwards;}
     @keyframes avRowIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
@@ -1920,6 +1921,21 @@ function updateNowPlayingCards(){
     card.classList.toggle('is-now-playing', !!(key && playing && card.dataset.trackKey === key));
   });
 }
+// ============ FILE D'ATTENTE PERSONNELLE ============
+// Avant : "File d'attente" n'était qu'une suggestion automatique dérivée du pool de lecture
+// (genre/radio en cours) — impossible d'y ajouter soi-même un morceau précis. Ici : une vraie
+// file contrôlée par la personne, prioritaire sur les suggestions automatiques.
+let userQueue = [];
+function addToQueue(tr){
+  userQueue.push(tr);
+  toast(`« ${tr.t} » ajouté à votre file d'attente.`);
+  if(document.getElementById('fp-queue') && document.getElementById('fp-queue').classList.contains('open')) renderQueuePanel();
+}
+function removeFromQueue(index){
+  userQueue.splice(index,1);
+  renderQueuePanel();
+}
+
 function trackCard(tr){
   const card = document.createElement('div');
   card.className = 'track-card';
@@ -1933,6 +1949,7 @@ function trackCard(tr){
     ${coverInner}
       ${tr.audioUrl ? '<span class="imported-badge" title="Votre import">Vous</span>' : ''}
       ${isMultiTrack ? `<span class="nuni-type-badge" title="${tr.releaseType}">💿 ${tr.releaseType}</span>` : ''}
+      <button class="track-card-menu-btn" aria-label="Options">⋮</button>
       <div class="play-fab">
         <svg viewBox="0 0 24 24" class="play-fab-icon"><path d="M8 5v14l11-7z"/></svg>
         <span class="eq play-fab-eq"><i></i><i></i><i></i></span>
@@ -1944,8 +1961,55 @@ function trackCard(tr){
   card.querySelector('.cover').onclick = ()=> handleTrackCardClick(tr);
   card.querySelector('.ttl').onclick = ()=> handleTrackCardClick(tr);
   card.querySelector('.art').onclick = (e)=>{ e.stopPropagation(); openArtistPage(tr.a, tr.artistId); };
+  card.querySelector('.track-card-menu-btn').onclick = (e)=>{ e.stopPropagation(); openTrackCardMenu(tr, e.currentTarget); };
   if(currentTrack && playing && trackKeyOf(currentTrack) === trackKeyOf(tr)) card.classList.add('is-now-playing');
   return card;
+}
+/* Petit menu tactile (zone d'appui 44px min, conforme aux recommandations mobiles) — vraies
+   actions : ajouter à la file d'attente, aimer/retirer des favoris, voir l'artiste. */
+function ensureTrackCardMenuStyles(){
+  if(document.getElementById('track-card-menu-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'track-card-menu-styles';
+  style.textContent = `
+    .track-card-menu-btn{position:absolute; top:6px; right:6px; z-index:5; width:30px; height:30px; min-width:30px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; border:none; font-size:16px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+    .track-card-menu-btn:hover{ background:rgba(0,0,0,.75); }
+    #tcm-overlay{ position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,.4); }
+    #tcm-sheet{ position:fixed; left:0; right:0; bottom:0; z-index:9999; background:var(--bg-elev,#1a1a22); border-radius:20px 20px 0 0; padding:10px 10px calc(14px + env(safe-area-inset-bottom,0)); box-shadow:0 -10px 40px rgba(0,0,0,.5); }
+    #tcm-sheet .tcm-handle{ width:36px; height:4px; border-radius:4px; background:rgba(255,255,255,.2); margin:6px auto 12px; }
+    #tcm-sheet .tcm-title{ font-size:13px; color:var(--text-faint,#9aa); padding:0 10px 10px; }
+    #tcm-sheet button{ width:100%; text-align:left; padding:14px 12px; min-height:48px; border-radius:12px; background:none; border:none; color:var(--text,#fff); font-size:15px; display:flex; align-items:center; gap:12px; cursor:pointer; }
+    #tcm-sheet button:hover, #tcm-sheet button:active{ background:rgba(255,255,255,.06); }
+  `;
+  document.head.appendChild(style);
+}
+function closeTrackCardMenu(){
+  const overlay = document.getElementById('tcm-overlay');
+  const sheet = document.getElementById('tcm-sheet');
+  if(overlay) overlay.remove();
+  if(sheet) sheet.remove();
+}
+function openTrackCardMenu(tr){
+  ensureTrackCardMenuStyles();
+  closeTrackCardMenu();
+  const isLiked = favoritesPlaylist.some(f=> f.t === tr.t);
+  const overlay = document.createElement('div');
+  overlay.id = 'tcm-overlay';
+  overlay.onclick = closeTrackCardMenu;
+  const sheet = document.createElement('div');
+  sheet.id = 'tcm-sheet';
+  sheet.innerHTML = `
+    <div class="tcm-handle"></div>
+    <div class="tcm-title">${tr.t} — ${tr.a}</div>
+    <button id="tcm-queue">➕ <span>Ajouter à la file d'attente</span></button>
+    <button id="tcm-fav" class="${isLiked ? 'liked' : ''}">${isLiked ? '💔 <span>Retirer des favoris</span>' : '❤️ <span>Ajouter aux favoris</span>'}</button>
+    <button id="tcm-artist">👤 <span>Voir l'artiste</span></button>
+  `;
+  document.body.appendChild(overlay);
+  document.body.appendChild(sheet);
+  document.getElementById('tcm-queue').onclick = ()=>{ addToQueue(tr); closeTrackCardMenu(); };
+  document.getElementById('tcm-fav').onclick = (e)=>{ toggleLike(e.currentTarget, tr); closeTrackCardMenu(); };
+  document.getElementById('tcm-artist').onclick = ()=>{ openArtistPage(tr.a, tr.artistId); closeTrackCardMenu(); };
 }
 function dedupeAlbums(list){
   const seen = new Set();
@@ -2140,7 +2204,7 @@ let progressTimer, elapsed = 0, duration = 204; // 3:24
 let playbackSpeed = 1, qualityIndex = 1;
 let usingRealAudio = false;
 const realAudio = new Audio();
-realAudio.volume = 0.85;
+realAudio.volume = 1;
 realAudio.preload = 'auto';
 realAudio.addEventListener('loadedmetadata', ()=>{
   if(usingRealAudio && isFinite(realAudio.duration)){ duration = realAudio.duration; updateProgress(); }
@@ -2588,7 +2652,7 @@ function setupFpProgressScrub(){
   });
 }
 setupFpProgressScrub();
-let userVolume = 0.85; // vrai niveau voulu par la personne — jamais écrasé par le ducking du DJ
+let userVolume = 1; // vrai niveau voulu par la personne — jamais écrasé par le ducking du DJ
 try{
   const savedVolume = parseFloat(localStorage.getItem('nuni_volume'));
   if(!isNaN(savedVolume) && savedVolume >= 0 && savedVolume <= 1){ userVolume = savedVolume; realAudio.volume = savedVolume; }
@@ -2640,6 +2704,13 @@ function nextTrack(){
     playTrack(djAdvanceQueue());
     return;
   }
+  // La vraie file d'attente personnelle est toujours prioritaire sur la suggestion
+  // automatique — c'est justement le but d'y ajouter un morceau soi-même.
+  if(userQueue.length){
+    const next = userQueue.shift();
+    playTrack(next);
+    return;
+  }
   const pool = getCurrentPlaybackPool();
   if(shuffleOn && pool.length > 1){
     // Vraie lecture aléatoire — jamais le même morceau deux fois de suite par hasard.
@@ -2665,32 +2736,37 @@ function syncLikeButtons(tr){
   const isLiked = favoritesPlaylist.some(f=> f.t === tr.t);
   document.querySelectorAll('#player-like-btn, #fp-like-btn').forEach(b=> b.classList.toggle('liked', isLiked));
 }
-async function toggleLike(btn){
+async function toggleLike(btn, trackOverride){
+  // Avant : cette fonction dépendait toujours de la variable globale currentTrack — impossible
+  // de liker un morceau depuis un menu (ex: le "..." d'une carte) sans risquer de liker le
+  // morceau ACTUELLEMENT EN LECTURE à la place. Le second paramètre permet de cibler
+  // précisément le bon morceau, currentTrack restant le comportement par défaut.
+  const tr = trackOverride || currentTrack;
   bounceEl(btn);
   hapticPing();
 
   // Morceau réel + compte connecté : vrai like persisté en base, partagé entre tous vos
   // appareils. Avant, ceci ne touchait jamais le serveur — un simple tableau en mémoire,
   // remis à zéro à chaque rechargement de page.
-  if(currentTrack.isReal && currentTrack.realId && realAuthToken){
+  if(tr.isReal && tr.realId && realAuthToken){
     btn.disabled = true;
     try{
-      const res = await fetch(NUNI_API_BASE + '/api/tracks/' + currentTrack.realId + '/like', {
+      const res = await fetch(NUNI_API_BASE + '/api/tracks/' + tr.realId + '/like', {
         method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken }
       });
       const data = await res.json();
       btn.disabled = false;
       if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
-      currentTrack.likes = data.likes;
+      tr.likes = data.likes;
       if(data.liked){
-        if(!favoritesPlaylist.find(t=>t.t===currentTrack.t)) favoritesPlaylist.unshift(currentTrack);
+        if(!favoritesPlaylist.find(t=>t.t===tr.t)) favoritesPlaylist.unshift(tr);
         spawnFlyPing(btn, '❤️');
       } else {
-        favoritesPlaylist = favoritesPlaylist.filter(t=>t.t!==currentTrack.t);
+        favoritesPlaylist = favoritesPlaylist.filter(t=>t.t!==tr.t);
       }
-      syncLikeButtons(currentTrack);
+      if(tr === currentTrack) syncLikeButtons(tr);
       document.querySelectorAll('.track-card').forEach(card=>{
-        if(card.dataset.trackId === String(currentTrack.realId)){
+        if(card.dataset.trackId === String(tr.realId)){
           const likeSpans = card.querySelectorAll('.likes span');
           if(likeSpans[1]) likeSpans[1].textContent = formatLikes(data.likes);
         }
@@ -2707,12 +2783,12 @@ async function toggleLike(btn){
   // comme avant (pas de vrai compte pour rattacher un like persistant).
   const willLike = !btn.classList.contains('liked');
   if(willLike){
-    if(!favoritesPlaylist.find(t=>t.t===currentTrack.t)) favoritesPlaylist.unshift(currentTrack);
+    if(!favoritesPlaylist.find(t=>t.t===tr.t)) favoritesPlaylist.unshift(tr);
     spawnFlyPing(btn, '❤️');
   } else {
-    favoritesPlaylist = favoritesPlaylist.filter(t=>t.t!==currentTrack.t);
+    favoritesPlaylist = favoritesPlaylist.filter(t=>t.t!==tr.t);
   }
-  syncLikeButtons(currentTrack);
+  if(tr === currentTrack) syncLikeButtons(tr);
   toast(willLike ? 'Ajouté à votre playlist Favoris — visible dans Bibliothèque.' : 'Retiré de votre playlist Favoris.');
 }
 /* Avant : ces deux boutons ne faisaient QUE changer leur propre couleur (juste celui cliqué,
@@ -4074,11 +4150,20 @@ function renderQueuePanel(){
 
   current.innerHTML = `<div class="fp-queue-item is-current">${queueRowHtml(currentTrack)}</div>`;
 
+  // Vraie file personnelle (ajoutée depuis le menu "..." d'un morceau) — toujours affichée
+  // en premier, clairement distincte des suggestions automatiques du pool en cours.
+  const userQueueHtml = userQueue.length
+    ? `<div class="fp-queue-section-lbl">Votre file d'attente</div>` +
+      userQueue.map((tr, idx)=> `<div class="fp-queue-item" data-queue-kind="user" data-queue-idx="${idx}">${queueRowHtml(tr, '<button class="fp-queue-remove" data-remove-idx="'+idx+'" title="Retirer">✕</button>')}</div>`).join('')
+    : '';
+
   fpQueueUpcoming = [];
   for(let k=1; k<=5 && k<pool.length; k++) fpQueueUpcoming.push(pool[(i+k) % pool.length]);
-  next.innerHTML = fpQueueUpcoming.length
-    ? fpQueueUpcoming.map((tr, idx)=> `<div class="fp-queue-item" data-queue-kind="next" data-queue-idx="${idx}">${queueRowHtml(tr)}</div>`).join('')
-    : `<div class="fp-queue-empty">Rien d'autre à suivre pour le moment.</div>`;
+  const autoHtml = fpQueueUpcoming.length
+    ? (userQueue.length ? `<div class="fp-queue-section-lbl">À suivre</div>` : '') +
+      fpQueueUpcoming.map((tr, idx)=> `<div class="fp-queue-item" data-queue-kind="next" data-queue-idx="${idx}">${queueRowHtml(tr)}</div>`).join('')
+    : (userQueue.length ? '' : `<div class="fp-queue-empty">Rien d'autre à suivre pour le moment.</div>`);
+  next.innerHTML = userQueueHtml + autoHtml;
 
   fpQueueHistoryList = listeningHistory.filter(h=> h.track.t !== currentTrack.t).slice(0, 5).map(h=> h.track);
   hist.innerHTML = fpQueueHistoryList.length
@@ -4086,11 +4171,16 @@ function renderQueuePanel(){
     : `<div class="fp-queue-empty">Aucun historique récent.</div>`;
 }
 document.addEventListener('click', (e)=>{
+  const removeBtn = e.target.closest('.fp-queue-remove');
+  if(removeBtn){ e.stopPropagation(); removeFromQueue(Number(removeBtn.dataset.removeIdx)); return; }
   const item = e.target.closest('.fp-queue-item[data-queue-kind]');
   if(!item) return;
   const kind = item.dataset.queueKind;
   const idx = Number(item.dataset.queueIdx);
-  const tr = kind === 'next' ? fpQueueUpcoming[idx] : fpQueueHistoryList[idx];
+  let tr;
+  if(kind === 'user'){ tr = userQueue[idx]; if(tr) userQueue.splice(idx,1); }
+  else if(kind === 'next'){ tr = fpQueueUpcoming[idx]; }
+  else { tr = fpQueueHistoryList[idx]; }
   if(tr) playTrack(tr);
 });
 function toggleQueuePanel(){
