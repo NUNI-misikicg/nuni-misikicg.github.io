@@ -1129,9 +1129,12 @@ function enterApp(view){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
+// Avant : ce bouton laissait n'importe quel visiteur (sans compte, sans payer) accéder
+// directement au catalogue, au dashboard ou à une page artiste — un vrai contournement du
+// système de Pass, resté actif depuis le développement initial. Désactivé : seul un vrai
+// compte avec un Pass actif peut désormais accéder à ces écrans (via connexion normale).
 function jumpDemo(screen){
-  if(screen==='home' || screen==='plans'){ goTo(screen); }
-  else { enterApp(screen); }
+  toast('Aperçu désactivé — connectez-vous ou créez un compte pour accéder à NUNI.');
   document.getElementById('demo-menu').classList.remove('open');
 }
 document.getElementById('demo-toggle').addEventListener('click', ()=>{
