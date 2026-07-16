@@ -3188,7 +3188,7 @@ function openClipWatchPage(clip){
     ? `style="background-image:url(${clip.artistAvatarUrl}); background-size:cover; background-position:center;"`
     : '';
   const videoInner = clip.videoUrl
-    ? `<video src="${clip.videoUrl}" controls autoplay></video>`
+    ? `<video src="${clip.videoUrl}" controls autoplay playsinline></video>`
     : `<div class="cw-video-placeholder">🎬 Aperçu vidéo non fourni pour ce clip de démonstration.</div>`;
 
   overlay.innerHTML = `
