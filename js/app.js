@@ -1286,11 +1286,17 @@ function openArtistPage(name, artistId){
   // Vrai nombre de followers — visible pour n'importe quel visiteur, pas seulement sur sa
   // propre page. Se met aussi à jour tout de suite après un clic sur "Suivre" (voir toggleFollow).
   const statFollowersEl = document.getElementById('artist-stat-followers');
+  const statMonthlyListenersEl = document.getElementById('artist-stat-monthly-listeners');
   if(statFollowersEl){
     if(currentArtistPageRealId){
       fetch(NUNI_API_BASE + '/api/artist/' + currentArtistPageRealId + '/public-stats')
         .then(r=>r.json()).then(data=>{
           if(typeof data.follower_count === 'number') statFollowersEl.textContent = data.follower_count.toLocaleString('fr-FR');
+          // Auditeurs par mois — vrai nombre de personnes distinctes ayant réellement écouté
+          // depuis le début du mois calendaire en cours. Recalculé côté serveur à chaque
+          // visite : monte ou descend tout seul chaque mois selon la vraie activité, sans
+          // jamais avoir besoin d'une remise à zéro manuelle.
+          if(statMonthlyListenersEl && typeof data.monthly_listeners === 'number') statMonthlyListenersEl.textContent = data.monthly_listeners.toLocaleString('fr-FR');
           if(data.avatar_url && !(isOwnArtistPage && currentUser.avatar_url)){
             artistPageAvatarEl.style.backgroundImage = `url(${data.avatar_url})`;
             artistPageAvatarEl.textContent = '';
@@ -1301,6 +1307,7 @@ function openArtistPage(name, artistId){
         }).catch(()=>{});
     } else {
       statFollowersEl.textContent = '—';
+      if(statMonthlyListenersEl) statMonthlyListenersEl.textContent = '—';
     }
   }
 
