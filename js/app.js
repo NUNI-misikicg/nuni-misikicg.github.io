@@ -1768,7 +1768,7 @@ function ensureAlbumViewStyles(){
     .av-icon-btn:hover{background:rgba(212,175,106,0.18); color:#D4AF6A; transform:translateY(-1px);}
     .av-icon-btn.is-active{background:#D4AF6A; color:#0A0A10; border-color:#D4AF6A;}
     .av-play-all:hover{transform:translateY(-1px); box-shadow:0 8px 22px rgba(212,175,106,0.18);}
-    .av-close{position:fixed; top:18px; right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .av-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .av-close:hover{background:rgba(255,255,255,0.12);}
     .av-list{max-width:760px; margin:26px auto 80px; padding:0 24px;}
     .av-row{display:flex; align-items:center; gap:16px; padding:12px 10px; border-radius:10px; cursor:pointer; transition:background .15s ease;}
@@ -1917,6 +1917,7 @@ function openAlbumView(tr){
       document.body.appendChild(a);
       a.click();
       a.remove();
+      logDownload(t);
       count++;
     });
     toast(count ? `Téléchargement de ${count} fichier(s) lancé.` : 'Aucun fichier audio disponible pour le téléchargement.');
@@ -1938,6 +1939,7 @@ function openAlbumView(tr){
   });
 
   requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
 }
 function trackKeyOf(tr){ return (tr.t||'') + '|' + (tr.a||''); }
 function updateNowPlayingCards(){
@@ -2732,6 +2734,40 @@ function setupFullPlayerSwipeToClose(){
   topbar.addEventListener('touchcancel', endSwipe);
 }
 setupFullPlayerSwipeToClose();
+
+/* ============ GLISSER VERS LE BAS POUR FERMER — réutilisable pour toutes les fenêtres
+   plein écran (catégories, playlists, Top 100, vue album, lecteur de clip). Ne se déclenche
+   que si on part du tout haut de la fenêtre (scrollTop à 0), pour ne jamais gêner le
+   défilement normal du contenu en dessous. */
+function attachSwipeDownToClose(overlay, closeFn){
+  if(!overlay) return;
+  let startY = 0, startTime = 0, dragging = false;
+  overlay.addEventListener('touchstart', (e)=>{
+    if(overlay.scrollTop > 4) return; // pas tout en haut : geste normal de défilement, pas de fermeture
+    startY = e.touches[0].clientY;
+    startTime = Date.now();
+    dragging = true;
+  }, { passive:true });
+  overlay.addEventListener('touchmove', (e)=>{
+    if(!dragging) return;
+    const dy = e.touches[0].clientY - startY;
+    if(dy < 0){ dragging = false; return; } // remonte : on laisse faire, ce n'est pas un geste de fermeture
+    overlay.style.transform = `translateY(${dy}px)`;
+    overlay.style.opacity = String(Math.max(0.4, 1 - dy / 600));
+  }, { passive:true });
+  const endSwipe = (e)=>{
+    if(!dragging) return;
+    dragging = false;
+    const endY = (e.changedTouches && e.changedTouches[0].clientY) || startY;
+    const dy = endY - startY;
+    const velocity = dy / Math.max(Date.now() - startTime, 1);
+    overlay.style.transform = '';
+    overlay.style.opacity = '';
+    if(dy > 110 || (dy > 30 && velocity > 0.5)) closeFn();
+  };
+  overlay.addEventListener('touchend', endSwipe);
+  overlay.addEventListener('touchcancel', endSwipe);
+}
 let userVolume = 1; // vrai niveau voulu par la personne — jamais écrasé par le ducking du DJ
 try{
   const savedVolume = parseFloat(localStorage.getItem('nuni_volume'));
@@ -3081,7 +3117,7 @@ function ensureClipWatchStyles(){
   style.textContent = `
     #clip-watch-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
     #clip-watch-overlay.show{opacity:1;}
-    .cw-close{position:fixed; top:18px; right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .cw-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .cw-close:hover{background:rgba(255,255,255,0.16);}
     .cw-wrap{max-width:1360px; margin:0 auto; padding:60px 24px 80px; display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:32px; align-items:start;}
     .cw-main{min-width:0;}
@@ -3288,6 +3324,7 @@ function openClipWatchPage(clip){
   });
 
   requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
 }
 function clipCard(clip){
   const card = document.createElement('div');
@@ -4067,6 +4104,23 @@ function shareCurrentTrack(){
     toast('Voici le lien à partager : ' + url);
   }
 }
+/* ============ HISTORIQUE DES TÉLÉCHARGEMENTS — vrai suivi local ============
+   Avant : "Téléchargements" affichait un message générique ("apparaîtront ici"), rien
+   n'était jamais suivi nulle part. Ici : chaque vrai téléchargement (lecteur ou album) est
+   enregistré localement sur cet appareil (localStorage — aucun serveur ne suit ça, c'est un
+   vrai historique côté appareil, pas une donnée inventée). */
+const NUNI_DOWNLOADS_KEY = 'nuni_downloads';
+function logDownload(tr){
+  try{
+    let list = JSON.parse(localStorage.getItem(NUNI_DOWNLOADS_KEY) || '[]');
+    list = list.filter(d=> d.t !== tr.t || d.a !== tr.a); // évite les doublons, remonte en tête si déjà présent
+    list.unshift({ t:tr.t, a:tr.a, cover:tr.cover||null, at: Date.now() });
+    localStorage.setItem(NUNI_DOWNLOADS_KEY, JSON.stringify(list.slice(0, 50)));
+  }catch(e){ /* stockage indisponible : pas bloquant */ }
+}
+function getDownloadHistory(){
+  try{ return JSON.parse(localStorage.getItem(NUNI_DOWNLOADS_KEY) || '[]'); }catch(e){ return []; }
+}
 function downloadCurrentTrack(){
   const tr = currentTrack;
   if(!tr.audioUrl){
@@ -4079,6 +4133,7 @@ function downloadCurrentTrack(){
   document.body.appendChild(a);
   a.click();
   a.remove();
+  logDownload(tr);
   toast('Téléchargement lancé — "' + tr.t + '".');
 }
 async function reportCurrentTrack(){
@@ -5238,7 +5293,7 @@ function ensureTop100Styles(){
   style.textContent = `
     #top100-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
     #top100-overlay.show{opacity:1;}
-    .t100-close{position:fixed; top:18px; right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .t100-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .t100-close:hover{background:rgba(255,255,255,0.16);}
     .t100-wrap{max-width:720px; margin:0 auto; padding:60px 24px 80px;}
     .t100-title{color:#fff; font-size:26px; font-weight:800; margin-bottom:6px;}
@@ -5275,6 +5330,7 @@ async function openTop100ArtistsPage(){
     </div>`;
   overlay.querySelector('.t100-close').onclick = closeOverlay;
   requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
 
   try{
     const res = await fetch(NUNI_API_BASE + '/api/artists/top100');
@@ -5404,7 +5460,7 @@ function ensureCategoryPageStyles(){
   style.textContent = `
     #categorypage-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
     #categorypage-overlay.show{opacity:1;}
-    .cp-close{position:fixed; top:18px; right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .cp-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .cp-close:hover{background:rgba(255,255,255,0.16);}
     .cp-wrap{max-width:1080px; margin:0 auto; padding:60px 24px 80px;}
     .cp-title{color:#fff; font-size:26px; font-weight:800; margin-bottom:6px;}
@@ -5456,6 +5512,7 @@ function openCategoryPage(title, description, getList, shuffle){
     </div>`;
   overlay.querySelector('.cp-close').onclick = closeOverlay;
   requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
   renderCategoryGrid(getList, shuffle);
   clearInterval(categoryShuffleTimer);
   if(shuffle) categoryShuffleTimer = setInterval(()=> renderCategoryGrid(getList, true), 20000);
@@ -5553,7 +5610,7 @@ function ensurePlaylistsPageStyles(){
   style.textContent = `
     #allplaylists-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
     #allplaylists-overlay.show{opacity:1;}
-    .apl-close{position:fixed; top:18px; right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .apl-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .apl-close:hover{background:rgba(255,255,255,0.16);}
     .apl-wrap{max-width:1080px; margin:0 auto; padding:60px 24px 80px;}
     .apl-title{color:#fff; font-size:26px; font-weight:800; margin-bottom:6px;}
@@ -5581,6 +5638,7 @@ async function openAllPlaylistsPage(){
     </div>`;
   overlay.querySelector('.apl-close').onclick = closeOverlay;
   requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
   try{
     const res = await fetch(NUNI_API_BASE + '/api/playlists');
     const data = await res.json();
@@ -5932,6 +5990,26 @@ function openProfileInfo(type){
       <a class="pi-contact-row" href="#" onclick="event.preventDefault(); toast('Instagram NUNI — bientôt en ligne.')"><span class="ic">📷</span><div><div class="t">Instagram</div><div class="s">@nunimusic</div></div></a>
       <a class="pi-contact-row" href="#" onclick="event.preventDefault(); toast('Facebook NUNI — bientôt en ligne.')"><span class="ic">👍</span><div><div class="t">Facebook</div><div class="s">NUNI Music</div></div></a>
       <a class="pi-contact-row" href="#" onclick="event.preventDefault(); toast('TikTok NUNI — bientôt en ligne.')"><span class="ic">🎬</span><div><div class="t">TikTok</div><div class="s">@nunimusic</div></div></a>`;
+  }
+
+  else if(type === 'downloads'){
+    icon.textContent = '⬇️'; title.textContent = 'Téléchargements';
+    const downloads = getDownloadHistory();
+    if(!downloads.length){
+      body.innerHTML = `<div class="pi-empty">Aucun téléchargement pour l'instant sur cet appareil.<br>Téléchargez un morceau depuis le lecteur pour qu'il apparaisse ici.</div>`;
+    } else {
+      const list = document.createElement('div'); list.className = 'pi-list';
+      list.innerHTML = `<div style="font-size:11.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Sur cet appareil — ${downloads.length} téléchargement(s)</div>`;
+      downloads.forEach(d=>{
+        const daysAgo = Math.floor((Date.now()-d.at)/86400000);
+        const when = daysAgo === 0 ? "aujourd'hui" : daysAgo === 1 ? 'hier' : `il y a ${daysAgo} jours`;
+        const item = document.createElement('div'); item.className = 'pi-item';
+        const covStyle = d.cover ? `background-image:url(${d.cover})` : '';
+        item.innerHTML = `<div class="cov" style="${covStyle}"></div><div><div class="t">${d.t}</div><div class="s">${d.a} · ${when}</div></div>`;
+        list.appendChild(item);
+      });
+      body.appendChild(list);
+    }
   }
 
   document.getElementById('profile-info-overlay').classList.add('show');

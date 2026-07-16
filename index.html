@@ -88,7 +88,7 @@
   </div>
 </div>
 
-<div class="ai-modal-overlay" id="ai-modal-overlay">
+<div class="ai-modal-overlay" id="ai-modal-overlay" onclick="if(event.target===this) closeAiModal()">
   <div class="ai-modal">
     <div class="ai-modal-avatar">🕊️</div>
     <span class="ai-modal-eyebrow">Assistant NUNI</span>
@@ -522,11 +522,10 @@
         </button>
         <div class="profile-menu" id="profile-menu">
           <label class="profile-menu-item" for="profile-avatar-input" style="cursor:pointer;">🖼️ <span>Changer ma photo</span></label>
-          <button class="profile-menu-item" onclick="enterApp('artist'); closeProfileMenu();">👤 <span>Mon profil</span></button>
-          <button class="profile-menu-item" onclick="toast('Vos favoris — bientôt centralisés ici.'); closeProfileMenu();">❤️ <span>Mes favoris</span></button>
-          <button class="profile-menu-item" onclick="openProfileInfo('playlists'); closeProfileMenu();">🎵 <span>Mes playlists</span></button>
+          <button class="profile-menu-item nav-artist-only" onclick="enterApp('artist'); closeProfileMenu();">👤 <span>Mon profil</span></button>
+          <button class="profile-menu-item" onclick="openProfileInfo('playlists'); closeProfileMenu();">❤️ <span>Mes favoris</span></button>
           <button class="profile-menu-item" onclick="openProfileInfo('history'); closeProfileMenu();">🕘 <span>Historique</span></button>
-          <button class="profile-menu-item" onclick="toast('Vos téléchargements apparaîtront ici.'); closeProfileMenu();">⬇️ <span>Téléchargements</span></button>
+          <button class="profile-menu-item" onclick="openProfileInfo('downloads'); closeProfileMenu();">⬇️ <span>Téléchargements</span></button>
           <button class="profile-menu-item" id="profile-menu-artist-space" onclick="enterApp('dashboard'); closeProfileMenu();">🎤 <span>Mon espace artiste</span></button>
           <button class="profile-menu-item" id="account-switch-btn" onclick="switchAccountType();">🎧 Passer en vue Consommateur</button>
           <button class="profile-menu-item" onclick="openProfileInfo('subscription'); closeProfileMenu();">💳 <span>Mon abonnement</span></button>
