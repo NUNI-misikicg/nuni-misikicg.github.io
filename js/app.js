@@ -361,6 +361,7 @@ function stopAllPlayback(){
     if('speechSynthesis' in window) window.speechSynthesis.cancel();
     if(djVoiceClipAudio) djVoiceClipAudio.pause();
     if(djDuckRampTimer){ clearInterval(djDuckRampTimer); djDuckRampTimer = null; }
+    realAudio.volume = userVolume; // même filet de sécurité que dans djTogglePlay — sinon un volume resté coincé bas (annonce DJ interrompue) restait bas indéfiniment, même après déconnexion/changement de compte
     const radioBadge = document.getElementById('radio-badge');
     if(radioBadge) radioBadge.style.display = 'none';
   }catch(e){ /* pas bloquant si un élément du lecteur n'existe pas encore au moment de l'appel */ }
@@ -2579,6 +2580,10 @@ function playTrack(tr){
     realAudio.src = tr.audioUrl;
     realAudio.currentTime = 0;
     realAudio.playbackRate = playbackSpeed; // le navigateur remet sinon la vitesse à 1× à chaque nouveau morceau
+    // Filet de sécurité supplémentaire : si un fondu/une baisse de volume DJ a été interrompu
+    // au mauvais moment ailleurs, le volume aurait pu rester coincé bas — ici, chaque
+    // nouveau morceau redémarre toujours au vrai niveau voulu par la personne.
+    if(!djDuckRampTimer) realAudio.volume = userVolume;
   }
   updateProgress();
   syncFullPlayer();
