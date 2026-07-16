@@ -3492,8 +3492,22 @@ async function publishRelease(){
 
   const artistDisplayName = (currentUser && currentUser.artist_name) ? currentUser.artist_name : 'Bibi Mwana';
   const filesForUpload = [...uploadedFiles];
+  // Avant : chaque morceau d'un Album/EP se voyait imposer "Titre du projet · Piste N",
+  // écrasant le vrai nom que l'artiste avait donné à son fichier (ou renommé lui-même dans
+  // le formulaire). Ici : le vrai titre saisi/affiché pour CE fichier précis est relu
+  // directement depuis son champ, et reste le sien à la publication.
+  const trackTitleFor = (fileIndex, fallbackIndex)=>{
+    const input = document.querySelector(`.ui-name-input[data-file-index="${fileIndex}"]`);
+    const real = input && input.value.trim();
+    return real || (filesForUpload.length > 1 ? `${titre} · Piste ${fallbackIndex+1}` : titre);
+  };
+  // Capturé maintenant (pas relu plus tard) : le formulaire est vidé avant même que l'envoi
+  // réel au serveur (asynchrone, plus bas) n'ait fini — relire le DOM à ce moment-là aurait
+  // toujours retrouvé des champs vides, et serait retombé sur l'ancien "Piste N" générique
+  // pour les VRAIES données sauvegardées, même si l'aperçu local affichait le bon titre.
+  const capturedTitles = filesForUpload.map((_, i) => trackTitleFor(i, i));
   const newTracks = filesForUpload.map((file, i)=>{
-    const trackTitle = filesForUpload.length > 1 ? `${titre} · Piste ${i+1}` : titre;
+    const trackTitle = capturedTitles[i];
     return {
       t: trackTitle, a: artistDisplayName, p: 'pal-1', album: titre, genre: genre, year: new Date().getFullYear(),
       streams: '0', release: releaseLabel, verified: true, likes: 0,
@@ -3543,7 +3557,7 @@ async function publishRelease(){
       for(const file of filesForUpload){
         try{
           const fileIndex = filesForUpload.indexOf(file);
-          const perTrackTitle = filesForUpload.length > 1 ? `${titre} · Piste ${fileIndex+1}` : titre;
+          const perTrackTitle = capturedTitles[fileIndex];
           const cloudAudioUrl = await uploadFileToCloudinary(file, 'video'); // Cloudinary traite l'audio sous "video"
           const res = await fetch(NUNI_API_BASE + '/api/tracks', {
             method:'POST',
@@ -3633,14 +3647,16 @@ function handleAudioUpload(e){
 
   files.forEach(file=>{
     uploadedFiles.push(file);
+    const fileIndex = uploadedFiles.length - 1; // vraie position dans uploadedFiles — sert à retrouver le bon titre à la publication
     const item = document.createElement('div');
     item.className = 'upload-item';
+    item.dataset.fileIndex = fileIndex;
     const name = file.name.replace(/\.[^/.]+$/, '');
     const previewUrl = URL.createObjectURL(file);
     item.innerHTML = `
       <div class="ui-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13M9 9l12-2"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
       <div class="ui-info">
-        <div class="ui-name">${name}</div>
+        <input class="ui-name-input" type="text" value="${name.replace(/"/g,'&quot;')}" placeholder="Titre de ce morceau" data-file-index="${fileIndex}">
         <div class="ui-bar"><div class="ui-bar-fill"></div></div>
         <audio class="ui-native-preview" controls preload="metadata" src="${previewUrl}"></audio>
       </div>
