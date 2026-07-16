@@ -3514,6 +3514,7 @@ async function publishRelease(){
       cover: coverUrl, audioUrl: URL.createObjectURL(file), releaseType: currentReleaseType,
       lyrics: paroles || null,
       description: description || null, featuring: featuring || null, composer: composer || null, studio: studio || null,
+      isReal: true, // aperçu local déjà considéré comme réel — sinon exclu du pool suivant/précédent/aléatoire juste après publication
     };
   });
 
@@ -3621,11 +3622,15 @@ async function publishRelease(){
   coverPreview.style.backgroundImage = '';
   coverPreview.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 16l4.5-4.5a2 2 0 0 1 2.8 0L16 16M14 14l1.5-1.5a2 2 0 0 1 2.8 0L20 14M4 6h16v12H4z"/></svg>';
 
-  // lire immédiatement le son importé pour vérifier qu'il tourne bien — seulement s'il est
-  // réellement publié tout de suite (pas pour un morceau programmé pour plus tard)
+  // Le son continue de jouer en fond (mini-lecteur) pour confirmer que l'import fonctionne
+  // bien — mais sans plus ouvrir le lecteur plein écran automatiquement, qui coupait la vue
+  // sur la vraie publication. À la place : retour direct sur sa propre page pour voir
+  // immédiatement le morceau apparaître dans sa discographie.
   if(!isScheduledForFuture){
     playTrack(newTracks[0]);
-    openFullPlayer();
+    if(currentUser && currentUser.account_type === 'artist'){
+      openArtistPage(currentUser.artist_name, currentUser.id);
+    }
   }
 }
 function handleAudioUpload(e){
