@@ -816,6 +816,25 @@ function toggleMimi(){
     setTimeout(()=>mimiFace('idle'), 900);
   }
 }
+/* Avant : le bouton "Besoin d'en savoir plus sur cet artiste ?" affichait un texte fixe et
+   inventé ("Cet artiste mélange rumba traditionnelle...", recommandant un album "Envol" qui
+   n'existe pas forcément) — identique peu importe l'artiste réellement affiché. Maintenant :
+   ouvre vraiment "Le P" avec une vraie question sur le vrai artiste de la page. */
+function askLePAboutArtist(){
+  const nameEl = document.getElementById('artist-page-name');
+  const artistName = (nameEl && nameEl.textContent.trim()) || (currentTrack && currentTrack.a) || '';
+  const widget = document.getElementById('mimi-widget');
+  if(!widget.classList.contains('open')){
+    widget.classList.add('open');
+    mimiFace('happy');
+    setTimeout(()=>mimiFace('idle'), 900);
+  }
+  const input = document.getElementById('mimi-input');
+  if(input){
+    input.value = artistName ? `Parle-moi de ${artistName}` : 'Parle-moi de cet artiste';
+    setTimeout(()=> mimiSend(), 300); // petit délai pour laisser le widget finir de s'ouvrir visuellement
+  }
+}
 const mimiConversation = [
   { k: ['salut', 'bonjour', 'mbote', 'coucou', 'hello', 'bonsoir'],
     a: "👋 Bonjour ! Comment allez-vous aujourd'hui ? Envie d'écouter quelque chose de précis, ou je vous fais une petite recommandation ?" },
@@ -3261,11 +3280,30 @@ function openClipWatchPage(clip){
     openArtistPage(clip.artist, clip.artistId);
   };
   const followBtn = overlay.querySelector('.cw-follow-btn');
-  followBtn.onclick = (e)=>{
+  // Avant : ce bouton ne faisait QUE basculer une classe locale et afficher "Vous suivez
+  // maintenant..." — un faux message de succès, aucun vrai suivi n'était jamais enregistré
+  // en base. Corrigé pour de vrai, même comportement que partout ailleurs sur NUNI.
+  if(realAuthToken && clip.artistId){
+    fetch(NUNI_API_BASE + '/api/follow/' + clip.artistId + '/status', { headers:{ 'Authorization':'Bearer ' + realAuthToken } })
+      .then(r=>r.json()).then(d=>{ followBtn.textContent = d.following ? 'Suivi ✓' : 'Suivre'; followBtn.classList.toggle('is-following', d.following); })
+      .catch(()=>{});
+  }
+  followBtn.onclick = async (e)=>{
     e.stopPropagation();
-    const now = followBtn.classList.toggle('is-following');
-    followBtn.textContent = now ? 'Suivi ✓' : 'Suivre';
-    toast(now ? `Vous suivez maintenant ${clip.artist}.` : `Vous ne suivez plus ${clip.artist}.`);
+    if(!realAuthToken || !clip.artistId){ toast('Connectez-vous pour suivre un artiste.'); return; }
+    followBtn.disabled = true;
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/follow', {
+        method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+        body: JSON.stringify({ artistId: clip.artistId })
+      });
+      const data = await res.json();
+      followBtn.disabled = false;
+      if(!res.ok){ toast('❌ ' + (data.error || 'Erreur.')); return; }
+      followBtn.classList.toggle('is-following', data.following);
+      followBtn.textContent = data.following ? 'Suivi ✓' : 'Suivre';
+      toast(data.following ? `Vous suivez maintenant ${clip.artist}.` : `Vous ne suivez plus ${clip.artist}.`);
+    }catch(e){ followBtn.disabled = false; toast('❌ Impossible de contacter le serveur NUNI.'); }
   };
   const likeBtn = overlay.querySelector('.cw-like-btn');
   const dislikeBtn = overlay.querySelector('.cw-dislike-btn');
@@ -5481,6 +5519,14 @@ async function loadFeaturedArtists(){
       card.querySelector('.n').style.cursor = 'pointer';
       card.querySelector('.av').style.cursor = 'pointer';
       const followBtn = card.querySelector('button');
+      // Avant : ce bouton affichait toujours "Suivre" par défaut, même si le compte connecté
+      // suivait déjà cet artiste — jamais vérifié contre la vraie base à l'ouverture (même
+      // bug déjà corrigé ailleurs pour le Top 100 et la page artiste, oublié ici).
+      if(realAuthToken){
+        fetch(NUNI_API_BASE + '/api/follow/' + a.id + '/status', { headers:{ 'Authorization':'Bearer ' + realAuthToken } })
+          .then(r=>r.json()).then(d=>{ followBtn.textContent = d.following ? 'Suivi ✓' : 'Suivre'; followBtn.classList.toggle('is-following', d.following); })
+          .catch(()=>{});
+      }
       // Vrai suivi, envoyé au serveur — avant, ce bouton ne faisait que basculer un texte
       // localement, sans jamais toucher la base de données.
       followBtn.onclick = async ()=>{
