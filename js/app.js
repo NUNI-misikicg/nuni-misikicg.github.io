@@ -123,8 +123,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-/* ============ THEME ============ */
+/* ============ THEME ============
+   Avant : le choix clair/sombre repartait toujours en mode sombre à chaque rechargement,
+   même après l'avoir explicitement changé — jamais mémorisé nulle part. */
+const NUNI_THEME_KEY = 'nuni_theme';
 let theme = 'dark';
+try{
+  const saved = localStorage.getItem(NUNI_THEME_KEY);
+  if(saved === 'light' || saved === 'dark') theme = saved;
+}catch(e){ /* stockage indisponible : reste en mode sombre par défaut, pas bloquant */ }
+document.documentElement.setAttribute('data-theme', theme);
 function applyThemeIcon(){
   const isDark = theme === 'dark';
   document.querySelectorAll('#theme-icon-home, #theme-icon-app').forEach(svg=>{
@@ -136,6 +144,7 @@ function applyThemeIcon(){
 function toggleTheme(){
   theme = theme === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', theme);
+  try{ localStorage.setItem(NUNI_THEME_KEY, theme); }catch(e){ /* pas bloquant */ }
   applyThemeIcon();
 }
 document.getElementById('theme-toggle-home').addEventListener('click', toggleTheme);
