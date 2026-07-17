@@ -6188,6 +6188,34 @@ document.addEventListener('click', (e)=>{
 applyAccountType();
 sessionRestorePromise = restoreSession();
 
+/* ============ REPRISE APRÈS RETOUR EN ARRIÈRE-PLAN (ex: WhatsApp) ============
+   Avant : rien ne se passait quand on revenait sur l'onglet NUNI après être parti sur
+   WhatsApp valider un paiement — sur mobile, le navigateur suspend/gèle parfois l'onglet en
+   arrière-plan, et au retour l'écran restait bloqué/blanc tant qu'on ne rechargeait pas
+   manuellement. Ici : uniquement si l'écran semble vraiment resté bloqué (aucun écran
+   normal affiché alors qu'une session existe), on relance une vraie vérification — sans
+   perturber un simple changement d'onglet classique pendant une utilisation normale.
+   Le rappel périodique du compte (2 min) reste lui aussi actif comme avant. */
+let lastVisibilityCheckAt = Date.now();
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState !== 'visible') return;
+  if(Date.now() - lastVisibilityCheckAt < 3000) return; // anti-rebond
+  lastVisibilityCheckAt = Date.now();
+
+  const appShellVisible = document.getElementById('app-shell').classList.contains('active');
+  const anyScreenVisible = document.querySelector('.screen.active') !== null;
+  // Ni l'app normale ni l'écran de connexion ne sont affichés alors qu'une session existe
+  // (ou qu'aucune des deux vues attendues n'est visible) : l'écran est probablement resté
+  // bloqué après le retour en arrière-plan — on force une vraie reprise.
+  if(!appShellVisible && !anyScreenVisible){
+    restoreSession();
+  } else if(realAuthToken){
+    // Cas normal (juste changé d'onglet) : pas besoin de tout recharger, juste vérifier
+    // discrètement si le compte est toujours actif (déjà fait périodiquement de toute façon).
+    startAccountStatusWatcher();
+  }
+});
+
 /* ============ CONTENU DU MENU PROFIL ============ */
 /* Avant : le choix de langue n'était jamais mémorisé — repartait toujours en français au
    rechargement, même après l'avoir explicitement changé. */
