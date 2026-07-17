@@ -1029,6 +1029,26 @@ function mimiRealDataAnswer(q){
   if(/(actif|active).*artiste|artiste.*(actif|active)|comment travaille|à quel point.*travaille|comment (il|elle) travaille/i.test(q)){
     return "Je vérifie sa vraie activité sur NUNI…"; // remplacé juste après par le vrai appel réseau
   }
+  // Vraie échéance d'abonnement — jamais une date inventée, toujours currentUser.subscription_expires_at réel.
+  if(/mon abonnement|mon pass|quand.*(expire|expir)|combien.*jours.*(reste|abonnement)|abonnement.*expir/i.test(q)){
+    if(!currentUser || !realAuthToken) return "Connectez-vous pour que je puisse vérifier votre vrai abonnement.";
+    if(currentUser.subscription_status !== 'active') return "Vous n'avez pas de Pass actif en ce moment — direction l'écran des Pass pour en choisir un 🎧";
+    if(!currentUser.subscription_expires_at) return "Votre Pass est actif, sans date de fin enregistrée pour l'instant.";
+    const daysLeft = Math.max(0, Math.ceil((new Date(currentUser.subscription_expires_at) - new Date()) / 86400000));
+    if(daysLeft <= 3) return `⚠️ Votre Pass expire dans ${daysLeft} jour${daysLeft>1?'s':''} seulement — pensez à le renouveler pour ne pas perdre l'accès.`;
+    if(daysLeft <= 10) return `Votre Pass expire dans ${daysLeft} jours — vous avez encore un peu de temps, mais n'attendez pas le dernier moment.`;
+    return `Votre Pass est actif pour encore ${daysLeft} jours, tout va bien 🕊️`;
+  }
+  // Encouragement réel pour un artiste qui doute — pas un conseil générique inventé,
+  // rattaché à ses vrais chiffres quand ils sont connus côté frontend.
+  if(currentUser && currentUser.account_type === 'artist' && /stagne|pas de followers|ça ne marche pas|découragé|decourage|personne (n')?écoute|aucun stream|je (n')?avance pas/i.test(q)){
+    return "Ndeko, sois patient. Sur NUNI comme partout, la croissance d'un artiste prend du vrai temps — publiez régulièrement, soignez chaque sortie, et surtout mobilisez vraiment votre entourage proche en premier : c'est souvent ce vrai noyau qui lance tout le reste. Chaque vrai stream compte déjà pour votre rémunération, même les premiers.";
+  }
+  // Rappel réel du rôle du consommateur — pas un argument marketing vague, chiffré avec le
+  // vrai partage de revenu déjà en place sur la plateforme (75% pour l'artiste).
+  if(currentUser && currentUser.account_type === 'consumer' && /pourquoi (payer|m'abonner)|à quoi (ça sert|sert mon)|mon abonnement sert à quoi|utilité de mon pass/i.test(q)){
+    return "Excellente question — 75% de chaque vrai stream que vous générez revient directement à l'artiste. En écoutant sur NUNI plutôt qu'ailleurs, vous soutenez concrètement la musique congolaise, pas juste symboliquement. Continuez à écouter, suivre et partager : ça change vraiment quelque chose 🕊️";
+  }
   return null;
 }
 async function mimiAnswerRecommendLive(botMsgEl, question){
