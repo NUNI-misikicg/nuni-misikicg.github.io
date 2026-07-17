@@ -1909,11 +1909,12 @@ function ensureAlbumViewStyles(){
   style.textContent = `
     #album-view-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
     #album-view-overlay.show{opacity:1;}
-    .av-hero{position:relative; padding:56px 24px 40px; overflow:hidden;}
+    .av-hero{position:relative; min-height:400px; display:flex; align-items:flex-end; padding:56px 24px 40px; overflow:hidden;}
     .av-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(38px) saturate(1.3) brightness(0.5); transform:scale(1.15);}
     .av-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(10,10,16,0.15) 0%, #0A0A10 92%);}
     .av-hero-content{position:relative; max-width:760px; margin:0 auto; display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap;}
-    .av-cover{width:168px; height:168px; border-radius:14px; background-size:cover; background-position:center; flex-shrink:0; box-shadow:0 18px 40px rgba(0,0,0,0.55); border:1px solid rgba(212,175,106,0.25);}
+    .av-cover{width:210px; height:210px; border-radius:18px; background-size:cover; background-position:center; flex-shrink:0; box-shadow:0 24px 60px rgba(0,0,0,0.6); border:1px solid rgba(212,175,106,0.3); animation:plvCoverFloat 6s ease-in-out infinite;}
+    @media(max-width:560px){ .av-cover{ width:150px; height:150px; } }
     .av-badge{display:inline-flex; align-items:center; gap:6px; background:rgba(212,175,106,0.16); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); color:#E8C77E; border:1px solid rgba(212,175,106,0.45); font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:4px 10px; border-radius:20px; margin-bottom:10px;}
     .av-title{color:#fff; font-size:30px; font-weight:800; line-height:1.15; margin:0 0 8px;}
     .av-meta{color:#B9C2B4; font-size:13.5px;}
@@ -1941,6 +1942,11 @@ function ensureAlbumViewStyles(){
     .av-row.is-playing{background:linear-gradient(90deg, rgba(212,175,106,0.16), transparent);}
     .av-row.is-playing .av-row-title{color:#F3E6C8; font-weight:600;}
     .av-row-dot{width:6px; height:6px; border-radius:50%; background:#D4AF6A; box-shadow:0 0 6px #D4AF6A; margin-left:auto; margin-right:4px;}
+    .av-row-lyrics{font-size:11px; color:#D4AF6A; opacity:.85; margin-right:2px; margin-left:auto;}
+    .av-row-dot ~ .av-row-lyrics{margin-left:0;}
+    .av-row-lyrics ~ .av-row-streams{margin-left:0;}
+    .av-row-streams{font-size:11px; color:#7D8A79; font-family:var(--font-data, monospace); margin-right:6px; margin-left:auto; white-space:nowrap;}
+    .av-row-dot ~ .av-row-streams, .av-row-lyrics ~ .av-row-streams{margin-left:0;}
   `;
   document.head.appendChild(style);
 }
@@ -2008,6 +2014,7 @@ function openAlbumView(tr){
   const albumTracks = tracks.filter(t => t.album === tr.album && t.a === tr.a);
   if(albumTracks.length <= 1){ playTrack(tr); return; } // un seul morceau trouvé : on joue direct par sécurité
   ensureAlbumViewStyles();
+  ensurePlaylistViewStyles(); // réutilise les styles de la carte "Le P" et du rail similaire, déjà écrits pour la page Playlist
   let overlay = document.getElementById('album-view-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
@@ -2047,7 +2054,7 @@ function openAlbumView(tr){
   overlay.querySelector('.av-shuffle-btn').onclick = ()=>{
     const randomTrack = albumTracks[Math.floor(Math.random()*albumTracks.length)];
     playTrack(randomTrack);
-    closeOverlay();
+    refreshAvRowHighlights();
     toast('Lecture aléatoire de « ' + tr.album + ' »');
   };
   const favBtn = overlay.querySelector('.av-fav-btn');
@@ -2097,17 +2104,69 @@ function openAlbumView(tr){
     const isPlaying = playing && currentTrack && currentTrack.t === t.t;
     row.className = 'av-row' + (isPlaying ? ' is-playing' : '');
     row.style.animationDelay = (i * 0.05) + 's';
+    // Vraies infos par morceau — vrai nombre d'écoutes déjà en base, vrai indicateur si des
+    // paroles ont réellement été renseignées pour ce titre (jamais une fausse mention).
+    const realStreams = t.isReal ? Number(t.streams)||0 : null;
     row.innerHTML = `
       <div class="av-row-num">${isPlaying ? '♪' : i+1}</div>
       <div class="av-row-title">${t.t}</div>
       ${isPlaying ? '<span class="av-row-dot"></span>' : ''}
+      ${t.lyrics ? '<span class="av-row-lyrics" title="Paroles disponibles">🅻</span>' : ''}
+      ${realStreams !== null ? `<span class="av-row-streams">🎧 ${realStreams.toLocaleString('fr-FR')}</span>` : ''}
       <div class="av-row-play"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>`;
     row.onclick = ()=>{ playTrack(t); refreshAvRowHighlights(); };
     list.appendChild(row);
   });
 
+  renderAlbumLeSuggestion(overlay, tr, albumTracks);
+  renderSimilarTracksRow(overlay, tr, albumTracks);
+
   requestAnimationFrame(()=> overlay.classList.add('show'));
   attachSwipeDownToClose(overlay, closeOverlay);
+}
+/* Vraie suggestion "Le P" pour un album — basée sur le vrai genre du morceau ouvert. */
+function renderAlbumLeSuggestion(overlay, tr, albumTracks){
+  const card = document.createElement('div');
+  card.className = 'plv-lep-card';
+  card.innerHTML = `
+    <div class="plv-lep-avatar"><img src="assets/mimi-avatar.png" alt="Le P"></div>
+    <div class="plv-lep-body">
+      <div class="plv-lep-name">Le P</div>
+      <div class="plv-lep-msg">Mbote ! « ${tr.album} »${tr.genre ? ` a une belle ambiance ${tr.genre}` : ''} — je peux te trouver d'autres artistes dans le même esprit, si tu veux.</div>
+      <button class="plv-lep-btn">Me suggérer des artistes</button>
+    </div>`;
+  overlay.querySelector('.av-list').insertAdjacentElement('afterend', card);
+  card.querySelector('.plv-lep-btn').onclick = ()=>{
+    const widget = document.getElementById('mimi-widget');
+    if(!widget.classList.contains('open')){ widget.classList.add('open'); mimiFace('happy'); setTimeout(()=>mimiFace('idle'), 900); }
+    const input = document.getElementById('mimi-input');
+    if(input){
+      input.value = tr.genre ? `Recommande-moi des artistes ${tr.genre}` : 'Recommande-moi des artistes à découvrir';
+      setTimeout(()=> mimiSend(), 300);
+    }
+  };
+}
+/* Vrai rail "Sons similaires" — vrais autres morceaux du même genre réel, cet album exclu.
+   Jamais une recommandation inventée : uniquement de vrais morceaux déjà publiés sur NUNI. */
+function renderSimilarTracksRow(overlay, tr, albumTracks){
+  const albumTitles = new Set(albumTracks.map(t=>t.t));
+  const similar = tracks.filter(t=> t.isReal && t.genre === tr.genre && !albumTitles.has(t.t)).slice(0, 10);
+  if(!similar.length) return;
+  const section = document.createElement('div');
+  section.className = 'plv-similar';
+  section.innerHTML = `<h3 class="plv-similar-title">Sons similaires</h3><div class="plv-similar-row"></div>`;
+  overlay.querySelector('.av-list').parentElement.insertAdjacentElement('beforeend', section);
+  const row = section.querySelector('.plv-similar-row');
+  similar.forEach(t=>{
+    const card = document.createElement('div');
+    card.className = 'plv-similar-card';
+    card.innerHTML = `
+      <div class="plv-similar-cover" style="${t.cover ? `background-image:url(${t.cover})` : ''}"></div>
+      <div class="plv-similar-name">${t.t}</div>
+      <div class="plv-similar-count">${t.a}</div>`;
+    card.onclick = ()=>{ playTrack(t); };
+    row.appendChild(card);
+  });
 }
 function trackKeyOf(tr){ return (tr.t||'') + '|' + (tr.a||''); }
 function updateNowPlayingCards(){
