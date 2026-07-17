@@ -438,6 +438,14 @@ function togglePasswordVisibility(inputId, btn){
 }
 function openLoginModal(){
   document.getElementById('login-feedback').innerHTML = '';
+  // Même filet de sécurité que pour l'inscription — voir le commentaire dans choosePlan().
+  lastKnownLevel = null;
+  favoritesPlaylist = [];
+  listeningHistory = [];
+  const badgesRowReset = document.getElementById('badges-row');
+  if(badgesRowReset) badgesRowReset.innerHTML = '';
+  const levelWrapReset = document.getElementById('level-progress-wrap');
+  if(levelWrapReset) levelWrapReset.innerHTML = '';
   const overlay = document.getElementById('login-overlay');
   overlay.classList.add('show');
   overlay.classList.add('is-preparing');
@@ -526,6 +534,18 @@ async function choosePlan(type, isDiscovery){
     document.getElementById('whatsapp-modal-overlay').classList.add('show');
     return;
   }
+  // Filet de sécurité supplémentaire : quelle que soit la façon exacte dont on arrive ici,
+  // on repart sur une base vraiment vierge — sinon un reste de progression (niveau, favoris,
+  // historique) d'un compte précédent utilisé sur ce même appareil pouvait continuer à
+  // s'afficher un court instant pour le nouveau compte tout juste créé.
+  lastKnownLevel = null;
+  favoritesPlaylist = [];
+  listeningHistory = [];
+  const badgesRowReset = document.getElementById('badges-row');
+  if(badgesRowReset) badgesRowReset.innerHTML = '';
+  const levelWrapReset = document.getElementById('level-progress-wrap');
+  if(levelWrapReset) levelWrapReset.innerHTML = '';
+
   document.getElementById('rr-title').textContent = pendingIsDiscovery
     ? (type === 'artist' ? 'Créer mon compte Découverte (Artiste)' : 'Créer mon compte Découverte (Auditeur)')
     : (type === 'artist' ? 'Créer mon compte Artiste' : 'Créer mon compte Consommateur');
