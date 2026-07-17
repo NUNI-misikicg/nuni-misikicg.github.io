@@ -992,7 +992,7 @@ const mimiConversation = [
     ] },
   // Avant : "vas y" (et les relances similaires) n'avait AUCUNE vraie réponse dédiée — tombait
   // toujours sur le message générique de secours, donnant une impression très répétitive.
-  { k: ['vas y', 'vas-y', 'ok', 'd\'accord', 'oui', 'continue', 'je t\'écoute', 'go'],
+  { k: ['vas y', 'vas-y', 'd\'accord', 'continue', 'je t\'écoute'],
     a: "Alors, dites-moi : plutôt envie de retrouver un classique, de découvrir un nouvel artiste, ou de me parler d'une ambiance précise (romantique, festive, calme) pour que je vous propose quelque chose de collé à votre humeur ?",
     alt: [
       "Parfait 🎶 Je peux vous parler d'un artiste précis, vous recommander une ambiance, ou vous donner un vrai chiffre sur votre progression (niveau, favoris, artistes suivis). Sur quoi on part ?",
