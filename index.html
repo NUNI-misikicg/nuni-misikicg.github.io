@@ -176,6 +176,38 @@
     <p style="margin-top:14px; text-align:center;">
       <a href="#" onclick="event.preventDefault(); closeLoginModal(); openRedeemModal();" style="color:var(--accent); font-size:12.5px; text-decoration:underline; cursor:pointer;">Vous venez de payer ? Saisir votre code d'accès</a>
     </p>
+    <p style="margin-top:8px; text-align:center;">
+      <a href="#" onclick="event.preventDefault(); closeLoginModal(); openForgotPasswordModal();" style="color:var(--text-faint); font-size:12.5px; text-decoration:underline; cursor:pointer;">Mot de passe oublié ?</a>
+    </p>
+  </div>
+</div>
+
+<!-- ============ MOT DE PASSE OUBLIÉ ============ -->
+<div class="ai-modal-overlay" id="forgot-password-overlay" onclick="if(event.target===this) closeForgotPasswordModal()">
+  <div class="ai-modal" style="max-width:400px; text-align:left; position:relative;">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeForgotPasswordModal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="ai-modal-avatar">🔑</div>
+    <span class="ai-modal-eyebrow">Récupération de compte</span>
+    <h2 class="serif" id="fp-modal-title">Mot de passe oublié</h2>
+    <div id="fp-step-request">
+      <p style="margin-bottom:16px;">Indiquez l'email de votre compte NUNI — vous recevrez un code à usage unique valable 30 minutes.</p>
+      <div class="field full"><label>Email</label><input type="email" id="fp-email"></div>
+      <button class="btn btn-primary" style="width:100%; margin-top:6px;" onclick="submitForgotPassword()" id="fp-request-btn">Envoyer le code</button>
+    </div>
+    <div id="fp-step-reset" style="display:none;">
+      <p style="margin-bottom:16px;">Entrez le code reçu par email, et votre nouveau mot de passe.</p>
+      <div class="field full"><label>Code reçu par email</label><input type="text" id="fp-code" style="text-transform:uppercase;"></div>
+      <div class="field full"><label>Nouveau mot de passe</label>
+        <div class="field-password-wrap">
+          <input type="password" id="fp-new-password">
+          <button type="button" class="field-eye-btn" onclick="togglePasswordVisibility('fp-new-password', this)" aria-label="Afficher le mot de passe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%; margin-top:6px;" onclick="submitResetPassword()" id="fp-reset-btn">Réinitialiser mon mot de passe</button>
+    </div>
+    <div id="fp-feedback" style="margin-top:12px; font-size:12.5px;"></div>
   </div>
 </div>
 

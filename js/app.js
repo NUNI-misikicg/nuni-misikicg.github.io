@@ -436,6 +436,74 @@ function togglePasswordVisibility(inputId, btn){
     ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.9 10.9 0 0 1 12 4c7 0 11 7 11 7a21.7 21.7 0 0 1-2.61 3.65M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 }
+/* ============ MOT DE PASSE OUBLIÉ — vrai système, avant totalement absent ============
+   Un compte au mot de passe oublié restait bloqué pour toujours, aucun moyen de le
+   récupérer. Même principe qu'un code d'accès : un vrai code temporaire envoyé par email,
+   à usage unique, expire en 30 minutes. */
+function openForgotPasswordModal(){
+  document.getElementById('fp-feedback').innerHTML = '';
+  document.getElementById('fp-email').value = '';
+  document.getElementById('fp-code').value = '';
+  document.getElementById('fp-new-password').value = '';
+  document.getElementById('fp-step-request').style.display = '';
+  document.getElementById('fp-step-reset').style.display = 'none';
+  document.getElementById('fp-modal-title').textContent = 'Mot de passe oublié';
+  document.getElementById('forgot-password-overlay').classList.add('show');
+}
+function closeForgotPasswordModal(){
+  document.getElementById('forgot-password-overlay').classList.remove('show');
+}
+async function submitForgotPassword(){
+  const email = document.getElementById('fp-email').value.trim();
+  const feedback = document.getElementById('fp-feedback');
+  const btn = document.getElementById('fp-request-btn');
+  if(!email){ feedback.style.color = 'var(--rose-braise)'; feedback.textContent = '❌ Entrez votre email.'; return; }
+  btn.disabled = true;
+  feedback.style.color = 'var(--text-faint)';
+  feedback.textContent = 'Envoi en cours…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/auth/forgot-password', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    feedback.style.color = '#7FC79A';
+    feedback.textContent = '✅ ' + data.message;
+    document.getElementById('fp-step-request').style.display = 'none';
+    document.getElementById('fp-step-reset').style.display = '';
+    document.getElementById('fp-modal-title').textContent = 'Entrez votre code';
+  }catch(e){
+    btn.disabled = false;
+    feedback.style.color = 'var(--rose-braise)';
+    feedback.textContent = '❌ Impossible de contacter le serveur NUNI.';
+  }
+}
+async function submitResetPassword(){
+  const email = document.getElementById('fp-email').value.trim();
+  const code = document.getElementById('fp-code').value.trim();
+  const newPassword = document.getElementById('fp-new-password').value;
+  const feedback = document.getElementById('fp-feedback');
+  const btn = document.getElementById('fp-reset-btn');
+  if(!code || !newPassword){ feedback.style.color = 'var(--rose-braise)'; feedback.textContent = '❌ Entrez le code et votre nouveau mot de passe.'; return; }
+  btn.disabled = true;
+  feedback.style.color = 'var(--text-faint)';
+  feedback.textContent = 'Vérification…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/auth/reset-password', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, code, newPassword })
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    if(!res.ok){ feedback.style.color = 'var(--rose-braise)'; feedback.textContent = '❌ ' + data.error; return; }
+    feedback.style.color = '#7FC79A';
+    feedback.textContent = '✅ ' + data.message;
+    setTimeout(()=>{ closeForgotPasswordModal(); openLoginModal(); document.getElementById('login-email').value = email; toast('Mot de passe réinitialisé — connectez-vous.'); }, 1200);
+  }catch(e){
+    btn.disabled = false;
+    feedback.style.color = 'var(--rose-braise)';
+    feedback.textContent = '❌ Impossible de contacter le serveur NUNI.';
+  }
+}
 function openLoginModal(){
   document.getElementById('login-feedback').innerHTML = '';
   // Même filet de sécurité que pour l'inscription — voir le commentaire dans choosePlan().
