@@ -620,7 +620,12 @@ function confirmPlanViaWhatsApp(){
   const type = pendingPlanType;
   const planLabel = type === 'artist' ? 'Pass Artiste' : 'Pass Consommateur';
   const idNote = realUserId ? ` (mon identifiant NUNI : ${realUserId})` : '';
-  const msg = encodeURIComponent(`Bonjour NUNI, je souhaite souscrire au ${planLabel}${idNote}. Pouvez-vous m'aider à finaliser mon paiement ?`);
+  // Avant : seul l'identifiant numérique était transmis — l'équipe devait le rechercher
+  // manuellement dans l'admin pour retrouver le compte et pouvoir envoyer le code d'accès.
+  // Le vrai email saisi à l'inscription est maintenant inclus directement, exploitable
+  // immédiatement pour l'envoi du code.
+  const emailNote = (currentUser && currentUser.email) ? ` — mon email : ${currentUser.email}` : '';
+  const msg = encodeURIComponent(`Bonjour NUNI, je souhaite souscrire au ${planLabel}${idNote}${emailNote}. Pouvez-vous m'aider à finaliser mon paiement ?`);
   window.open(`https://wa.me/242068951600?text=${msg}`, '_blank');
   document.getElementById('whatsapp-modal-overlay').classList.remove('show');
   toast('Une fois votre paiement confirmé, vous recevrez un code à saisir ci-dessous.');
