@@ -951,11 +951,23 @@ function askLePAboutArtist(){
 }
 const mimiConversation = [
   { k: ['salut', 'bonjour', 'mbote', 'coucou', 'hello', 'bonsoir'],
-    a: "👋 Bonjour ! Comment allez-vous aujourd'hui ? Envie d'écouter quelque chose de précis, ou je vous fais une petite recommandation ?" },
+    a: "👋 Bonjour ! Comment allez-vous aujourd'hui ? Envie d'écouter quelque chose de précis, ou je vous fais une petite recommandation ?",
+    alt: [
+      "Mbote ! 🕊️ Content de vous revoir sur NUNI. On écoute quoi aujourd'hui ?",
+      "Salut à vous ! Je suis là si vous cherchez un morceau précis, un conseil musical, ou juste papoter un peu de musique congolaise.",
+      "Coucou ! 👋 Prêt à découvrir quelque chose de nouveau, ou plutôt envie de retrouver vos classiques ?",
+    ] },
   { k: ['je vais bien', 'ça va bien', 'ca va bien', 'je vais super', 'nickel', 'très bien'],
-    a: "Ravie de l'entendre 😊 Voulez-vous découvrir les nouveautés du moment, ou plutôt réécouter vos morceaux favoris ?" },
+    a: "Ravie de l'entendre 😊 Voulez-vous découvrir les nouveautés du moment, ou plutôt réécouter vos morceaux favoris ?",
+    alt: [
+      "Super nouvelle ! 🎶 Journée parfaite pour découvrir un nouvel artiste, non ?",
+      "Content de l'entendre 🕊️ Une bonne ambiance appelle une bonne musique — je vous prépare quoi ?",
+    ] },
   { k: ['je suis triste', 'pas bien', 'fatigué', 'fatiguée', 'déprimé', 'déprimée', 'difficile'],
-    a: "❤️ Je comprends. Je peux vous proposer une sélection plus douce — quelques belles rumba congolaises ou un gospel apaisant — pour vous remonter un peu le moral. Voulez-vous que je lance ça ?" },
+    a: "❤️ Je comprends. Je peux vous proposer une sélection plus douce — quelques belles rumba congolaises ou un gospel apaisant — pour vous remonter un peu le moral. Voulez-vous que je lance ça ?",
+    alt: [
+      "Courage 🕊️ La musique aide parfois plus qu'on ne le croit. Envie de quelque chose de doux et apaisant, ou au contraire d'un titre plus entraînant pour se changer les idées ?",
+    ] },
   { k: ['mets du rap', 'du rap', 'rap congolais', 'écouter du rap'],
     a: "Très bon choix 🎤 Direction la Radio Rap Congo — je vous lance ça. Ouvrez le tuner NUNI Radio et sélectionnez la station 88.9 MHz pour enchaîner uniquement du rap congolais." },
   { k: ['mets de la rumba', 'de la rumba', 'écouter de la rumba', 'j\'aime la rumba'],
@@ -963,11 +975,30 @@ const mimiConversation = [
   { k: ['mets du gospel', 'du gospel'],
     a: "🙏 Direction la station 91.7 MHz — NUNI Gospel — dans le tuner NUNI Radio, pour une belle sélection continue." },
   { k: ['merci', 'merci beaucoup', 'super merci'],
-    a: "Avec plaisir ❤️ Bonne écoute sur NUNI, et n'hésitez pas à revenir si vous avez une autre question." },
+    a: "Avec plaisir ❤️ Bonne écoute sur NUNI, et n'hésitez pas à revenir si vous avez une autre question.",
+    alt: [
+      "C'est moi qui vous remercie de faire vivre la musique congolaise 🕊️ À bientôt !",
+      "Toujours un plaisir, ndeko 🙌 Revenez quand vous voulez.",
+    ] },
   { k: ['ça va', 'ca va', 'comment vas-tu', 'comment vas tu'],
-    a: "Je vais très bien, merci de demander 🕊️ Et vous, quelle est l'ambiance du jour — plutôt calme ou plutôt festive ?" },
+    a: "Je vais très bien, merci de demander 🕊️ Et vous, quelle est l'ambiance du jour — plutôt calme ou plutôt festive ?",
+    alt: [
+      "Toujours en forme quand il y a de la bonne musique dans les parages 😄 Et vous, comment se passe votre journée ?",
+    ] },
   { k: ['recommande', 'recommandation', 'propose moi', 'suggère'],
-    a: "Avec plaisir ! Je vous recommande de découvrir <b>Bibi Mwana</b> pour la rumba moderne, ou la playlist Top Congo dans le catalogue si vous voulez un mix des titres les plus populaires du moment." },
+    a: "Avec plaisir ! Je vous recommande de découvrir <b>Bibi Mwana</b> pour la rumba moderne, ou la playlist Top Congo dans le catalogue si vous voulez un mix des titres les plus populaires du moment.",
+    alt: [
+      "Dites-moi « recommande-moi des artistes » et je vous sors de vrais artistes qui cartonnent en ce moment, tirés au sort parmi les meilleurs 🎧",
+    ] },
+  // Avant : "vas y" (et les relances similaires) n'avait AUCUNE vraie réponse dédiée — tombait
+  // toujours sur le message générique de secours, donnant une impression très répétitive.
+  { k: ['vas y', 'vas-y', 'ok', 'd\'accord', 'oui', 'continue', 'je t\'écoute', 'go'],
+    a: "Alors, dites-moi : plutôt envie de retrouver un classique, de découvrir un nouvel artiste, ou de me parler d'une ambiance précise (romantique, festive, calme) pour que je vous propose quelque chose de collé à votre humeur ?",
+    alt: [
+      "Parfait 🎶 Je peux vous parler d'un artiste précis, vous recommander une ambiance, ou vous donner un vrai chiffre sur votre progression (niveau, favoris, artistes suivis). Sur quoi on part ?",
+      "Top ! Demandez-moi par exemple : « qui est Franco ? », « recommande-moi des artistes », ou « quel est mon niveau ? » — je réponds avec de vraies infos à chaque fois.",
+      "Alors on y va 🕊️ Un style vous tente en particulier — rumba, soukous, gospel, rap congolais ?",
+    ] },
 ];
 const mimiKnowledge = [
   { k: ['papa', 'papas', 'légende', 'légendes', 'fondateur', 'fondateurs'],
@@ -1159,6 +1190,8 @@ const mimiFallbacks = [
   "Pour un début, je peux discuter simplement avec vous, vous recommander de la musique selon votre humeur, ou vous parler de nos grandes figures historiques (Grand Kallé, Franco, Tabu Ley, Papa Wemba...) et des styles comme la rumba ou le soukous 🕊️",
   "Je ne suis pas sûre d'avoir compris — mais je peux vous parler de la musique congolaise, vous recommander un style selon votre humeur, ou vous dire vos favoris/dernier morceau écouté si vous êtes connecté(e).",
   "Essayez de me demander « mes favoris », « mon niveau », ou parlez-moi de la rumba, du soukous, ou d'un artiste comme Franco ou Papa Wemba 🎶",
+  "Hmm, reformulez peut-être ? Je suis plus à l'aise avec la musique congolaise, vos vraies stats (niveau, favoris, artistes suivis), ou une vraie recommandation d'artiste.",
+  "Je n'ai pas tout saisi, mais dites-moi « recommande-moi des artistes » ou posez-moi une question sur un artiste précis — je vous réponds avec de vraies infos 🕊️",
 ];
 function pickVariedFallback(){ return mimiFallbacks[Math.floor(Math.random()*mimiFallbacks.length)]; }
 function mimiSend(){
