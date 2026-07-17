@@ -723,13 +723,101 @@ async function submitRedeem(){
     toast('Accès débloqué — bienvenue sur NUNI en intégralité 🕊️');
     currentUser = data.user;
     applyAccountType();
-    setTimeout(()=>{ closeRedeemModal(); enterApp('catalog'); }, 1200);
+    setTimeout(()=>{
+      closeRedeemModal();
+      if(currentUser.account_type === 'artist' && !currentUser.has_seen_artist_contract){
+        showArtistContract();
+      } else {
+        enterApp('catalog');
+      }
+    }, 1200);
   }catch(e){
     if(myRequestId !== redeemRequestId) return; // un essai plus récent a pris le relais entre-temps
     feedback.style.color = 'var(--rose-braise)';
     feedback.textContent = '❌ Impossible de contacter le serveur NUNI.';
     btn.disabled = false;
   }
+}
+
+/* ============ CONTRAT D'ACCUEIL ARTISTE ============
+   Affiché une seule fois, juste après la toute première validation de code d'accès d'un
+   compte Artiste — jamais une seconde fois ensuite (has_seen_artist_contract, vrai côté
+   serveur). Purement un message de sensibilisation : aucun des deux choix n'a d'impact réel
+   sur l'utilisation de la plateforme, les deux mènent à l'interface normale ensuite. */
+function ensureArtistContractStyles(){
+  if(document.getElementById('artist-contract-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'artist-contract-styles';
+  style.textContent = `
+    #artist-contract-overlay{position:fixed; inset:0; z-index:99999; background:#0A0A10; display:flex; align-items:center; justify-content:center; padding:24px; opacity:0; transition:opacity .3s ease;}
+    #artist-contract-overlay.show{opacity:1;}
+    .ac-card{max-width:520px; width:100%; max-height:88vh; overflow-y:auto; background:linear-gradient(160deg, #12140F, #0A0A10); border:1px solid rgba(212,175,106,0.3); border-radius:20px; padding:32px 28px; box-shadow:0 30px 80px rgba(0,0,0,0.6);}
+    .ac-eyebrow{font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#D4AF6A; font-weight:700; margin-bottom:10px;}
+    .ac-title{font-size:24px; font-weight:800; color:#fff; margin-bottom:18px; line-height:1.25;}
+    .ac-body{font-size:14px; line-height:1.75; color:#D8CDB0;}
+    .ac-body b{color:#F3E6C8;}
+    .ac-body p{margin-bottom:14px;}
+    .ac-choices{margin-top:26px; display:flex; flex-direction:column; gap:12px;}
+    .ac-choice-btn{width:100%; text-align:left; padding:16px 18px; border-radius:14px; cursor:pointer; font-size:13.5px; font-weight:600; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.04); color:#EDEDED; transition:all .15s ease;}
+    .ac-choice-btn:hover{background:rgba(255,255,255,0.08);}
+    .ac-choice-btn.primary{background:linear-gradient(135deg,#1E8449,#0E3D2C); border-color:rgba(212,175,106,0.5); color:#F3E6C8;}
+    #artist-contract-goodluck{position:fixed; inset:0; z-index:100000; background:#0A0A10; display:flex; align-items:center; justify-content:center; flex-direction:column; text-align:center; padding:24px; opacity:0; transition:opacity .4s ease;}
+    #artist-contract-goodluck.show{opacity:1;}
+    .ac-gl-emoji{font-size:52px; margin-bottom:18px;}
+    .ac-gl-title{font-size:28px; font-weight:800; background:linear-gradient(135deg,#D4AF6A,#1E8449); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  `;
+  document.head.appendChild(style);
+}
+function showArtistContract(){
+  ensureArtistContractStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'artist-contract-overlay';
+  overlay.innerHTML = `
+    <div class="ac-card">
+      <div class="ac-eyebrow">Bienvenue chez NUNI</div>
+      <div class="ac-title">Avant de commencer, un mot d'artiste à artiste.</div>
+      <div class="ac-body">
+        <p>Vous venez d'ouvrir votre espace sur NUNI. Ce que vous en ferez ne dépend que de vous — mais voici, honnêtement, ce qui fait vraiment décoller un artiste ici :</p>
+        <p><b>Prenez votre musique au sérieux.</b> Publiez régulièrement, soignez vos sorties, vos pochettes, vos crédits. Chaque vrai stream compte réellement pour votre rémunération.</p>
+        <p><b>Restez actif.</b> Un profil qui dort est un profil que le public oublie. Revenez, publiez, répondez à vos fans.</p>
+        <p><b>Mobilisez vraiment votre entourage.</b> Vos proches, votre quartier, votre ville — un vrai soutien de celles et ceux qui vous connaissent déjà fait toute la différence au démarrage.</p>
+        <p>NUNI, c'est l'avenir de la musique congolaise — construit ici, pour vous rémunérer directement, plutôt que de laisser votre travail perdu sur des plateformes étrangères qui ne reversent presque rien à la scène locale.</p>
+      </div>
+      <div class="ac-choices">
+        <button class="ac-choice-btn" id="ac-decline">Non, je ne veux pas que NUNI me dise quoi faire</button>
+        <button class="ac-choice-btn primary" id="ac-accept">Je valide — je prends mon espace NUNI au sérieux</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+
+  const finish = (showGoodLuck)=>{
+    // Aucun des deux choix n'a d'impact réel sur l'utilisation de la plateforme — uniquement
+    // un message de sensibilisation, jamais réaffiché une fois passé.
+    fetch(NUNI_API_BASE + '/api/me/mark-contract-seen', {
+      method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken }
+    }).catch(()=>{});
+    currentUser.has_seen_artist_contract = true;
+    overlay.classList.remove('show');
+    setTimeout(()=>{
+      overlay.remove();
+      if(showGoodLuck){
+        const gl = document.createElement('div');
+        gl.id = 'artist-contract-goodluck';
+        gl.innerHTML = `<div class="ac-gl-emoji">🌟</div><div class="ac-gl-title">Bonne chance, étoile de demain.</div>`;
+        document.body.appendChild(gl);
+        requestAnimationFrame(()=> gl.classList.add('show'));
+        setTimeout(()=>{
+          gl.classList.remove('show');
+          setTimeout(()=>{ gl.remove(); enterApp('catalog'); }, 400);
+        }, 5000);
+      } else {
+        enterApp('catalog');
+      }
+    }, 250);
+  };
+  document.getElementById('ac-accept').onclick = ()=> finish(true);
+  document.getElementById('ac-decline').onclick = ()=> finish(false);
 }
 
 /* ============ PASS DÉCOUVERTE (essai gratuit 24h, heure du Congo) ============
