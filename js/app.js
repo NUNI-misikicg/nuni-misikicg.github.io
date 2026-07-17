@@ -1926,7 +1926,7 @@ function ensureAlbumViewStyles(){
     .av-play-all:hover{transform:translateY(-1px); box-shadow:0 8px 22px rgba(212,175,106,0.18);}
     .av-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .av-close:hover{background:rgba(255,255,255,0.12);}
-    .av-list{max-width:760px; margin:26px auto 80px; padding:0 24px;}
+    .av-list{max-width:760px; margin:26px auto calc(120px + env(safe-area-inset-bottom,0)); padding:0 24px;}
     .av-row{display:flex; align-items:center; gap:16px; padding:12px 10px; border-radius:10px; cursor:pointer; transition:background .15s ease;}
     .av-row:hover{background:rgba(212,175,106,0.07);}
     .av-row-num{width:24px; text-align:center; color:#7D8A79; font-size:13px; font-family:var(--font-data, monospace);}
@@ -5730,7 +5730,7 @@ function ensureCategoryPageStyles(){
       linear-gradient(180deg, rgba(10,10,16,.35) 0%, #0A0A10 92%);
     }
     .cp-hero-content{position:absolute; left:0; right:0; bottom:22px; padding:0 24px; max-width:1080px; margin:0 auto;}
-    .cp-wrap{max-width:1080px; margin:0 auto; padding:0 24px 80px;}
+    .cp-wrap{max-width:1080px; margin:0 auto; padding:0 24px calc(120px + env(safe-area-inset-bottom,0));}
     .cp-title{color:#fff; font-family:var(--font-display,inherit); font-size:34px; font-weight:800; line-height:1.1; margin-bottom:6px; text-shadow:0 4px 20px rgba(0,0,0,.5);}
     .cp-sub{color:#D8CDB0; font-size:13.5px; text-shadow:0 2px 10px rgba(0,0,0,.5);}
     .cp-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:20px; padding-top:28px;}
@@ -5905,7 +5905,7 @@ function ensurePlaylistViewStyles(){
     .plv-play-all{background:linear-gradient(135deg,#1E8449,#0E3D2C); color:#F3E6C8; border:1px solid rgba(212,175,106,0.5); font-weight:700; font-size:14px; padding:12px 26px; border-radius:30px; cursor:pointer; display:flex; align-items:center; gap:8px;}
     .plv-shuffle-btn{width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); color:#EDEDED; cursor:pointer; display:flex; align-items:center; justify-content:center;}
     .plv-shuffle-btn:hover{background:rgba(212,175,106,0.18); color:#D4AF6A;}
-    .plv-list{max-width:760px; margin:26px auto 80px; padding:0 24px;}
+    .plv-list{max-width:760px; margin:26px auto calc(120px + env(safe-area-inset-bottom,0)); padding:0 24px;}
     .plv-row{display:flex; align-items:center; gap:14px; padding:10px; border-radius:10px; cursor:pointer; transition:background .15s ease; opacity:0; animation:plvRowIn .35s ease forwards;}
     @keyframes plvRowIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
     .plv-row:hover{background:rgba(212,175,106,0.07);}
