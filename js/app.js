@@ -5917,6 +5917,24 @@ function ensurePlaylistViewStyles(){
     .plv-row.is-playing .plv-row-title{color:#F3E6C8;}
     .plv-row-dot{width:6px; height:6px; border-radius:50%; background:#D4AF6A; box-shadow:0 0 6px #D4AF6A; flex-shrink:0;}
     .plv-empty{color:#8a8a94; font-size:13px; text-align:center; padding:40px 0;}
+    /* Carte "Le P" — vraie suggestion, pas un message figé */
+    .plv-lep-card{max-width:760px; margin:0 auto 30px; padding:0 24px; display:flex; gap:14px; align-items:flex-start;}
+    .plv-lep-avatar{width:44px; height:44px; border-radius:50%; overflow:hidden; flex-shrink:0; border:1px solid rgba(212,175,106,0.4);}
+    .plv-lep-avatar img{width:100%; height:100%; object-fit:cover;}
+    .plv-lep-body{background:rgba(255,255,255,0.04); border:1px solid rgba(212,175,106,0.18); border-radius:16px; padding:14px 16px; flex:1;}
+    .plv-lep-name{font-size:12.5px; font-weight:700; color:#D4AF6A; margin-bottom:4px;}
+    .plv-lep-msg{font-size:13px; color:#D8CDB0; line-height:1.5; margin-bottom:10px;}
+    .plv-lep-btn{background:rgba(212,175,106,0.15); border:1px solid rgba(212,175,106,0.4); color:#F3E6C8; font-size:12px; font-weight:600; padding:7px 14px; border-radius:20px; cursor:pointer;}
+    .plv-lep-btn:hover{background:rgba(212,175,106,0.25);}
+    /* Rail "D'autres playlists NUNI" façon Netflix */
+    .plv-similar{max-width:1080px; margin:10px auto 60px; padding:0 24px;}
+    .plv-similar-title{color:#fff; font-size:16px; font-weight:700; margin-bottom:14px;}
+    .plv-similar-row{display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:6px;}
+    .plv-similar-card{flex-shrink:0; width:140px; cursor:pointer;}
+    .plv-similar-cover{width:140px; height:140px; border-radius:12px; background-size:cover; background-position:center; background-color:#1a1a22; margin-bottom:8px; transition:transform .2s ease;}
+    .plv-similar-card:hover .plv-similar-cover{transform:scale(1.04);}
+    .plv-similar-name{color:#EDEDED; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .plv-similar-count{color:#8a8a94; font-size:11.5px; margin-top:2px;}
   `;
   document.head.appendChild(style);
 }
@@ -5953,8 +5971,8 @@ async function openPlaylistPage(id){
         const tr = mapped[i];
         const isPlaying = playing && currentTrack && currentTrack.t === tr.t;
         row.classList.toggle('is-playing', isPlaying);
-        const existingDot = row.querySelector('.plv-row-dot');
-        if(isPlaying && !existingDot) row.insertAdjacentHTML('beforeend', '<span class="plv-row-dot"></span>');
+        const existingDot = row.querySelector('.eq');
+        if(isPlaying && !existingDot) row.insertAdjacentHTML('beforeend', '<span class="eq"><i></i><i></i><i></i></span>');
         if(!isPlaying && existingDot) existingDot.remove();
       });
     }
@@ -5969,7 +5987,7 @@ async function openPlaylistPage(id){
         row.innerHTML = `
           <div class="plv-row-thumb" style="${tr.cover ? `background-image:url(${tr.cover})` : ''}"></div>
           <div class="plv-row-info"><div class="plv-row-title">${tr.t}</div><div class="plv-row-artist">${tr.a}</div></div>
-          ${isPlaying ? '<span class="plv-row-dot"></span>' : ''}`;
+          ${isPlaying ? '<span class="eq"><i></i><i></i><i></i></span>' : ''}`;
         row.onclick = ()=>{ playTrack(tr); refreshPlvRowHighlights(); };
         list.appendChild(row);
       });
@@ -5979,10 +5997,65 @@ async function openPlaylistPage(id){
       if(!mapped.length) return;
       const random = mapped[Math.floor(Math.random()*mapped.length)];
       playTrack(random);
-      closeOverlay();
+      refreshPlvRowHighlights();
       toast('Lecture aléatoire de « ' + data.playlist.title + ' »');
     };
+    renderLeSuggestionCard(overlay, data.playlist, mapped);
+    renderSimilarPlaylistsRow(overlay, id, mapped);
   }catch(e){ toast('❌ Impossible de contacter le serveur NUNI.'); closeOverlay(); }
+}
+
+/* Vraie suggestion contextuelle "Le P" — pas un message inventé et figé : s'appuie sur les
+   vrais genres réellement présents dans CETTE playlist (comptés depuis les vrais morceaux). */
+function renderLeSuggestionCard(overlay, playlistData, mapped){
+  const genres = mapped.map(t=>t.genre).filter(Boolean);
+  const topGenre = genres.length
+    ? Object.entries(genres.reduce((acc,g)=>{ acc[g]=(acc[g]||0)+1; return acc; },{})).sort((a,b)=>b[1]-a[1])[0][0]
+    : null;
+  const card = document.createElement('div');
+  card.className = 'plv-lep-card';
+  card.innerHTML = `
+    <div class="plv-lep-avatar"><img src="assets/mimi-avatar.png" alt="Le P"></div>
+    <div class="plv-lep-body">
+      <div class="plv-lep-name">Le P</div>
+      <div class="plv-lep-msg">Mbote moninga 👋 « ${playlistData.title} »${topGenre ? `, plutôt dans l'ambiance ${topGenre}` : ''} — envie de découvrir des artistes dans le même esprit ?</div>
+      <button class="plv-lep-btn">Me suggérer des artistes</button>
+    </div>`;
+  overlay.querySelector('.plv-list').insertAdjacentElement('afterend', card);
+  card.querySelector('.plv-lep-btn').onclick = ()=>{
+    const widget = document.getElementById('mimi-widget');
+    if(!widget.classList.contains('open')){ widget.classList.add('open'); mimiFace('happy'); setTimeout(()=>mimiFace('idle'), 900); }
+    const input = document.getElementById('mimi-input');
+    if(input){
+      input.value = topGenre ? `Recommande-moi des artistes ${topGenre}` : 'Recommande-moi des artistes à découvrir';
+      setTimeout(()=> mimiSend(), 300);
+    }
+  };
+}
+/* Vrai rail "Playlists similaires" façon Netflix — d'autres vraies playlists existantes
+   (jamais inventées), la playlist actuelle exclue. */
+async function renderSimilarPlaylistsRow(overlay, currentId, mapped){
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/playlists');
+    const data = await res.json();
+    const others = (data.playlists || []).filter(p=> p.id !== currentId).slice(0, 8);
+    if(!others.length) return;
+    const section = document.createElement('div');
+    section.className = 'plv-similar';
+    section.innerHTML = `<h3 class="plv-similar-title">D'autres playlists NUNI</h3><div class="plv-similar-row"></div>`;
+    overlay.querySelector('.plv-list').parentElement.insertAdjacentElement('beforeend', section);
+    const row = section.querySelector('.plv-similar-row');
+    others.forEach(p=>{
+      const card = document.createElement('div');
+      card.className = 'plv-similar-card';
+      card.innerHTML = `
+        <div class="plv-similar-cover" style="${p.cover_url ? `background-image:url(${p.cover_url})` : ''}"></div>
+        <div class="plv-similar-name">${p.title}</div>
+        <div class="plv-similar-count">${p.track_count || 0} titre${p.track_count>1?'s':''}</div>`;
+      card.onclick = ()=> openPlaylistPage(p.id);
+      row.appendChild(card);
+    });
+  }catch(e){ /* pas grave, le rail reste simplement absent */ }
 }
 
 function ensurePlaylistsPageStyles(){
