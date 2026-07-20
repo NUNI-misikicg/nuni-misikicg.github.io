@@ -1878,65 +1878,6 @@ async function requestVerification(){
    les utilitaires génériques déjà construits pour le lecteur (spawnRipple,
    bounceEl, hapticPing) — une seule logique, plusieurs endroits.
 ============================================================ */
-const genres = [
-  { n:'Tout', c1:'#6E45A8', c2:'#3A2A5C', anim:'anim-breathe',
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 15.2c0-3 2.2-5.2 5.4-5.2 1.1 0 2.1.3 2.9 1L15.4 8l1 .7-1.7 2.1c1 .9 1.6 2.1 1.6 3.5 0 2.9-2.6 5.2-6.4 5.2-3.2 0-6-1.7-6-4.3z"/><circle cx="9.3" cy="10.9" r=".55" fill="currentColor"/></svg>' },
-  { n:'Nouveautés', c1:'#C9667A', c2:'#3A1530', anim:'anim-twinkle',
-    icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.3 6.9h7.2l-5.8 4.3 2.2 6.9L12 16.3l-5.9 4.3 2.2-6.9-5.8-4.3h7.2z"/></svg>' },
-  { n:'Top Congo', c1:'#D4AF6A', c2:'#5C3A18', anim:'anim-sheen',
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 18.5h18l-1.5-8.3-4 3.2L12 7l-3.5 6.4-4-3.2z"/><path d="M3 18.5h18" stroke-width="2.4"/></svg>' },
-  { n:'Rap', c1:'#1D2550', c2:'#0A0A10', anim:'anim-pulse-ring',
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9.3" y="2.5" width="5.4" height="10" rx="2.7"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3M9 20.5h6"/></svg>' },
-  { n:'Rumba', c1:'#C0392B', c2:'#5C1810', anim:'anim-strum',
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="9.5" cy="15" rx="5" ry="4.2"/><path d="M12 4 9.5 11" class="ic-neck"/><path class="ic-string" d="M8 4.6 8.3 12"/><path class="ic-string" d="M10.4 3.6 10 11.4"/></svg>' },
-  { n:'Gospel', c1:'#141A38', c2:'#4A2E70', anim:'anim-rise',
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v17M6.5 9h11"/></svg>' },
-  { n:'Afro', c1:'#1E8449', c2:'#0F3D22', anim:'anim-wave',
-    icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2.1c1.9.3 2.5 1.7 3.9 2 1.5.3 1.9 1.5 1.5 2.8-.4 1.2.6 1.9 1 3.1.4 1.2-.6 1.9-.3 3.2.3 1.3-.8 1.9-1.6 2.8-.9 1-.6 2.5-1.9 2.8-1.2.5-1.9-.9-3.2-.6-1.2.3-2.2-.9-2.8-1.9-.6-1-1.9-.6-2.5-1.9-.6-1.1.3-1.9-.3-3.1C2.6 10.4 2 9.4 2.6 8.2 3.2 7 4.5 6.6 4.9 5.4 5.3 4.1 7.4 2.1 11 2.1z"/></svg>' },
-  { n:'Hip-Hop', c1:'#6E45A8', c2:'#241542', anim:'anim-bounce',
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="8.5" width="18" height="10.5" rx="2"/><circle cx="8" cy="13.8" r="2.4"/><circle cx="16" cy="13.8" r="2.4"/><path d="M7 8.5 6 4.5h12l-1 4"/></svg>' },
-  { n:'Traditionnel', c1:'#1E8449', c2:'#7A1E14', anim:'anim-glow-pulse',
-    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 8.2C5 6.2 8.1 4.7 12 4.7S19 6.2 19 8.2v7.6c0 2-3.1 3.5-7 3.5s-7-1.5-7-3.5z"/><path d="M5 8.2c0 2 3.1 3.5 7 3.5s7-1.5 7-3.5"/></svg>' },
-];
-const genreGrid = document.getElementById('genre-grid');
-genres.forEach((g,i)=>{
-  const tile = document.createElement('div');
-  tile.className = 'genre-tile' + (i===0 ? ' is-active' : '');
-  tile.style.setProperty('--gc1', g.c1);
-  tile.style.setProperty('--gc2', g.c2);
-  if(g.n === 'Tout'){
-    // Pas d'icône ni de texte pour "Tout" — une vraie sphère audio vivante à la place
-    // (voir buildNuniAudioSphere plus bas). Le nom reste dans un aria-label pour
-    // l'accessibilité, même si rien n'est visible à l'écran.
-    tile.setAttribute('aria-label', 'Tout');
-    tile.innerHTML = `
-      <div class="genre-tile-texture"></div>
-      <canvas class="nuni-sphere-canvas" id="nuni-sphere-canvas"></canvas>
-      <span class="genre-active-line"></span>`;
-  } else {
-    tile.innerHTML = `
-      <div class="genre-tile-texture"></div>
-      <div class="genre-tile-halo"></div>
-      <div class="genre-icon ${g.anim}">${g.icon}</div>
-      <span class="gname">${g.n}</span>
-      <span class="genre-active-line"></span>`;
-  }
-  tile.addEventListener('click', (e)=>{
-    document.querySelectorAll('.genre-tile').forEach(t=>t.classList.remove('is-active'));
-    tile.classList.add('is-active');
-    if(g.n === 'Tout'){ nuniSphereTouchPulse(); }
-    else { bounceEl(tile.querySelector('.genre-icon')); }
-    hapticPing();
-    if(g.n === 'Tout'){ filterCatalogByGenre('Tout'); }
-    else if(g.n === 'Nouveautés'){ openNewReleasesPage(); }
-    else if(g.n === 'Top Congo'){ openTopCongoPage(); }
-    else { openGenreCategoryPage(g.n); }
-  });
-  genreGrid.appendChild(tile);
-});
-buildNuniAudioSphere();
-
-
 /* ============ SPHÈRE AUDIO "TOUT" — visualiseur vivant (Canvas 2D + Web Audio API) ============
    Remplace l'icône + texte de la tuile "Tout" par une sphère de particules qui respire et
    tourne en permanence, et qui réagit en temps réel aux vraies fréquences de la musique en
@@ -2091,6 +2032,66 @@ function buildNuniAudioSphere(){
 }
 // Déclenche l'onde lumineuse + le léger gonflement au toucher (voir touchBoost dans frame()).
 function nuniSphereTouchPulse(){ nuniSphereTouchT = 1; }
+
+const genres = [
+  { n:'Tout', c1:'#6E45A8', c2:'#3A2A5C', anim:'anim-breathe',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 15.2c0-3 2.2-5.2 5.4-5.2 1.1 0 2.1.3 2.9 1L15.4 8l1 .7-1.7 2.1c1 .9 1.6 2.1 1.6 3.5 0 2.9-2.6 5.2-6.4 5.2-3.2 0-6-1.7-6-4.3z"/><circle cx="9.3" cy="10.9" r=".55" fill="currentColor"/></svg>' },
+  { n:'Nouveautés', c1:'#C9667A', c2:'#3A1530', anim:'anim-twinkle',
+    icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.3 6.9h7.2l-5.8 4.3 2.2 6.9L12 16.3l-5.9 4.3 2.2-6.9-5.8-4.3h7.2z"/></svg>' },
+  { n:'Top Congo', c1:'#D4AF6A', c2:'#5C3A18', anim:'anim-sheen',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 18.5h18l-1.5-8.3-4 3.2L12 7l-3.5 6.4-4-3.2z"/><path d="M3 18.5h18" stroke-width="2.4"/></svg>' },
+  { n:'Rap', c1:'#1D2550', c2:'#0A0A10', anim:'anim-pulse-ring',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9.3" y="2.5" width="5.4" height="10" rx="2.7"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3M9 20.5h6"/></svg>' },
+  { n:'Rumba', c1:'#C0392B', c2:'#5C1810', anim:'anim-strum',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="9.5" cy="15" rx="5" ry="4.2"/><path d="M12 4 9.5 11" class="ic-neck"/><path class="ic-string" d="M8 4.6 8.3 12"/><path class="ic-string" d="M10.4 3.6 10 11.4"/></svg>' },
+  { n:'Gospel', c1:'#141A38', c2:'#4A2E70', anim:'anim-rise',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v17M6.5 9h11"/></svg>' },
+  { n:'Afro', c1:'#1E8449', c2:'#0F3D22', anim:'anim-wave',
+    icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2.1c1.9.3 2.5 1.7 3.9 2 1.5.3 1.9 1.5 1.5 2.8-.4 1.2.6 1.9 1 3.1.4 1.2-.6 1.9-.3 3.2.3 1.3-.8 1.9-1.6 2.8-.9 1-.6 2.5-1.9 2.8-1.2.5-1.9-.9-3.2-.6-1.2.3-2.2-.9-2.8-1.9-.6-1-1.9-.6-2.5-1.9-.6-1.1.3-1.9-.3-3.1C2.6 10.4 2 9.4 2.6 8.2 3.2 7 4.5 6.6 4.9 5.4 5.3 4.1 7.4 2.1 11 2.1z"/></svg>' },
+  { n:'Hip-Hop', c1:'#6E45A8', c2:'#241542', anim:'anim-bounce',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="8.5" width="18" height="10.5" rx="2"/><circle cx="8" cy="13.8" r="2.4"/><circle cx="16" cy="13.8" r="2.4"/><path d="M7 8.5 6 4.5h12l-1 4"/></svg>' },
+  { n:'Traditionnel', c1:'#1E8449', c2:'#7A1E14', anim:'anim-glow-pulse',
+    icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 8.2C5 6.2 8.1 4.7 12 4.7S19 6.2 19 8.2v7.6c0 2-3.1 3.5-7 3.5s-7-1.5-7-3.5z"/><path d="M5 8.2c0 2 3.1 3.5 7 3.5s7-1.5 7-3.5"/></svg>' },
+];
+const genreGrid = document.getElementById('genre-grid');
+genres.forEach((g,i)=>{
+  const tile = document.createElement('div');
+  tile.className = 'genre-tile' + (i===0 ? ' is-active' : '');
+  tile.style.setProperty('--gc1', g.c1);
+  tile.style.setProperty('--gc2', g.c2);
+  if(g.n === 'Tout'){
+    // Pas d'icône ni de texte pour "Tout" — une vraie sphère audio vivante à la place
+    // (voir buildNuniAudioSphere plus bas). Le nom reste dans un aria-label pour
+    // l'accessibilité, même si rien n'est visible à l'écran.
+    tile.setAttribute('aria-label', 'Tout');
+    tile.innerHTML = `
+      <div class="genre-tile-texture"></div>
+      <canvas class="nuni-sphere-canvas" id="nuni-sphere-canvas"></canvas>
+      <span class="genre-active-line"></span>`;
+  } else {
+    tile.innerHTML = `
+      <div class="genre-tile-texture"></div>
+      <div class="genre-tile-halo"></div>
+      <div class="genre-icon ${g.anim}">${g.icon}</div>
+      <span class="gname">${g.n}</span>
+      <span class="genre-active-line"></span>`;
+  }
+  tile.addEventListener('click', (e)=>{
+    document.querySelectorAll('.genre-tile').forEach(t=>t.classList.remove('is-active'));
+    tile.classList.add('is-active');
+    if(g.n === 'Tout'){ nuniSphereTouchPulse(); }
+    else { bounceEl(tile.querySelector('.genre-icon')); }
+    hapticPing();
+    if(g.n === 'Tout'){ filterCatalogByGenre('Tout'); }
+    else if(g.n === 'Nouveautés'){ openNewReleasesPage(); }
+    else if(g.n === 'Top Congo'){ openTopCongoPage(); }
+    else { openGenreCategoryPage(g.n); }
+  });
+  genreGrid.appendChild(tile);
+});
+buildNuniAudioSphere();
+
+
 
 /* ============ BANNIÈRES HERO — gérées uniquement par l'admin ============
    Plusieurs photos possibles par section, tirée au hasard à chaque visite. Repli sur
