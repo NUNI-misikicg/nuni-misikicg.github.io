@@ -1420,6 +1420,8 @@ function enterApp(view){
     applySavedRevenuePrivacy();
     const momoInput = document.getElementById('momo-number-input');
     if(momoInput) momoInput.value = (currentUser && currentUser.momo_number) || '';
+    const bioInput = document.getElementById('artist-bio-input');
+    if(bioInput) bioInput.value = (currentUser && currentUser.bio) || '';
     const avatarDash = document.getElementById('avatar-preview-dash');
     if(avatarDash && currentUser && currentUser.avatar_url){
       avatarDash.style.backgroundImage = `url(${currentUser.avatar_url})`;
@@ -1488,6 +1490,9 @@ const artistProfiles = {
   'Tcheza Nation': { meta:'Rap · Brazzaville', bio:"Tcheza Nation s'impose sur la scène rap congolaise avec des textes engagés et une identité sonore urbaine affirmée.", verified:false },
 };
 let currentArtistPageRealId = null;
+// Cache léger { artistId: {avatar_url, bio} } — évite de refaire l'appel réseau à chaque
+// changement de morceau du même artiste dans le lecteur plein écran (voir syncFullPlayer).
+let artistPublicInfoCache = {};
 function openArtistPage(name, artistId){
   // Avant : cette page était identifiée uniquement par le NOM affiché (chaîne de texte) —
   // rien n'empêche deux vrais comptes artiste différents de choisir le même artist_name à
@@ -1502,7 +1507,12 @@ function openArtistPage(name, artistId){
   const reallyVerified = isOwnArtistPage ? !!currentUser.is_verified : profile.verified;
   document.getElementById('artist-page-name').textContent = name;
   document.getElementById('artist-page-meta').textContent = profile.meta;
-  document.getElementById('artist-page-bio').textContent = profile.bio;
+  // Vraie bio si l'artiste en a renseigné une (sur sa propre page, on l'a déjà via currentUser ;
+  // pour n'importe quelle autre page, elle arrive juste après via /public-stats). Sinon, on
+  // retombe sur le texte de démo/générique en attendant.
+  document.getElementById('artist-page-bio').textContent = (isOwnArtistPage && currentUser.bio) ? currentUser.bio : profile.bio;
+  const bioEditBtn = document.getElementById('artist-page-bio-edit-btn');
+  if(bioEditBtn) bioEditBtn.style.display = isOwnArtistPage ? 'inline-flex' : 'none';
   document.getElementById('artist-page-badge').style.display = reallyVerified ? 'inline-flex' : 'none';
   const artistPageAvatarEl = document.getElementById('artist-page-avatar');
   artistPageAvatarEl.classList.toggle('is-editable', isOwnArtistPage);
@@ -1589,6 +1599,12 @@ function openArtistPage(name, artistId){
           if(data.banner_url && !(isOwnArtistPage && currentUser.banner_url) && artistCoverEl){
             artistCoverEl.style.backgroundImage = `url(${data.banner_url})`;
           }
+          // Vraie bio, si l'artiste en a renseigné une — écrase le texte générique affiché
+          // en attendant (jamais l'inverse : on ne remplace pas une vraie bio par du vide).
+          if(data.bio && !(isOwnArtistPage && currentUser.bio)){
+            document.getElementById('artist-page-bio').textContent = data.bio;
+          }
+          artistPublicInfoCache[currentArtistPageRealId] = { avatar_url: data.avatar_url || null, bio: data.bio || null };
         }).catch(()=>{});
     } else {
       statFollowersEl.textContent = '—';
@@ -1787,6 +1803,28 @@ async function saveMomoNumber(){
     if(!res.ok){ msg.innerHTML = '<span style="color:var(--rose-braise)">❌ ' + data.error + '</span>'; return; }
     msg.innerHTML = '<span style="color:#7FC79A">✅ ' + data.message + '</span>';
     toast(data.message);
+  }catch(e){ msg.innerHTML = '<span style="color:var(--rose-braise)">❌ Impossible de contacter le serveur NUNI.</span>'; }
+}
+
+// Avant : la bio venait d'un dictionnaire codé en dur, jamais modifiable par le vrai artiste.
+// Ici : un vrai champ, enregistré en base, immédiatement reflété sur currentUser pour que la
+// page artiste et le lecteur plein écran l'affichent sans recharger la page.
+async function saveArtistBio(){
+  const input = document.getElementById('artist-bio-input');
+  const msg = document.getElementById('artist-bio-save-msg');
+  if(!realAuthToken){ msg.innerHTML = '<span style="color:var(--rose-braise)">Connectez-vous avec un vrai compte Artiste.</span>'; return; }
+  msg.textContent = 'Enregistrement…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/artist/bio', {
+      method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ bio: input.value.trim() })
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.innerHTML = '<span style="color:var(--rose-braise)">❌ ' + data.error + '</span>'; return; }
+    msg.innerHTML = '<span style="color:#7FC79A">✅ ' + data.message + '</span>';
+    toast(data.message);
+    if(currentUser){ currentUser.bio = data.bio; }
+    artistPublicInfoCache = {}; // vide le cache : la nouvelle bio doit apparaître immédiatement partout
   }catch(e){ msg.innerHTML = '<span style="color:var(--rose-braise)">❌ Impossible de contacter le serveur NUNI.</span>'; }
 }
 
@@ -4554,9 +4592,45 @@ function syncFullPlayer(){
     applyText();
   }
   applyPlayerVisuals(tr);
-  document.getElementById('fp-bio-avatar').textContent = tr.a.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const bioProfile = artistProfiles[tr.a] || { bio:"Découvrez l'univers de "+tr.a+" sur NUNI." };
-  document.getElementById('fp-bio-text').textContent = bioProfile.bio;
+  // Avant : l'avatar de la section "À propos de l'artiste" affichait TOUJOURS les initiales
+  // générées, jamais la vraie photo de profil de l'artiste (pourtant déjà disponible et
+  // affichée normalement sur sa page artiste) — et le texte de bio venait d'un dictionnaire
+  // codé en dur, avec un texte générique pour tout artiste réel non listé dedans.
+  const fpBioAvatarEl = document.getElementById('fp-bio-avatar');
+  const initials = tr.a.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const fallbackBio = (artistProfiles[tr.a] || { bio:"Découvrez l'univers de "+tr.a+" sur NUNI." }).bio;
+  const applyRealArtistInfo = (info)=>{
+    if(info && info.avatar_url){
+      fpBioAvatarEl.style.backgroundImage = `url(${info.avatar_url})`;
+      fpBioAvatarEl.style.backgroundSize = 'cover';
+      fpBioAvatarEl.style.backgroundPosition = 'center';
+      fpBioAvatarEl.textContent = '';
+    } else {
+      fpBioAvatarEl.style.backgroundImage = '';
+      fpBioAvatarEl.textContent = initials;
+    }
+    document.getElementById('fp-bio-text').textContent = (info && info.bio) ? info.bio : fallbackBio;
+  };
+  if(tr.artistId){
+    // Sa propre page (déjà connu via currentUser) : pas besoin d'attendre le réseau.
+    if(currentUser && currentUser.account_type === 'artist' && currentUser.id === tr.artistId){
+      applyRealArtistInfo({ avatar_url: currentUser.avatar_url, bio: currentUser.bio });
+    } else if(artistPublicInfoCache[tr.artistId]){
+      applyRealArtistInfo(artistPublicInfoCache[tr.artistId]);
+    } else {
+      applyRealArtistInfo(null); // affichage immédiat (initiales + texte générique) pendant le chargement
+      fetch(NUNI_API_BASE + '/api/artist/' + tr.artistId + '/public-stats')
+        .then(r=>r.json()).then(data=>{
+          const info = { avatar_url: data.avatar_url || null, bio: data.bio || null };
+          artistPublicInfoCache[tr.artistId] = info;
+          // Le morceau a pu changer pendant le chargement — on ne met à jour que si c'est
+          // toujours le bon artiste affiché à l'écran.
+          if(currentTrack && currentTrack.artistId === tr.artistId) applyRealArtistInfo(info);
+        }).catch(()=>{});
+    }
+  } else {
+    applyRealArtistInfo(null); // morceau de démo sans compte réel rattaché
+  }
   // Avant : la carte "C'est votre morceau" ne s'affichait que pour la démo "Bibi Mwana",
   // jamais pour un vrai artiste connecté écoutant son propre morceau. Et l'affirmation
   // "Excellent démarrage cette semaine" était inventée, sans aucune vraie mesure derrière —
