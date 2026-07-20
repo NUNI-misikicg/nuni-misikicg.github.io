@@ -418,6 +418,12 @@ function logoutUser(){
   lastKnownLevel = null;
   favoritesPlaylist = [];
   listeningHistory = [];
+  // Idem pour la Bibliothèque : les vrais artistes suivis et la catégorie active sont
+  // propres à un compte, jamais à réutiliser pour le suivant sur le même appareil.
+  libraryPlaylistsCache = null;
+  libraryArtistsCache = null;
+  libraryActiveCategory = 'liked';
+  libraryActiveSort = 'recent';
   const badgesRow = document.getElementById('badges-row');
   if(badgesRow) badgesRow.innerHTML = '';
   const levelWrap = document.getElementById('level-progress-wrap');
@@ -1390,17 +1396,12 @@ let isOpeningArtistPage = false; // garde-fou anti-boucle : openArtistPage appel
 function enterApp(view){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('app-shell').classList.add('active');
-  document.getElementById('player-bar').style.display = 'flex';
-  // Bulle par défaut tant que rien n'a été écouté cette session (évite que le lecteur
-  // prenne toute la largeur en bas de l'écran avant même d'avoir joué un son) — sauf si
-  // la personne avait explicitement laissé le lecteur ouvert (préférence mémorisée).
-  if(playing){
-    document.getElementById('player-bar').classList.remove('is-collapsed');
-  } else {
-    let wantsCollapsed = true;
-    try{ wantsCollapsed = localStorage.getItem('nuni_player_collapsed') !== '0'; }catch(e){ /* pas bloquant */ }
-    document.getElementById('player-bar').classList.toggle('is-collapsed', wantsCollapsed);
-  }
+  // Comportement façon Apple Music / Spotify : le lecteur n'existe pas visuellement tant
+  // qu'aucun son n'a été lancé — pas de barre, pas de bulle, pas d'espace réservé. Il
+  // n'apparaît que lorsqu'une vraie lecture démarre (voir togglePlay()), et redevient
+  // invisible à la déconnexion (voir stopAllPlayback()). On ne touche donc plus ici à
+  // son affichage : s'il était déjà visible parce qu'un son joue, il le reste ; sinon il
+  // reste caché, sans jamais le forcer à apparaître à l'entrée dans l'app.
   document.getElementById('mobile-tabbar').style.removeProperty('display');
   document.getElementById('demo-nav').classList.remove('no-player');
   document.getElementById('mimi-widget').classList.remove('no-player');
@@ -2720,24 +2721,9 @@ setInterval(loadUpcomingReleases, 60000); // se resynchronise avec les vraies da
 // avec les vraies sorties programmées, dans openArtistPage() — plus de données factices ici.
 
 /* ============ PLAYER LOGIC ============ */
-/* ============ MODE BULLE DU LECTEUR ============ */
-// Réduit le lecteur en petite bulle flottante (pochette + icône lecture), pour libérer
-// l'écran quand on n'est pas en train de l'utiliser activement (menus, upload, navigation...).
-function collapsePlayer(){
-  document.getElementById('player-bar').classList.add('is-collapsed');
-  try{ localStorage.setItem('nuni_player_collapsed', '1'); }catch(e){ /* pas bloquant */ }
-}
-// Rouvre le lecteur en pleine largeur. Appelé au tap sur la bulle, et automatiquement dès
-// qu'un son démarre réellement (voir togglePlay()).
-function expandPlayer(){
-  document.getElementById('player-bar').classList.remove('is-collapsed');
-  try{ localStorage.setItem('nuni_player_collapsed', '0'); }catch(e){ /* pas bloquant */ }
-}
-// Clic sur la pochette : ouvre le lecteur plein écran normalement, sauf si on est en mode
-// bulle — dans ce cas le premier tap sert juste à rouvrir la barre, pas à ouvrir le plein écran.
+// Clic sur la pochette du mini-lecteur : ouvre toujours le lecteur plein écran (le mini-
+// lecteur n'existe de toute façon que pendant une vraie lecture — voir togglePlay()).
 function handlePlayerTrackClick(){
-  const bar = document.getElementById('player-bar');
-  if(bar.classList.contains('is-collapsed')){ expandPlayer(); return; }
   openFullPlayer();
 }
 
@@ -3076,9 +3062,9 @@ function playTrack(tr){
 }
 function togglePlay(){
   playing = !playing;
-  // Dès qu'un son démarre réellement, le lecteur reprend sa forme normale — c'est le
-  // moment où il est "utilisé". La réduction en bulle reste ensuite manuelle (bouton ˅).
-  if(playing) expandPlayer();
+  // Le mini-lecteur n'existe pas tant qu'aucun son n'a été lancé. Dès la première vraie
+  // lecture, il apparaît (et le reste jusqu'à la déconnexion — voir stopAllPlayback()).
+  if(playing) document.getElementById('player-bar').style.display = 'flex';
   document.documentElement.classList.toggle('is-playing', playing);
   updateNowPlayingCards();
   if('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
@@ -3088,8 +3074,6 @@ function togglePlay(){
   document.getElementById('play-icon').innerHTML = iconPath;
   const fpIcon = document.getElementById('fp-play-icon');
   if(fpIcon) fpIcon.innerHTML = iconPath;
-  const bubbleIcon = document.getElementById('player-bubble-icon-svg');
-  if(bubbleIcon) bubbleIcon.innerHTML = iconPath;
   if(usingRealAudio){
     if(playing){
       setPlayerLoadingState(true);
@@ -6636,40 +6620,130 @@ function switchAccountType(){
   toast(accountType === 'artist' ? 'Vue Pass Artiste activée — menu Catalogue, Publicité, Artiste, Dashboard.' : 'Vue Pass Consommateur activée — menu Catalogue, Publicité, Clips, Bibliothèque.');
   if(accountType === 'consumer') enterApp('catalog');
 }
-function renderLibrary(){
-  const plWrap = document.getElementById('library-playlists');
-  const hiWrap = document.getElementById('library-history');
-  if(plWrap){
-    plWrap.innerHTML = '';
-    if(!favoritesPlaylist.length){
-      plWrap.innerHTML = `<div class="pi-empty">Aucune playlist pour l'instant.<br>Appuyez sur ❤️ sur un titre pour créer votre playlist <b>Favoris</b>.</div>`;
-    } else {
-      favoritesPlaylist.forEach(tr=>{
-        const item = document.createElement('div'); item.className = 'pi-item';
-        const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
-        item.innerHTML = `<div class="cov ${tr.cover?'':tr.p}" style="${covStyle}"></div><div><div class="t">${tr.t}</div><div class="s">${tr.a}</div></div>`;
-        item.onclick = ()=> playTrack(tr);
-        plWrap.appendChild(item);
-      });
-    }
+/* ============ BIBLIOTHÈQUE (cartes + liste filtrable) ============ */
+let libraryActiveCategory = 'liked';
+let libraryActiveSort = 'recent';
+let libraryPlaylistsCache = null; // vraies playlists NUNI (curées, /api/playlists)
+let libraryArtistsCache = null;   // vrais artistes suivis (/api/me/following)
+
+function setLibraryCategory(cat){
+  libraryActiveCategory = cat;
+  const sortMenu = document.getElementById('lib-sort-menu');
+  if(sortMenu) sortMenu.style.display = 'none';
+  renderLibrary();
+}
+function toggleLibrarySortMenu(){
+  const menu = document.getElementById('lib-sort-menu');
+  if(menu) menu.style.display = (menu.style.display === 'none') ? 'flex' : 'none';
+}
+function setLibrarySort(sort){
+  libraryActiveSort = sort;
+  const menu = document.getElementById('lib-sort-menu');
+  if(menu) menu.style.display = 'none';
+  renderLibrary();
+}
+function sortTrackList(list){
+  const arr = [...list];
+  if(libraryActiveSort === 'az') arr.sort((a,b)=> (a.t||'').localeCompare(b.t||''));
+  else if(libraryActiveSort === 'artist') arr.sort((a,b)=> (a.a||'').localeCompare(b.a||''));
+  return arr; // 'recent' = ordre déjà chronologique (le plus récent en premier)
+}
+function buildLibraryTrackRow(tr, subtitleSuffix){
+  const item = document.createElement('div'); item.className = 'pi-item lib-track-row';
+  const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
+  item.innerHTML = `
+    <div class="cov ${tr.cover?'':tr.p}" style="${covStyle}"></div>
+    <div class="lib-track-info"><div class="t">${tr.t}</div><div class="s">${tr.a}${subtitleSuffix||''}</div></div>
+    <button class="btn-icon lib-track-menu-btn" aria-label="Options">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+    </button>`;
+  item.querySelector('.cov').onclick = ()=> handleTrackCardClick(tr);
+  item.querySelector('.lib-track-info').onclick = ()=> handleTrackCardClick(tr);
+  item.querySelector('.lib-track-menu-btn').onclick = (e)=>{ e.stopPropagation(); openTrackCardMenu(tr, e.currentTarget); };
+  return item;
+}
+async function renderLibraryPlaylists(listEl){
+  if(!libraryPlaylistsCache){
+    listEl.innerHTML = `<div class="pi-empty">Chargement…</div>`;
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/playlists');
+      const data = await res.json();
+      libraryPlaylistsCache = data.playlists || [];
+    }catch(e){ libraryPlaylistsCache = []; }
   }
-  if(hiWrap){
-    hiWrap.innerHTML = '';
-    const cutoff = Date.now() - 30*60*1000;
-    const recent = listeningHistory.filter(h => h.at >= cutoff);
-    if(!recent.length){
-      hiWrap.innerHTML = `<div class="pi-empty">Rien écouté dans les 30 dernières minutes.</div>`;
-    } else {
-      recent.forEach(h=>{
-        const tr = h.track;
-        const mins = Math.max(0, Math.round((Date.now()-h.at)/60000));
-        const item = document.createElement('div'); item.className = 'pi-item';
-        const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
-        item.innerHTML = `<div class="cov ${tr.cover?'':tr.p}" style="${covStyle}"></div><div><div class="t">${tr.t}</div><div class="s">${tr.a} · il y a ${mins==0?'moins d\'1 min':mins+' min'}</div></div>`;
-        item.onclick = ()=> playTrack(tr);
-        hiWrap.appendChild(item);
-      });
+  if(libraryActiveCategory !== 'playlists') return; // la catégorie a pu changer pendant le chargement
+  listEl.innerHTML = '';
+  if(!libraryPlaylistsCache.length){
+    listEl.innerHTML = `<div class="pi-empty">Aucune playlist NUNI disponible pour l'instant.</div>`;
+    return;
+  }
+  libraryPlaylistsCache.forEach(pl=>{
+    const item = document.createElement('div'); item.className = 'pi-item';
+    const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url})` : '';
+    item.innerHTML = `<div class="cov pal-1" style="${covStyle}"></div><div><div class="t">${pl.title}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''}</div></div>`;
+    item.onclick = ()=> openPlaylistPage(pl.id);
+    listEl.appendChild(item);
+  });
+}
+async function renderLibraryArtists(listEl){
+  if(!libraryArtistsCache){
+    listEl.innerHTML = `<div class="pi-empty">Chargement…</div>`;
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/me/following', { headers: realAuthToken ? {'Authorization':'Bearer '+realAuthToken} : {} });
+      const data = await res.json();
+      libraryArtistsCache = data.following || [];
+    }catch(e){ libraryArtistsCache = []; }
+  }
+  if(libraryActiveCategory !== 'artists') return;
+  listEl.innerHTML = '';
+  if(!libraryArtistsCache.length){
+    listEl.innerHTML = `<div class="pi-empty">Vous ne suivez encore aucun artiste.<br>Le bouton "Suivre" sur une page artiste l'ajoutera ici.</div>`;
+    return;
+  }
+  libraryArtistsCache.forEach(ar=>{
+    const name = ar.artist_name || ar.first_name;
+    const item = document.createElement('div'); item.className = 'pi-item';
+    const covStyle = ar.avatar_url ? `background-image:url(${ar.avatar_url})` : '';
+    item.innerHTML = `<div class="cov pal-1" style="${covStyle}; border-radius:50%;"></div><div><div class="t">${name}${ar.is_verified?' ✅':''}</div><div class="s">Artiste NUNI</div></div>`;
+    item.onclick = ()=> openArtistPage(name, ar.id);
+    listEl.appendChild(item);
+  });
+}
+function renderLibrary(){
+  const listEl = document.getElementById('library-list');
+  const titleEl = document.getElementById('lib-list-title');
+  if(!listEl) return;
+  listEl.innerHTML = '';
+  document.querySelectorAll('#lib-cards-row .lib-card').forEach(b=> b.classList.toggle('active', b.dataset.libCat === libraryActiveCategory));
+
+  if(libraryActiveCategory === 'liked'){
+    titleEl.textContent = 'Titres aimés';
+    if(!favoritesPlaylist.length){
+      listEl.innerHTML = `<div class="pi-empty">Aucun titre aimé pour l'instant.<br>Appuyez sur ❤️ sur un morceau pour le retrouver ici.</div>`;
+      return;
     }
+    sortTrackList(favoritesPlaylist).forEach(tr=> listEl.appendChild(buildLibraryTrackRow(tr)));
+  } else if(libraryActiveCategory === 'recent'){
+    titleEl.textContent = 'Écoutés récemment';
+    if(!listeningHistory.length){
+      listEl.innerHTML = `<div class="pi-empty">Rien écouté durant cette session pour l'instant.</div>`;
+      return;
+    }
+    // 'recent' = ordre déjà chronologique naturel (le plus récent en premier) ; pour les
+    // autres tris, on trie une copie sur le morceau lui-même en gardant son horodatage.
+    const entries = libraryActiveSort === 'recent'
+      ? listeningHistory
+      : sortTrackList(listeningHistory.map(h=>h.track)).map(t=> listeningHistory.find(h=>h.track===t));
+    entries.forEach(h=>{
+      const mins = Math.max(0, Math.round((Date.now()-h.at)/60000));
+      listEl.appendChild(buildLibraryTrackRow(h.track, ' · il y a ' + (mins===0 ? "moins d'1 min" : mins+' min')));
+    });
+  } else if(libraryActiveCategory === 'playlists'){
+    titleEl.textContent = 'Playlists NUNI';
+    renderLibraryPlaylists(listEl);
+  } else if(libraryActiveCategory === 'artists'){
+    titleEl.textContent = 'Artistes suivis';
+    renderLibraryArtists(listEl);
   }
 }
 

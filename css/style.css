@@ -985,39 +985,18 @@ html.is-playing .player-track-info .t{ font-weight:700; }
   .volume-row{ display:none; }
 }
 
-/* ============ MODE BULLE (lecteur réduit quand il n'est pas utilisé) ============ */
-/* Avant : le player-bar restait affiché en pleine largeur en permanence dès qu'on entrait
-   dans l'app, même si rien n'avait jamais été écouté — il chevauchait le contenu (zone de
-   dépose de fichiers, menu ⋮ sur une pochette...) et cassait l'immersion. Maintenant : par
-   défaut (ou dès qu'on réduit manuellement via le bouton ˅), le lecteur devient une simple
-   bulle flottante avec la pochette + l'icône lecture/pause. Un tap dessus le rouvre en entier.
-   Il reprend aussi automatiquement sa forme normale dès qu'un son démarre réellement (voir
-   expandPlayer() appelé dans togglePlay()). */
-.player-bubble-icon{
-  display:none; position:absolute; inset:0; align-items:center; justify-content:center;
-  background:rgba(0,0,0,.4); border-radius:inherit; color:#fff;
+/* ============ APPARITION DU LECTEUR (façon Apple Music / Spotify) ============ */
+/* Le lecteur n'existe pas visuellement tant qu'aucun son n'a été lancé (display:none,
+   voir index.html) — dès qu'une vraie lecture démarre, il passe à display:flex (voir
+   togglePlay() dans app.js), ce qui relance automatiquement cette animation d'entrée
+   (un changement display:none → display:flex redémarre toujours les animations CSS). */
+@keyframes playerBarSlideIn{
+  from{ transform:translateY(100%); opacity:0; }
+  to{ transform:translateY(0); opacity:1; }
 }
-.player-bubble-icon svg{ width:22px; height:22px; }
-.player-minimize-btn{ order:-1; }
-
-.player-bar.is-collapsed{
-  width:64px; height:64px; left:auto; right:16px;
-  bottom:calc(16px + env(safe-area-inset-bottom,0));
-  padding:0; border-radius:50%; gap:0; justify-content:center;
-  background:transparent; border:none; backdrop-filter:none;
-  box-shadow:0 10px 30px -8px rgba(0,0,0,.6);
-  transition:width .25s var(--ease), height .25s var(--ease), border-radius .25s var(--ease), bottom .25s var(--ease);
-}
-.player-bar.is-collapsed .player-like,
-.player-bar.is-collapsed .player-center,
-.player-bar.is-collapsed .player-right,
-.player-bar.is-collapsed .player-track-info{ display:none !important; }
-.player-bar.is-collapsed .player-track{ width:64px; gap:0; }
-.player-bar.is-collapsed .player-cover{ width:64px; height:64px; border-radius:50%; }
-.player-bar.is-collapsed .player-bubble-icon{ display:flex; }
-
-@media(max-width:680px){
-  .player-bar.is-collapsed{ bottom:calc(80px + env(safe-area-inset-bottom,0)); } /* au-dessus de la mobile-tabbar */
+.player-bar{ animation:playerBarSlideIn .38s cubic-bezier(.22,1,.36,1); }
+@media (prefers-reduced-motion: reduce){
+  .player-bar{ animation:none; }
 }
 
 /* ============ FULL-SCREEN PLAYER ============ */
@@ -1344,6 +1323,49 @@ html.is-playing .fp-title{ font-weight:800; }
 .pi-item .t{ font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pi-item .s{ font-size:11.5px; color:var(--text-faint); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pi-empty{ text-align:center; color:var(--text-faint); font-size:13px; padding:30px 10px; }
+
+/* ============ BIBLIOTHÈQUE : cartes + liste filtrable ============ */
+.lib-cards-row{
+  display:flex; gap:12px; overflow-x:auto; padding:2px 2px 14px; margin-bottom:22px;
+  scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+}
+.lib-cards-row::-webkit-scrollbar{ display:none; }
+.lib-card{
+  flex:0 0 auto; scroll-snap-align:start; width:132px; height:84px; border-radius:16px;
+  border:2px solid transparent; cursor:pointer; position:relative; overflow:hidden;
+  display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-end;
+  padding:10px 12px; color:#fff; font-family:var(--font-display); font-weight:600; font-size:14px;
+  transition:transform .25s var(--ease), border-color .25s var(--ease);
+}
+.lib-card:hover{ transform:translateY(-2px); }
+.lib-card.active{ border-color:#fff; box-shadow:0 0 0 2px var(--accent); }
+.lib-card svg{ position:absolute; top:10px; right:10px; width:20px; height:20px; opacity:.85; }
+.lib-card span{ position:relative; z-index:1; }
+.lib-card-liked{ background:linear-gradient(135deg, var(--rose-braise) 0%, var(--violet) 100%); }
+.lib-card-playlists{ background:linear-gradient(135deg, var(--violet) 0%, var(--violet-2) 100%); }
+.lib-card-artists{ background:linear-gradient(135deg, var(--or) 0%, var(--rose-braise) 100%); }
+.lib-card-recent{ background:linear-gradient(135deg, var(--vert-nuni) 0%, var(--bleu-nuit) 100%); }
+
+.lib-list-head{ position:relative; }
+#lib-sort-btn{ margin-left:auto; }
+.lib-sort-menu{
+  position:absolute; top:calc(100% + 6px); right:0; z-index:20; flex-direction:column;
+  background:var(--bg-elev); border:1px solid var(--border); border-radius:14px; padding:8px;
+  box-shadow:0 12px 30px rgba(0,0,0,.35); min-width:190px;
+}
+.lib-sort-menu button{
+  width:100%; text-align:left; padding:10px 12px; border-radius:10px; background:none; border:none;
+  color:var(--text); font-size:13.5px; cursor:pointer;
+}
+.lib-sort-menu button:hover{ background:var(--bg-card); }
+
+.lib-track-row .lib-track-info{ min-width:0; flex:1; cursor:pointer; }
+.lib-track-menu-btn{ flex-shrink:0; margin-left:auto; }
+
+@media(max-width:640px){
+  .lib-card{ width:112px; height:76px; font-size:13px; }
+  .lib-cards-row{ margin-left:-4px; margin-right:-4px; padding-left:4px; padding-right:4px; }
+}
 .pi-lang-row{ display:flex; flex-direction:column; gap:10px; }
 .pi-lang-opt{
   display:flex; align-items:center; justify-content:space-between; background:var(--bg-card); border:1.5px solid var(--border);
