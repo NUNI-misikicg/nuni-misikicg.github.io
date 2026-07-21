@@ -6799,6 +6799,19 @@ function tabNav(view){
    avant de vraiment chercher, sans changer le comportement ressenti (toujours quasi
    instantané), juste sans reconstruire le DOM à chaque lettre tapée. */
 let searchDebounceTimer = null;
+// ============ RECHERCHE MOBILE ============
+// Avant : la barre de recherche était entièrement masquée sur mobile (display:none), sans
+// aucun autre moyen d'y accéder — la recherche était donc tout simplement impossible sur
+// téléphone. Ici : un bouton loupe dans la barre du haut l'ouvre en plein écran (même champ,
+// mêmes résultats, juste un affichage adapté au petit écran).
+function openMobileSearch(){
+  document.getElementById('app-search-wrap').classList.add('mobile-open');
+  setTimeout(()=> document.getElementById('app-search-input').focus(), 50);
+}
+function closeMobileSearch(){
+  document.getElementById('app-search-wrap').classList.remove('mobile-open');
+  document.getElementById('search-results').classList.remove('open');
+}
 function debouncedRunSearch(q){
   clearTimeout(searchDebounceTimer);
   searchDebounceTimer = setTimeout(()=> runSearch(q), 200);

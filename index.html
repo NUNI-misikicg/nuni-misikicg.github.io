@@ -530,12 +530,18 @@
       <button class="app-nav-link nav-artist-only" data-app-link="artist" onclick="enterApp('artist')">Artiste</button>
       <button class="app-nav-link nav-artist-only" data-app-link="dashboard" onclick="enterApp('dashboard')">Dashboard</button>
     </div>
-    <div class="app-search-wrap">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <div class="app-search-wrap" id="app-search-wrap">
+      <button class="btn-icon nuni-mobile-search-close" aria-label="Fermer la recherche" onclick="closeMobileSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       <input type="text" id="app-search-input" placeholder="Titres, artistes, albums…" oninput="debouncedRunSearch(this.value)" onfocus="document.getElementById('search-results').classList.add('open')">
       <div class="search-results" id="search-results"></div>
     </div>
     <div class="app-topnav-right">
+      <button class="btn-icon nuni-mobile-search-btn" aria-label="Rechercher" onclick="openMobileSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      </button>
       <div class="notif-wrap">
         <button class="btn-icon" id="notif-toggle" aria-label="Notifications" onclick="toggleNotifPanel()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
