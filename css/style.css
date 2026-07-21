@@ -797,9 +797,11 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   padding:3px 8px; border-radius:999px; border:1px solid rgba(212,175,106,.4);
 }
 .cover .play-fab{
+  position:absolute; top:50%; left:50%; margin:-19px 0 0 -19px;
   width:38px; height:38px; border-radius:50%; background:rgba(10,10,16,.55); backdrop-filter:blur(6px);
   display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(6px) scale(.8);
   transition:opacity .3s var(--ease), transform .35s var(--ease); border:1px solid rgba(255,255,255,.25);
+  z-index:4; /* sous le menu ⋮ (z-index:5) — jamais l'un par-dessus l'autre de façon ambiguë */
 }
 .track-card:hover .play-fab{ opacity:1; transform:translateY(0) scale(1); }
 @media(hover:none){
