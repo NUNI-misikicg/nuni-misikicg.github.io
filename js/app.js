@@ -2089,7 +2089,7 @@ const genres = [
 const genreGrid = document.getElementById('genre-grid');
 genres.forEach((g,i)=>{
   const tile = document.createElement('div');
-  tile.className = 'genre-tile' + (i===0 ? ' is-active' : '');
+  tile.className = 'genre-tile lg-glass-cursor' + (i===0 ? ' is-active' : '');
   tile.style.setProperty('--gc1', g.c1);
   tile.style.setProperty('--gc2', g.c2);
   if(g.n === 'Tout'){
@@ -2123,6 +2123,22 @@ genres.forEach((g,i)=>{
   genreGrid.appendChild(tile);
 });
 buildNuniAudioSphere();
+attachGlassCursorLight('.genre-tile');
+
+// ============ LIQUID GLASS : halo lumineux qui suit le curseur ============
+// Pose --mx/--my (position du curseur en %) sur chaque élément .lg-glass-cursor visé —
+// le halo lui-même est purement CSS (voir .lg-glass-cursor::after dans nuni-premium.css).
+// Ignoré sur mobile (pas de curseur réel) : aucun coût inutile sur les appareils tactiles.
+function attachGlassCursorLight(selector){
+  if(window.matchMedia('(hover: none)').matches) return;
+  document.addEventListener('mousemove', (e)=>{
+    const el = e.target.closest(selector);
+    if(!el) return;
+    const rect = el.getBoundingClientRect();
+    el.style.setProperty('--mx', ((e.clientX - rect.left) / rect.width * 100) + '%');
+    el.style.setProperty('--my', ((e.clientY - rect.top) / rect.height * 100) + '%');
+  });
+}
 
 
 
@@ -6865,7 +6881,7 @@ function switchAccountType(){
   accountType = accountType === 'artist' ? 'consumer' : 'artist';
   applyAccountType();
   closeProfileMenu();
-  toast(accountType === 'artist' ? 'Vue Pass Artiste activée — menu Catalogue, Publicité, Artiste, Dashboard.' : 'Vue Pass Consommateur activée — menu Catalogue, Publicité, Clips, Bibliothèque.');
+  toast(accountType === 'artist' ? 'Vue Pass Artiste activée — menu Accueil, Opportunités, Artiste, Dashboard.' : 'Vue Pass Consommateur activée — menu Accueil, Opportunités, Clips, Bibliothèque.');
   if(accountType === 'consumer') enterApp('catalog');
 }
 /* ============ BIBLIOTHÈQUE (cartes + liste filtrable) ============ */

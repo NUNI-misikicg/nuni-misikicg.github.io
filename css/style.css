@@ -153,9 +153,10 @@ a:focus-visible, button:focus-visible, input:focus-visible{
 }
 .btn-primary:hover{ box-shadow:0 14px 36px -6px rgba(212,175,106,.55); transform:translateY(-2px); }
 .btn-ghost{
-  background:transparent; border:1px solid var(--border-strong); color:var(--text);
+  background:rgba(255,255,255,.06); border:1px solid var(--border-strong); color:var(--text);
+  backdrop-filter:blur(14px) saturate(150%); -webkit-backdrop-filter:blur(14px) saturate(150%);
 }
-.btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
+.btn-ghost:hover{ border-color:var(--accent); color:var(--accent); background:rgba(212,175,106,.08); }
 .btn-sm{ padding:9px 18px; font-size:13px; }
 .btn-icon{
   width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center;
@@ -329,13 +330,18 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .discovery-banner b{ color:#7FC79A; font-family:var(--font-data); }
 .discovery-banner .tz-note{ color:var(--text-faint); font-size:11px; }
 .app-topnav{
-  position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between;
-  padding:18px 34px; padding-top:calc(18px + env(safe-area-inset-top,0));
-  background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(14px);
-  border-bottom:1px solid var(--border);
+  position:sticky; top:calc(14px + env(safe-area-inset-top,0)); z-index:20; display:flex; align-items:center; justify-content:space-between;
+  padding:14px 26px; margin:0 20px 8px;
+  background:linear-gradient(160deg, rgba(8,7,10,.6) 0%, rgba(38,22,14,.46) 100%);
+  backdrop-filter:blur(28px) saturate(160%); -webkit-backdrop-filter:blur(28px) saturate(160%);
+  border:1px solid rgba(255,255,255,.10); border-radius:26px;
+  box-shadow:0 20px 50px -20px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.07);
+}
+@supports not (backdrop-filter: blur(1px)){
+  .app-topnav{ background:rgba(10,10,16,.94); } /* repli opaque si le flou n'est pas supporté */
 }
 .app-nav-links{ display:flex; gap:6px; }
-.app-nav-link{ position:relative; padding:9px 16px; border-radius:999px; font-size:13.5px; font-weight:500; letter-spacing:0.01em; color:var(--text-dim); transition:all .3s var(--ease); }
+.app-nav-link{ position:relative; padding:9px 16px; border-radius:999px; font-size:13.5px; font-weight:500; letter-spacing:0.01em; color:var(--text-dim); transition:all .3s var(--ease); display:inline-flex; align-items:center; gap:7px; }
 .app-nav-link:hover{ color:var(--text); }
 /* Pas de fond plein sur l'onglet actif — juste un changement de couleur + un fin trait doré
    (voir ensureNavStyles() dans app.js), façon Apple Music Desktop plutôt qu'un gros bouton. */
@@ -412,9 +418,14 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 /* genre chips */
 .radio-banner{
   display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;
-  background:linear-gradient(120deg, var(--bleu-nuit) 0%, #0A0A10 100%); border:1px solid var(--border-strong);
+  background:linear-gradient(120deg, rgba(20,26,56,.55) 0%, rgba(8,7,10,.6) 100%);
+  backdrop-filter:blur(var(--glass-blur, 26px)) saturate(150%); -webkit-backdrop-filter:blur(var(--glass-blur, 26px)) saturate(150%);
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow:0 20px 45px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
   border-radius:var(--radius-l); padding:26px 28px; margin-bottom:30px; position:relative; overflow:hidden;
+  transition:transform .4s var(--ease), box-shadow .4s var(--ease);
 }
+.radio-banner:hover{ transform:translateY(-2px); box-shadow:0 26px 55px -18px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.09); }
 html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(--bleu-nuit) 0%, var(--violet) 140%); }
 .radio-banner::after{ content:""; position:absolute; inset:0; background-image:repeating-linear-gradient(115deg, rgba(255,255,255,.05) 0 2px, transparent 2px 16px); }
 .radio-banner-text{ position:relative; z-index:1; }
@@ -605,15 +616,17 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   mask-image:linear-gradient(90deg, transparent, black 22px, black calc(100% - 22px), transparent);
 }
 .genre-tile{
-  position:relative; flex-shrink:0; width:150px; height:96px; border-radius:18px; overflow:hidden; cursor:pointer;
+  position:relative; flex-shrink:0; width:150px; height:96px; border-radius:20px; overflow:hidden; cursor:pointer;
   scroll-snap-align:start;
   background:
-    radial-gradient(130% 110% at 12% 10%, color-mix(in srgb, var(--gc1,#6E45A8) 38%, transparent) 0%, transparent 62%),
-    var(--bg-card);
-  border:1.5px solid rgba(255,255,255,.07);
-  box-shadow:0 8px 18px -14px rgba(0,0,0,.6);
-  transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s ease;
+    radial-gradient(130% 110% at 12% 10%, color-mix(in srgb, var(--gc1,#6E45A8) 46%, transparent) 0%, transparent 65%),
+    linear-gradient(160deg, rgba(8,7,10,.5) 0%, rgba(38,22,14,.4) 100%);
+  backdrop-filter:blur(18px) saturate(160%); -webkit-backdrop-filter:blur(18px) saturate(160%);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 14px 30px -16px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08);
+  transition:transform .4s var(--ease), box-shadow .4s var(--ease), border-color .35s ease;
 }
+.genre-tile:hover{ transform:translateY(-3px); box-shadow:0 20px 40px -14px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.12); }
 .genre-tile::before{
   content:''; position:absolute; inset:0; border-radius:inherit; padding:1.5px;
   background:linear-gradient(135deg, rgba(255,255,255,.28), transparent 45%);
@@ -1333,6 +1346,13 @@ html.is-playing .fp-title{ font-weight:800; }
 .pi-item .s{ font-size:11.5px; color:var(--text-faint); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pi-empty{ text-align:center; color:var(--text-faint); font-size:13px; padding:30px 10px; }
 
+/* ============ ICÔNES DE NAVIGATION — famille unique, contour, taille cohérente ============
+   Une seule famille (SF Symbols / Lucide), même épaisseur de trait partout, aucun remplissage
+   (sauf le petit triangle "lecture" dans Clips). La couleur suit celle du lien parent
+   (normal/hover/actif déjà gérés par .app-nav-link et ensureNavStyles()). */
+.nuni-nav-ic{ width:21px; height:21px; flex-shrink:0; }
+@media(max-width:1080px){ .nuni-nav-ic{ width:19px; height:19px; } }
+
 /* ============ SYSTÈME D'ICÔNES NUNI (remplace les emojis) ============
    Trait fin uniforme, monochrome, couleur héritée par défaut (or NUNI) — remplace
    l'ancien langage visuel à base d'emojis par des icônes vectorielles cohérentes,
@@ -1561,7 +1581,7 @@ html.is-playing .fp-title{ font-weight:800; }
 
 @media(max-width:680px){
   .app-main{ padding:28px 18px 86px; }
-  .app-topnav{ padding:14px 18px; padding-top:calc(14px + env(safe-area-inset-top,0)); }
+  .app-topnav{ padding:12px 16px; margin:0 10px 6px; border-radius:20px; }
   .app-nav-links{ display:none; }
   .app-search-wrap{ display:none; }
   .dash-grid{ grid-template-columns:1fr 1fr; }
