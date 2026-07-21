@@ -1007,6 +1007,76 @@ function toggleMimi(){
     setTimeout(()=>mimiFace('idle'), 900);
   }
 }
+// ============ BULLE "LE P" DÉPLAÇABLE (maintien puis glisser) ============
+// Un tap court garde son comportement normal (ouvre le chat, via toggleMimi). Un appui
+// maintenu (450ms sans bouger) passe en mode "glisser" — la bulle suit le doigt/curseur
+// jusqu'au relâchement, où elle reste posée à son nouvel endroit (mémorisé pour la
+// prochaine visite). Fonctionne à la souris comme au toucher (Pointer Events).
+function initMimiDrag(){
+  const widget = document.getElementById('mimi-widget');
+  const bubble = document.getElementById('mimi-bubble');
+  if(!widget || !bubble) return;
+  let holdTimer = null, dragging = false, moved = false, startX = 0, startY = 0, offX = 0, offY = 0;
+
+  // Position mémorisée d'une session à l'autre.
+  try{
+    const saved = JSON.parse(localStorage.getItem('nuni_mimi_pos') || 'null');
+    if(saved && typeof saved.left === 'number' && typeof saved.top === 'number'){
+      widget.style.left = saved.left + 'px';
+      widget.style.top = saved.top + 'px';
+      widget.style.bottom = 'auto';
+    }
+  }catch(e){ /* pas bloquant */ }
+
+  function clampToViewport(left, top){
+    const w = widget.offsetWidth || 56, h = widget.offsetHeight || 56;
+    return {
+      left: Math.max(6, Math.min(window.innerWidth - w - 6, left)),
+      top: Math.max(6, Math.min(window.innerHeight - h - 6, top)),
+    };
+  }
+
+  bubble.addEventListener('pointerdown', (e)=>{
+    if(e.button !== undefined && e.button !== 0) return; // clic droit/molette ignorés
+    moved = false;
+    startX = e.clientX; startY = e.clientY;
+    const rect = widget.getBoundingClientRect();
+    offX = startX - rect.left; offY = startY - rect.top;
+    holdTimer = setTimeout(()=>{
+      dragging = true;
+      widget.classList.add('is-dragging');
+      try{ bubble.setPointerCapture(e.pointerId); }catch(err){ /* pas bloquant */ }
+    }, 450);
+  });
+  bubble.addEventListener('pointermove', (e)=>{
+    if(Math.abs(e.clientX - startX) > 6 || Math.abs(e.clientY - startY) > 6) moved = true;
+    if(!dragging) return;
+    e.preventDefault();
+    const pos = clampToViewport(e.clientX - offX, e.clientY - offY);
+    widget.style.left = pos.left + 'px';
+    widget.style.top = pos.top + 'px';
+    widget.style.bottom = 'auto';
+  });
+  function endDrag(e){
+    clearTimeout(holdTimer);
+    if(dragging){
+      dragging = false;
+      widget.classList.remove('is-dragging');
+      const rect = widget.getBoundingClientRect();
+      try{ localStorage.setItem('nuni_mimi_pos', JSON.stringify({ left: rect.left, top: rect.top })); }catch(err){ /* pas bloquant */ }
+      // Empêche le tap de relâchement de déclencher aussi une ouverture du chat juste après un glisser.
+      moved = true;
+    }
+  }
+  bubble.addEventListener('pointerup', endDrag);
+  bubble.addEventListener('pointercancel', endDrag);
+  bubble.addEventListener('pointerleave', ()=>{ if(!dragging) clearTimeout(holdTimer); });
+  // Le clic normal (tap court, sans glisser) garde son onclick="toggleMimi()" existant dans
+  // le HTML — on l'empêche juste explicitement si un glisser vient d'avoir lieu.
+  bubble.addEventListener('click', (e)=>{ if(moved){ e.stopImmediatePropagation(); e.preventDefault(); moved = false; } });
+}
+initMimiDrag();
+
 /* Avant : le bouton "Besoin d'en savoir plus sur cet artiste ?" affichait un texte fixe et
    inventé ("Cet artiste mélange rumba traditionnelle...", recommandant un album "Envol" qui
    n'existe pas forcément) — identique peu importe l'artiste réellement affiché. Maintenant :
