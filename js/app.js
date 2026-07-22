@@ -7027,13 +7027,21 @@ function toggleDesktopSearch(e){
 }
 document.addEventListener('click', (e)=>{
   const wrap = document.getElementById('app-search-wrap');
-  if(!wrap || !wrap.classList.contains('open')) return;
+  if(!wrap) return;
+  // Avant : ce gestionnaire ne vérifiait que la classe "open" (bulle desktop) — sur mobile,
+  // le panneau utilise "mobile-open", donc taper à côté ne le refermait jamais ; seul le
+  // bouton ✕ fonctionnait. Les deux sont maintenant couverts, comportement cohérent partout.
+  const isOpenDesktop = wrap.classList.contains('open');
+  const isOpenMobile = wrap.classList.contains('mobile-open');
+  if(!isOpenDesktop && !isOpenMobile) return;
   if(wrap.contains(e.target)) return;
+  if(isOpenMobile){ closeMobileSearch(); return; }
   const input = document.getElementById('app-search-input');
   if(!input.value.trim()){ wrap.classList.remove('open'); }
   document.getElementById('search-results').classList.remove('open');
 });
-function openMobileSearch(){
+function openMobileSearch(e){
+  if(e) e.stopPropagation();
   const wrap = document.getElementById('app-search-wrap');
   const btn = document.querySelector('.nuni-mobile-search-btn');
   wrap.classList.add('mobile-open');
