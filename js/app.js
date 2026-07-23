@@ -7213,7 +7213,23 @@ function openMobileSearch(e){
 }
 function closeMobileSearch(){
   document.getElementById('app-search-wrap').classList.remove('mobile-open');
+  document.getElementById('app-search-wrap').classList.remove('open');
   document.getElementById('search-results').classList.remove('open');
+}
+// Utilisée uniquement par le bouton X : avant, il fermait tout le panneau même s'il y avait
+// du texte tapé — il fallait rouvrir la recherche et re-toucher le champ pour recommencer.
+// Maintenant : s'il y a du texte, le X l'efface d'abord (et vide les résultats) sans fermer,
+// pour pouvoir retaper tout de suite ; le panneau ne se ferme que si le champ était déjà vide.
+function clearOrCloseSearch(){
+  const input = document.getElementById('app-search-input');
+  if(input && input.value.trim()){
+    input.value = '';
+    document.getElementById('search-results').innerHTML = '';
+    document.getElementById('search-results').classList.remove('open');
+    input.focus();
+    return;
+  }
+  closeMobileSearch();
 }
 function debouncedRunSearch(q){
   clearTimeout(searchDebounceTimer);
