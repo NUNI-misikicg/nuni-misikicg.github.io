@@ -2828,6 +2828,7 @@ function trackCard(tr){
       ${(tr.artistId && currentUser && currentUser.id === tr.artistId) ? '<span class="imported-badge" title="Votre import">Vous</span>' : ''}
       ${isMultiTrack ? `<span class="nuni-type-badge" title="${tr.releaseType}"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/></svg> ${tr.releaseType}</span>` : ''}
       <button class="track-card-menu-btn" aria-label="Options">⋮</button>
+      ${tr.isReal ? `<span class="track-streams-badge"><svg class="nuni-ic" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> ${formatLikes(tr.streams||0)}</span>` : ''}
       <div class="play-fab">
         <svg viewBox="0 0 24 24" class="play-fab-icon"><path d="M8 5v14l11-7z"/></svg>
         <span class="eq play-fab-eq"><i></i><i></i><i></i></span>
@@ -2854,16 +2855,19 @@ function ensureTrackCardMenuStyles(){
   style.textContent = `
     .track-card-menu-btn{position:absolute; top:6px; right:6px; z-index:5; width:30px; height:30px; min-width:30px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; border:none; font-size:16px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;}
     .track-card-menu-btn:hover{ background:rgba(0,0,0,.75); }
-    #tcm-overlay{ position:fixed; inset:0; z-index:9998; background:transparent; }
     #tcm-sheet{
       position:fixed; z-index:9999; width:240px; background:var(--bg-elev,#1a1a22);
       border:1px solid var(--border-strong,rgba(255,255,255,.1)); border-radius:16px; padding:6px;
       box-shadow:0 16px 40px -10px rgba(0,0,0,.55); animation:tcmPopIn .16s ease-out;
     }
     @keyframes tcmPopIn{ from{ opacity:0; transform:scale(.94) translateY(-4px); } to{ opacity:1; transform:scale(1) translateY(0); } }
-    #tcm-sheet .tcm-title{ font-size:12px; font-weight:600; color:var(--text-faint,#9aa); padding:8px 10px 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #tcm-sheet .tcm-title{ font-size:12px; font-weight:600; color:var(--text-faint,#9aa); padding:8px 34px 6px 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #tcm-close{ position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; background:none; border:none; color:var(--text-faint,#9aa); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+    #tcm-close svg{ width:15px; height:15px; }
+    #tcm-close:hover{ background:rgba(255,255,255,.08); color:#fff; }
     #tcm-sheet button{ width:100%; text-align:left; padding:10px; min-height:40px; border-radius:10px; background:none; border:none; color:var(--text,#fff); font-size:13.5px; display:flex; align-items:center; gap:10px; cursor:pointer; }
     #tcm-sheet button:hover, #tcm-sheet button:active{ background:rgba(255,255,255,.06); }
+    #tcm-sheet button.danger{ color:var(--rose-braise,#C9667A); border-top:1px solid var(--border,rgba(255,255,255,.08)); margin-top:4px; padding-top:12px; }
     @media(max-width:520px){
       /* Sur petit écran tactile, reste un popover léger — mais collé au bord le plus proche
          plutôt qu'ancré pile sous un bouton parfois trop près du bord de l'écran. */
@@ -2877,23 +2881,26 @@ function closeTrackCardMenu(){
   const sheet = document.getElementById('tcm-sheet');
   if(overlay) overlay.remove();
   if(sheet) sheet.remove();
+  document.removeEventListener('click', outsideClickCloseTcm);
 }
 function openTrackCardMenu(tr, anchorEl){
   ensureTrackCardMenuStyles();
   closeTrackCardMenu();
   const isLiked = favoritesPlaylist.some(f=> f.t === tr.t);
-  const overlay = document.createElement('div');
-  overlay.id = 'tcm-overlay';
-  overlay.onclick = closeTrackCardMenu;
+  // Seul le vrai propriétaire du morceau (artiste connecté = artiste du morceau) voit
+  // l'option supprimer — jamais visible pour qui que ce soit d'autre, même sur son propre
+  // profil public visité par un tiers.
+  const isOwner = !!(tr.realId && currentUser && currentUser.account_type === 'artist' && currentUser.id === tr.artistId);
   const sheet = document.createElement('div');
   sheet.id = 'tcm-sheet';
   sheet.innerHTML = `
+    <button id="tcm-close" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     <div class="tcm-title">${tr.t} — ${tr.a}</div>
     <button id="tcm-queue"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> <span>Ajouter à la file d'attente</span></button>
     <button id="tcm-fav" class="${isLiked ? 'liked' : ''}">${isLiked ? '<svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> <span>Retirer des favoris</span>' : '<svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> <span>Ajouter aux favoris</span>'}</button>
     <button id="tcm-artist"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg> <span>Voir l'artiste</span></button>
+    ${isOwner ? `<button id="tcm-delete" class="danger"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg> <span>Supprimer ce morceau</span></button>` : ''}
   `;
-  document.body.appendChild(overlay);
   document.body.appendChild(sheet);
   // Ancrage près du bouton cliqué (petit popover), avec repli intelligent pour ne jamais
   // déborder de l'écran — sinon centré en bas comme avant si aucun bouton n'est fourni.
@@ -2912,9 +2919,43 @@ function openTrackCardMenu(tr, anchorEl){
     sheet.style.bottom = 'calc(20px + env(safe-area-inset-bottom,0))';
     sheet.style.transform = 'translateX(-50%)';
   }
+  // Avant : une couche invisible plein écran captait le clic pour fermer le menu au clic
+  // extérieur — mais elle bloquait aussi le clic vers un AUTRE bouton ⋮ juste en dessous
+  // (le clic touchait la couche, jamais le vrai bouton), obligeant à cliquer deux fois pour
+  // changer de morceau. Plus fiable : un vrai gestionnaire "clic à l'extérieur du menu",
+  // qui laisse les autres boutons parfaitement cliquables normalement.
+  // Se ferme aussi automatiquement au scroll, pour ne jamais rester détaché du bouton.
+  setTimeout(()=>{
+    document.addEventListener('click', outsideClickCloseTcm);
+    window.addEventListener('scroll', closeTrackCardMenu, { capture:true, once:true, passive:true });
+  }, 0);
+
+  document.getElementById('tcm-close').onclick = closeTrackCardMenu;
   document.getElementById('tcm-queue').onclick = ()=>{ addToQueue(tr); closeTrackCardMenu(); };
   document.getElementById('tcm-fav').onclick = (e)=>{ toggleLike(e.currentTarget, tr); closeTrackCardMenu(); };
   document.getElementById('tcm-artist').onclick = ()=>{ openArtistPage(tr.a, tr.artistId); closeTrackCardMenu(); };
+  const deleteBtn = document.getElementById('tcm-delete');
+  if(deleteBtn) deleteBtn.onclick = ()=>{ closeTrackCardMenu(); confirmDeleteTrack(tr); };
+}
+function outsideClickCloseTcm(e){
+  const sheet = document.getElementById('tcm-sheet');
+  if(!sheet) return;
+  if(sheet.contains(e.target)) return; // clic à l'intérieur du menu : rien à faire ici
+  closeTrackCardMenu(); // clic ailleurs, y compris sur un autre bouton ⋮ — celui-ci ouvrira son propre menu juste après, normalement
+}
+// Vraie suppression côté serveur (avec confirmation) — jamais accessible depuis le menu
+// pour qui que ce soit d'autre que le propriétaire réel du morceau (voir isOwner plus haut).
+async function confirmDeleteTrack(tr){
+  if(!confirm(`Supprimer définitivement "${tr.t}" ? Cette action est irréversible.`)) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/tracks/' + tr.realId, {
+      method:'DELETE', headers:{ 'Authorization':'Bearer ' + realAuthToken }
+    });
+    const data = await res.json();
+    if(!res.ok){ toast('❌ ' + (data.error || 'Suppression impossible.')); return; }
+    toast('Morceau supprimé.');
+    if(currentArtistPageRealId) openArtistPage(currentUser.artist_name, currentUser.id);
+  }catch(e){ toast("Impossible de contacter le serveur NUNI."); }
 }
 function dedupeAlbums(list){
   const seen = new Set();

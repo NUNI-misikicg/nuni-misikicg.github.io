@@ -837,7 +837,7 @@
       <button class="btn btn-ghost" id="follow-btn" onclick="toggleFollow(this)">Suivre</button>
     </div>
     <p class="artist-bio" id="artist-page-bio">Bibi Mwana réinvente la rumba congolaise avec des arrangements modernes et une voix habitée. Entre Kinshasa et la diaspora, son univers tisse mémoire et avenir — chaque sortie est pensée comme un envol collectif pour la scène locale.</p>
-    <button class="btn-icon" id="artist-page-bio-edit-btn" onclick="enterApp('dashboard'); document.getElementById('artist-bio-input').focus();" style="display:none; font-size:12px; gap:6px; width:auto; padding:6px 12px; margin-top:-8px; margin-bottom:16px;" aria-label="Modifier ma biographie"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="m14 7 3 3"/></svg> Modifier ma bio</button>
+    <button class="btn-icon" id="artist-page-bio-edit-btn" onclick="enterApp('dashboard'); document.getElementById('artist-bio-input').focus();" style="display:none; width:26px; height:26px; padding:0; margin-top:-8px; margin-bottom:16px; background:none; border:none; color:var(--text-faint); opacity:.7;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'" aria-label="Modifier ma biographie"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="m14 7 3 3"/></svg></button>
     <div class="artist-section" id="artist-featured-section" style="display:none;">
       <div class="shelf-head"><h3 class="serif">En vedette</h3></div>
       <div class="shelf-row" id="shelf-artist-featured"></div>
