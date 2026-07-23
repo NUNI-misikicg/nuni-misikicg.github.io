@@ -591,52 +591,101 @@
     <div class="nuni-welcome-hero" id="nuni-welcome-hero">
       <svg class="nwh-maze" viewBox="0 0 1400 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
         <defs>
-          <filter id="nwhGlow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="3.2" result="blur"/>
+          <filter id="nwhGlow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="4" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
+          <filter id="nwhGlowSoft" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="9"/>
+          </filter>
           <radialGradient id="nwhDot" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="#F3DFA3"/>
-            <stop offset="55%" stop-color="#D4AF6A"/>
+            <stop offset="0%" stop-color="#FBEFC8"/>
+            <stop offset="50%" stop-color="#E8C77E"/>
             <stop offset="100%" stop-color="#D4AF6A" stop-opacity="0"/>
           </radialGradient>
+          <!-- Motif textile répétable (chevrons/triangles imbriqués, inspiration Kuba/Kasai) —
+               couche de fond, à peine visible, comme une texture gravée dans le métal. -->
+          <pattern id="nwhFabric" width="72" height="72" patternUnits="userSpaceOnUse">
+            <path d="M0 36 L18 18 L36 36 L54 18 L72 36" fill="none" stroke="#D4AF6A" stroke-width="1"/>
+            <path d="M0 60 L18 42 L36 60 L54 42 L72 60" fill="none" stroke="#D4AF6A" stroke-width="1"/>
+            <path d="M18 18 L18 0 M54 18 L54 0" stroke="#D4AF6A" stroke-width="1"/>
+          </pattern>
         </defs>
-        <!-- Tracés "gravés" du labyrinthe, statiques, à peine visibles -->
-        <g class="nwh-tracks" fill="none" stroke="#D4AF6A" stroke-width="1.6" stroke-linejoin="round">
-          <path d="M560 40 L700 40 L700 120 L820 120 L820 60 L960 60"/>
-          <path d="M600 180 L600 260 L740 260 L740 340 L900 340"/>
-          <path d="M980 30 L980 140 L1120 140 L1120 30"/>
-          <path d="M900 200 L1040 200 L1040 100 L1240 100 L1240 220 L1360 220"/>
-          <path d="M700 380 L700 300 L860 300 L860 220 L1000 220"/>
-          <path d="M1080 380 L1080 280 L1220 280 L1220 350 L1360 350"/>
-          <path d="M640 100 L640 20"/>
-          <path d="M1160 200 L1160 340 L1300 340"/>
+
+        <!-- Couche 2 : texture de fond très subtile, sur toute la surface -->
+        <rect x="0" y="0" width="1400" height="420" fill="url(#nwhFabric)" opacity=".07"/>
+
+        <!-- Couche 3 : le labyrinthe lumineux — chevrons imbriqués formant un treillis de
+             losanges (motif textile africain), presque toute la largeur de la bannière,
+             plus des connecteurs orthogonaux façon circuit pour la profondeur. -->
+        <g class="nwh-tracks" fill="none" stroke="#D9AF6C" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M40 260 L160 140 L280 260 L400 140 L520 260 L640 140 L760 260 L880 140 L1000 260 L1120 140 L1240 260 L1360 140"/>
+          <path d="M40 320 L160 200 L280 320 L400 200 L520 320 L640 200 L760 320 L880 200 L1000 320 L1120 200 L1240 320 L1360 200"/>
+          <path d="M40 80 L160 200 L280 80 L400 200 L520 80 L640 200 L760 80 L880 200 L1000 80 L1120 200 L1240 80 L1360 200"/>
+          <path d="M160 140 L160 40"/>
+          <path d="M400 140 L400 40 L470 40"/>
+          <path d="M640 140 L640 18"/>
+          <path d="M880 140 L880 40 L950 40"/>
+          <path d="M1120 140 L1120 18"/>
+          <path d="M160 320 L160 395"/>
+          <path d="M400 320 L400 395 L470 395"/>
+          <path d="M640 320 L640 402"/>
+          <path d="M880 320 L880 395 L950 395"/>
+          <path d="M1120 320 L1120 395"/>
+          <!-- Médaillons : triangles imbriqués aux points de convergence -->
+          <path d="M610 170 L640 108 L670 170 Z M621 158 L640 132 L659 158 Z"/>
+          <path d="M1090 170 L1120 108 L1150 170 Z M1101 158 L1120 132 L1139 158 Z"/>
+          <path d="M250 290 L280 228 L310 290 Z M261 278 L280 252 L299 278 Z"/>
+          <!-- Lignes de convergence : le réseau "remonte" vers la zone du texte -->
+          <path d="M40 260 L-40 210"/>
+          <path d="M40 320 L-40 350"/>
+          <path d="M40 80 L-40 60"/>
         </g>
-        <!-- Halos fixes à chaque coude, respiration lente -->
-        <g class="nwh-nodes" fill="#D4AF6A">
-          <circle cx="700" cy="120" r="3"/><circle cx="820" cy="60" r="3"/><circle cx="600" cy="260" r="3"/>
-          <circle cx="740" cy="340" r="3"/><circle cx="980" cy="140" r="3"/><circle cx="1120" cy="140" r="3"/>
-          <circle cx="1040" cy="100" r="3"/><circle cx="1240" cy="220" r="3"/><circle cx="860" cy="220" r="3"/>
-          <circle cx="1080" cy="280" r="3"/><circle cx="1220" cy="350" r="3"/>
+
+        <!-- Halos fixes à chaque nœud, respiration lente -->
+        <g class="nwh-nodes" fill="#E8C77E">
+          <circle cx="160" cy="140" r="3"/><circle cx="280" cy="260" r="3"/><circle cx="400" cy="140" r="3"/>
+          <circle cx="520" cy="260" r="3"/><circle cx="640" cy="140" r="3"/><circle cx="760" cy="260" r="3"/>
+          <circle cx="880" cy="140" r="3"/><circle cx="1000" cy="260" r="3"/><circle cx="1120" cy="140" r="3"/>
+          <circle cx="1240" cy="260" r="3"/><circle cx="160" cy="200" r="3"/><circle cx="400" cy="200" r="3"/>
+          <circle cx="640" cy="200" r="3"/><circle cx="880" cy="200" r="3"/><circle cx="1120" cy="200" r="3"/>
         </g>
-        <!-- Particules qui parcourent les tracés en boucle, façon énergie qui circule -->
+
+        <!-- Halo doux, statique, juste derrière le point où le réseau "entre" dans le texte -->
+        <circle cx="20" cy="230" r="90" fill="#E8C77E" opacity=".16" filter="url(#nwhGlowSoft)"/>
+
+        <!-- Couche 4 : la rivière de lumière — particules qui parcourent le treillis en
+             continu, vitesses différentes, quelques-unes filent jusque vers le texte. -->
         <circle r="5" fill="url(#nwhDot)" filter="url(#nwhGlow)">
-          <animateMotion dur="7s" repeatCount="indefinite" path="M560 40 L700 40 L700 120 L820 120 L820 60 L960 60"/>
+          <animateMotion dur="9s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1" keyTimes="0;0.09;0.18;0.27;0.36;0.45;0.54;0.63;0.72;0.81;0.9;1" path="M40 260 L160 140 L280 260 L400 140 L520 260 L640 140 L760 260 L880 140 L1000 260 L1120 140 L1240 260 L1360 140"/>
         </circle>
         <circle r="4.5" fill="url(#nwhDot)" filter="url(#nwhGlow)">
-          <animateMotion dur="8.5s" repeatCount="indefinite" begin="-2s" path="M600 180 L600 260 L740 260 L740 340 L900 340"/>
+          <animateMotion dur="11s" repeatCount="indefinite" begin="-3s" path="M40 320 L160 200 L280 320 L400 200 L520 320 L640 200 L760 320 L880 200 L1000 320 L1120 200 L1240 320 L1360 200"/>
         </circle>
         <circle r="4" fill="url(#nwhDot)" filter="url(#nwhGlow)">
-          <animateMotion dur="6s" repeatCount="indefinite" begin="-1s" path="M980 30 L980 140 L1120 140 L1120 30"/>
-        </circle>
-        <circle r="5" fill="url(#nwhDot)" filter="url(#nwhGlow)">
-          <animateMotion dur="9.5s" repeatCount="indefinite" begin="-4s" path="M900 200 L1040 200 L1040 100 L1240 100 L1240 220 L1360 220"/>
+          <animateMotion dur="7.5s" repeatCount="indefinite" begin="-1.4s" path="M40 80 L160 200 L280 80 L400 200 L520 80 L640 200 L760 80 L880 200 L1000 80 L1120 200 L1240 80 L1360 200"/>
         </circle>
         <circle r="4" fill="url(#nwhDot)" filter="url(#nwhGlow)">
-          <animateMotion dur="7.5s" repeatCount="indefinite" begin="-3s" path="M700 380 L700 300 L860 300 L860 220 L1000 220"/>
+          <animateMotion dur="4.5s" repeatCount="indefinite" begin="-2s" path="M400 140 L400 40 L470 40"/>
         </circle>
+        <circle r="4" fill="url(#nwhDot)" filter="url(#nwhGlow)">
+          <animateMotion dur="5s" repeatCount="indefinite" begin="-0.8s" path="M880 320 L880 395 L950 395"/>
+        </circle>
+        <circle r="3.5" fill="url(#nwhDot)" filter="url(#nwhGlow)">
+          <animateMotion dur="6.5s" repeatCount="indefinite" begin="-3.5s" path="M1120 140 L1120 18"/>
+        </circle>
+        <circle r="3.5" fill="url(#nwhDot)" filter="url(#nwhGlow)">
+          <animateMotion dur="6.5s" repeatCount="indefinite" begin="-1s" path="M160 320 L160 395"/>
+        </circle>
+        <!-- Trois particules qui remontent spécifiquement vers le texte, en boucle -->
         <circle r="4.5" fill="url(#nwhDot)" filter="url(#nwhGlow)">
-          <animateMotion dur="8s" repeatCount="indefinite" begin="-5s" path="M1080 380 L1080 280 L1220 280 L1220 350 L1360 350"/>
+          <animateMotion dur="3.2s" repeatCount="indefinite" path="M40 260 L-40 210"/>
+        </circle>
+        <circle r="4" fill="url(#nwhDot)" filter="url(#nwhGlow)">
+          <animateMotion dur="3.6s" repeatCount="indefinite" begin="-1.2s" path="M40 320 L-40 350"/>
+        </circle>
+        <circle r="4" fill="url(#nwhDot)" filter="url(#nwhGlow)">
+          <animateMotion dur="4s" repeatCount="indefinite" begin="-2.1s" path="M40 80 L-40 60"/>
         </circle>
       </svg>
       <div class="nwh-scrim"></div>
