@@ -3034,6 +3034,13 @@ async function loadRealTracks(){
     tracks.unshift(...mapped);
     refreshMainShelves();
     renderHomeHero();
+    // Avant : si l'utilisateur cherchait pendant que le serveur se réveillait encore (plan
+    // gratuit, jusqu'à 30 secondes), la recherche ne portait que sur les 10 morceaux de
+    // démonstration fictifs — aucun vrai artiste ni morceau réel n'était encore chargé.
+    // Ici : dès que les vraies données arrivent, on relance la recherche si un texte est
+    // toujours dans le champ, pour que les vrais résultats apparaissent sans avoir à retaper.
+    const searchInputEl = document.getElementById('app-search-input');
+    if(searchInputEl && searchInputEl.value.trim()) runSearch(searchInputEl.value);
     // Le lecteur démarrait sur un morceau de démo sans vrai fichier audio (silence simulé si
     // on appuyait sur ▶ avant d'avoir cliqué un vrai morceau) — dès que de vrais morceaux sont
     // chargés, et si rien n'a encore été lancé, on bascule le lecteur sur le premier vrai son.
@@ -7069,11 +7076,11 @@ function runSearch(q){
   if(!query){ box.innerHTML = '<div class="sr-empty">Tapez pour rechercher un titre, un artiste, un album ou un clip.</div>'; return; }
 
   // artistes uniques correspondants (résultat prioritaire pour retrouver vite un artiste)
-  const artistNames = [...new Set(tracks.map(t=>t.a))];
+  const artistNames = [...new Set(tracks.map(t=>t.a||''))].filter(Boolean);
   const artistMatches = artistNames.filter(a => a.toLowerCase().includes(query)).slice(0, 4);
 
   const trackMatches = tracks.filter(t =>
-    t.t.toLowerCase().includes(query) || t.a.toLowerCase().includes(query) || (t.album||'').toLowerCase().includes(query)
+    (t.t||'').toLowerCase().includes(query) || (t.a||'').toLowerCase().includes(query) || (t.album||'').toLowerCase().includes(query)
   ).slice(0, 6);
 
   // Clips — avant, la recherche ne portait que sur les morceaux/albums/artistes, les clips
