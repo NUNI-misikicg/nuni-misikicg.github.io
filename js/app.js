@@ -1611,6 +1611,18 @@ function openHelpEmail(){
 const faqContent = `
   <h4>Comment fonctionne le Pass Découverte ?</h4>
   <p>Un vrai compte est créé, activé gratuitement 24h. Passé ce délai, vous avez 2h pour choisir un vrai Pass avant que le compte ne soit automatiquement supprimé.</p>
+  <h4>Comment fonctionne mon Dashboard (pour les artistes) ?</h4>
+  <p>Votre Dashboard suit deux choses séparément, et c'est important de bien comprendre la différence :</p>
+  <p><b>Vos streams publics</b> — visibles sur votre profil, dans les classements, sur vos pages morceaux. Ce chiffre ne redescend <b>jamais</b>, même après un paiement. Il représente tout ce que vous avez réellement fait écouter depuis le début.</p>
+  <p><b>Vos streams "période en cours"</b> — la partie de vos streams qui n'a pas encore été payée. Dès que NUNI vous verse un paiement, ce compteur repart de zéro et recommence à grimper avec vos nouvelles écoutes, pendant que vos streams publics, eux, continuent d'augmenter sans jamais être affectés.</p>
+  <p>Dans la section <b>« Paiements &amp; Revenus »</b> de votre Dashboard, vous voyez toujours : le montant qui vous est dû en ce moment, combien de streams ce montant couvre, la date de votre dernier versement, et l'historique complet de tout ce que vous avez déjà reçu.</p>
+  <h4>Comment vais-je recevoir mon argent ?</h4>
+  <p>Deux façons de recevoir vos revenus, au choix :</p>
+  <p><b>1. En vous rapprochant de l'agence</b> — vous passez récupérer votre versement directement auprès de l'équipe NUNI.</p>
+  <p><b>2. Par virement Mobile Money</b> — le montant est envoyé directement sur le numéro Mobile Money que vous avez renseigné dans votre Dashboard.</p>
+  <p>Dans les deux cas, le montant est calculé sur vos vraies écoutes uniquement — jamais un chiffre estimé ou arrondi au hasard, et jamais réinitialisé sans qu'un vrai paiement ait eu lieu.</p>
+  <h4>Comment gagner plus avec ma musique ?</h4>
+  <p>Votre revenu dépend directement du nombre de vraies personnes qui vous écoutent. Plus votre musique touche d'auditeurs, plus votre part grandit — il n'y a pas de raccourci : publier régulièrement, soigner vos sorties et faire grandir votre communauté d'auditeurs est ce qui fait vraiment progresser vos revenus sur NUNI. Chaque écoute compte, alors continuez à travailler votre musique et à élargir votre audience.</p>
   <h4>Comment les artistes sont-ils payés ?</h4>
   <p>Chaque écoute réelle (Pass Consommateur payant) génère un revenu, dont 75% revient directement à l'artiste. Les écoutes en Pass Découverte ne comptent pas tant qu'aucun Pass payant n'est validé.</p>
   <h4>Comment payer mon Pass ?</h4>
@@ -2028,8 +2040,8 @@ async function loadRealPaymentStatus(){
       const h = await historyRes.json();
       const history = h.history || [];
       tbody.innerHTML = history.length
-        ? history.map(p=> `<tr><td>${new Date(p.created_at).toLocaleDateString('fr-FR')}</td><td class="data">${p.amount_fcfa.toLocaleString('fr-FR')} FCFA</td><td class="data">${p.streams_covered.toLocaleString('fr-FR')}</td></tr>`).join('')
-        : '<tr><td colspan="3" style="color:var(--text-faint); font-size:12.5px;">Aucun versement reçu pour le moment.</td></tr>';
+        ? history.map(p=> `<tr><td>${new Date(p.created_at).toLocaleDateString('fr-FR')}</td><td class="data">${p.amount_fcfa.toLocaleString('fr-FR')} FCFA</td><td class="data">${p.streams_covered.toLocaleString('fr-FR')}</td><td>${p.method || '—'}</td></tr>`).join('')
+        : '<tr><td colspan="4" style="color:var(--text-faint); font-size:12.5px;">Aucun versement reçu pour le moment.</td></tr>';
     }
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
 }
