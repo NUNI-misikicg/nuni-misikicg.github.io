@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727a">
-<link rel="stylesheet" href="css/corners.css?v=20260727a">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727a">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727a">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727a">
+<link rel="stylesheet" href="css/style.css?v=20260727c">
+<link rel="stylesheet" href="css/corners.css?v=20260727c">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727c">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727c">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727c">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -728,6 +728,15 @@
       <button class="btn btn-sm concerts-filter-btn" data-filter="showcase" onclick="setConcertsFilter('showcase')">🎬 Showcases</button>
     </div>
     <div id="concerts-list"></div>
+  </main>
+
+  <!-- ---- NUNI ÉVÉNEMENTS — gérés uniquement par l'équipe NUNI ---- -->
+  <main class="app-main" id="view-nuniEvents" style="display:none;">
+    <div class="page-head">
+      <div><h1>🎉 NUNI Événements</h1><p>Festivals, castings, showcases et soirées organisés par NUNI.</p></div>
+      <button class="btn btn-ghost btn-sm" onclick="enterApp('search')">← Retour</button>
+    </div>
+    <div id="nuni-events-list"></div>
   </main>
 
   <!-- ---- CLIPS ---- -->
@@ -1528,7 +1537,7 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727a"></script>
-<script src="js/app.js?v=20260727a"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727c"></script>
+<script src="js/app.js?v=20260727c"></script>
 </body>
 </html>

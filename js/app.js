@@ -1537,14 +1537,16 @@ function enterApp(view){
     document.getElementById('asv-clear-btn').style.display = 'none';
   }
   if(view === 'concerts') loadConcertsPage();
-  ['catalog','clips','ads','library','artist','dashboard','admin','search','concerts'].forEach(v=>{
+  if(view === 'nuniEvents') loadNuniEventsPage();
+  ['catalog','clips','ads','library','artist','dashboard','admin','search','concerts','nuniEvents'].forEach(v=>{
     const el = document.getElementById('view-'+v);
     if(el) el.style.display = (v===view) ? 'block' : 'none';
   });
-  // ---- Pendant que la recherche plein écran (ou la page Concerts qui en découle) est
-  // active, les autres onglets disparaissent de la navigation (desktop + mobile) — ne reste
-  // que "Accueil", comme demandé (même principe que l'onglet Recherche d'Apple Music). ----
-  const searchActive = view === 'search' || view === 'concerts';
+  // ---- Pendant que la recherche plein écran (ou les pages Concerts/Événements qui en
+  // découlent) est active, les autres onglets disparaissent de la navigation (desktop +
+  // mobile) — ne reste que "Accueil", comme demandé (même principe que l'onglet Recherche
+  // d'Apple Music). ----
+  const searchActive = view === 'search' || view === 'concerts' || view === 'nuniEvents';
   document.querySelectorAll('.app-nav-link').forEach(l=>{
     l.style.display = searchActive ? (l.dataset.appLink === 'catalog' ? '' : 'none') : '';
   });
@@ -5387,9 +5389,9 @@ function openTicketInfoModal(concertId){
       ${numbers.map(n=> `<div style="font-size:16px; font-weight:700; color:var(--accent); letter-spacing:0.5px; margin-bottom:4px;">${n}</div>`).join('')}
     </div>`;
   }
-  if(c.purchase_link){
-    html += `<a class="btn btn-primary" style="width:100%; text-align:center; display:block; text-decoration:none; margin-top:4px;" href="${c.purchase_link}" target="_blank" rel="noopener noreferrer">Acheter en ligne</a>`;
-  }
+  html += c.purchase_link
+    ? `<a class="btn btn-primary" style="width:100%; text-align:center; display:block; text-decoration:none; margin-top:4px;" href="${c.purchase_link}" target="_blank" rel="noopener noreferrer">Acheter en ligne</a>`
+    : `<button class="btn btn-primary" style="width:100%; margin-top:4px;" onclick="toast('Achat en ligne bientôt disponible pour ce concert.')">Acheter en ligne</button>`;
   if(!html){
     html = `<p style="color:var(--text-faint); font-size:13px;">Aucune information de billetterie renseignée par l'artiste pour le moment.</p>`;
   }
@@ -5473,6 +5475,57 @@ function renderConcertsList(concerts){
     const row = card.querySelector('.concert-artist-row');
     if(row){ row.style.cursor = 'pointer'; row.onclick = ()=> openArtistPage(c.artist_name, c.artist_id); }
   });
+}
+
+// ============ NUNI ÉVÉNEMENTS (Phase 3) — publique ============
+// Gérés uniquement par l'équipe NUNI depuis admin.html. Réutilise le même modal de
+// billetterie que les concerts pour "Acheter" (openTicketInfoModal attend purchase_link /
+// purchase_locations / purchase_phone_numbers — un événement NUNI n'a qu'un lien direct,
+// donc on adapte l'objet avant de l'enregistrer dans le registre).
+function nuniEventCardHtml(ev){
+  concertsRegistry['ev_' + ev.id] = { id: 'ev_' + ev.id, title: ev.title, purchase_link: ev.purchase_link, purchase_locations: null, purchase_phone_numbers: null };
+  const dateLabel = new Date(ev.event_date).toLocaleDateString('fr-FR', {weekday:'short', day:'2-digit', month:'short', year:'numeric'});
+  const gallery = (ev.gallery_urls || '').split(',').map(u=>u.trim()).filter(Boolean);
+  return `
+    <div class="concert-card">
+      <div class="concert-flyer" style="${ev.flyer_url ? `background-image:url(${ev.flyer_url});` : ''}">
+        <span class="concert-type-badge">${ev.category}</span>
+      </div>
+      <div class="concert-body">
+        <h3 class="concert-title">${ev.title}</h3>
+        <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> ${dateLabel}${ev.start_time ? ' · ' + ev.start_time : ''}</div>
+        ${ev.venue || ev.address ? `<div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg> ${[ev.venue, ev.address].filter(Boolean).join(', ')}</div>` : ''}
+        ${ev.description ? `<p class="concert-desc">${ev.description}</p>` : ''}
+        ${gallery.length ? `<div class="ev-gallery-row">${gallery.slice(0,4).map(u=> `<div class="ev-gallery-thumb" style="background-image:url(${u});"></div>`).join('')}</div>` : ''}
+        ${ev.promo_video_url ? `<video class="ev-promo-video" src="${ev.promo_video_url}" controls preload="metadata"></video>` : ''}
+        <div class="concert-foot-row">
+          ${ev.price ? `<span class="concert-price">${ev.price}</span>` : '<span></span>'}
+          ${ev.places_restantes != null ? `<span class="concert-places">${ev.places_restantes} place${ev.places_restantes>1?'s':''} restante${ev.places_restantes>1?'s':''}</span>` : ''}
+        </div>
+        <div class="concert-actions">
+          <button class="btn btn-primary btn-sm" onclick="openTicketInfoModal('ev_${ev.id}')">Acheter</button>
+          ${(ev.gps_lat && ev.gps_lng) || ev.address || ev.venue ? `<a class="btn btn-ghost btn-sm" href="${ev.gps_lat && ev.gps_lng ? `https://www.google.com/maps/search/?api=1&query=${ev.gps_lat},${ev.gps_lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([ev.venue, ev.address].filter(Boolean).join(', '))}`}" target="_blank" rel="noopener noreferrer">Voir l'emplacement</a>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+async function loadNuniEventsPage(){
+  const box = document.getElementById('nuni-events-list');
+  if(!box) return;
+  box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement des événements…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/nuni-events');
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    const events = data.events || [];
+    if(!events.length){
+      box.innerHTML = '<p style="color:var(--text-faint); font-size:13px; padding:30px 0;">Aucun événement NUNI programmé pour le moment — revenez bientôt.</p>';
+      return;
+    }
+    box.innerHTML = `<div class="concert-grid">${events.map(nuniEventCardHtml).join('')}</div>`;
+  }catch(e){
+    box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de charger les événements pour le moment.</p>';
+  }
 }
 
 // Point d'entrée unique pour changer sa photo de profil, quel que soit le bouton utilisé
@@ -7779,26 +7832,20 @@ const ASV_GENRE_COLORS = {
   'Afro': '#1E8449', 'Rap': '#8E2DE2', 'Rumba': '#B3512E', 'Gospel': '#1976D2',
   'Hip-Hop': '#C0392B', 'Top Congo': '#B98A3D', 'Nouveautés': '#0E3D2C',
 };
-// Concerts et NUNI Événements : catégories prévues, pas encore construites (aucun système
-// de publication de concert côté artiste, aucune gestion d'événement côté admin pour
-// l'instant) — la carte existe déjà visuellement, mais dit honnêtement "Bientôt disponible"
-// plutôt que de prétendre qu'il y a du contenu à afficher.
-const ASV_COMING_SOON = {
-  'NUNI Événements': '#B3512E',
-};
+// Concerts et NUNI Événements sont désormais tous les deux fonctionnels (Phases 2 et 3).
 function renderSearchViewBrowse(){
   const box = document.getElementById('asv-results');
   if(!box) return;
   const genres = Object.keys(ASV_GENRE_COLORS);
-  const comingSoon = Object.keys(ASV_COMING_SOON);
   box.innerHTML = `
     <div class="asv-browse-title">Parcourir</div>
     <div class="asv-genre-grid">
       <div class="asv-genre-tile" style="background:#6E45A8;" data-concerts="1">🎤 Concerts</div>
+      <div class="asv-genre-tile" style="background:#B3512E;" data-nuni-events="1">🎉 NUNI Événements</div>
       ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
-      ${comingSoon.map(g => `<div class="asv-genre-tile is-coming-soon" style="background:${ASV_COMING_SOON[g]};" data-coming-soon="${g}">${g}<span class="asv-soon-badge">Bientôt</span></div>`).join('')}
     </div>`;
   box.querySelector('[data-concerts]').onclick = ()=> enterApp('concerts');
+  box.querySelector('[data-nuni-events]').onclick = ()=> enterApp('nuniEvents');
   box.querySelectorAll('.asv-genre-tile[data-genre]').forEach(tile=>{
     tile.onclick = ()=>{
       const g = tile.dataset.genre;
@@ -7806,9 +7853,6 @@ function renderSearchViewBrowse(){
       filterCatalogByGenre(g);
       document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname') && t.querySelector('.gname').textContent === g));
     };
-  });
-  box.querySelectorAll('.asv-genre-tile[data-coming-soon]').forEach(tile=>{
-    tile.onclick = ()=> toast(`« ${tile.dataset.comingSoon} » arrive bientôt sur NUNI.`);
   });
 }
 function clearSearchView(){

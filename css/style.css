@@ -409,6 +409,9 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .concert-meta-row{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-dim); }
 .concert-meta-row .nuni-ic{ width:15px; height:15px; flex-shrink:0; }
 .concert-desc{ font-size:12.5px; color:var(--text-faint); line-height:1.5; margin:2px 0 0; }
+.ev-gallery-row{ display:flex; gap:6px; margin-top:4px; }
+.ev-gallery-thumb{ flex:1; height:56px; border-radius:6px; background-size:cover; background-position:center; }
+.ev-promo-video{ width:100%; border-radius:8px; margin-top:4px; max-height:180px; background:#000; }
 .concert-tiers{ display:flex; flex-wrap:wrap; gap:6px; margin-top:2px; }
 .concert-tier{ font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:20px; background:rgba(255,255,255,0.06); border:1px solid var(--border-strong); color:var(--text-dim); }
 .concert-tier.is-vip{ background:rgba(232,199,126,0.16); border-color:rgba(212,175,106,0.4); color:var(--accent); }
