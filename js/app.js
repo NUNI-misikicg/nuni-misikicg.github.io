@@ -2572,47 +2572,70 @@ function ensureAlbumViewStyles(){
   const style = document.createElement('style');
   style.id = 'album-view-styles';
   style.textContent = `
-    #album-view-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #album-view-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A0A; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
     #album-view-overlay.show{opacity:1;}
-    .av-hero{position:relative; min-height:400px; display:flex; align-items:flex-end; padding:56px 24px 40px; overflow:hidden;}
-    .av-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(38px) saturate(1.3) brightness(0.5); transform:scale(1.15);}
-    .av-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(10,10,16,0.15) 0%, #0A0A10 92%);}
-    .av-hero-content{position:relative; max-width:760px; margin:0 auto; display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap;}
-    .av-cover{width:210px; height:210px; border-radius:18px; background-size:cover; background-position:center; flex-shrink:0; box-shadow:0 24px 60px rgba(0,0,0,0.6); border:1px solid rgba(212,175,106,0.3); animation:plvCoverFloat 6s ease-in-out infinite;}
-    @media(max-width:560px){ .av-cover{ width:150px; height:150px; } }
-    .av-badge{display:inline-flex; align-items:center; gap:6px; background:rgba(212,175,106,0.16); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); color:#E8C77E; border:1px solid rgba(212,175,106,0.45); font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:4px 10px; border-radius:20px; margin-bottom:10px;}
-    .av-title{color:#fff; font-size:30px; font-weight:800; line-height:1.15; margin:0 0 8px;}
-    .av-meta{color:#B9C2B4; font-size:13.5px;}
-    .av-meta b{color:#E8C77E; font-weight:600; cursor:pointer;}
-    .av-actions{max-width:760px; margin:22px auto 0; padding:0 24px; display:flex; gap:14px; align-items:center;}
-    .av-play-all{background:linear-gradient(135deg,#1E8449,#0E3D2C); color:#F3E6C8; border:1px solid rgba(212,175,106,0.5); font-weight:700; font-size:14px; padding:12px 26px; border-radius:30px; cursor:pointer; display:flex; align-items:center; gap:8px; transition:transform .15s ease, box-shadow .15s ease;}
-    .av-icon-btn{width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); color:#EDEDED; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s ease, color .15s ease, transform .15s ease;}
-    .av-icon-btn:hover{background:rgba(212,175,106,0.18); color:#D4AF6A; transform:translateY(-1px);}
-    .av-icon-btn.is-active{background:#D4AF6A; color:#0A0A10; border-color:#D4AF6A;}
-    .av-play-all:hover{transform:translateY(-1px); box-shadow:0 8px 22px rgba(212,175,106,0.18);}
-    .av-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
-    .av-close:hover{background:rgba(255,255,255,0.12);}
-    .av-list{max-width:760px; margin:26px auto calc(120px + env(safe-area-inset-bottom,0)); padding:0 24px;}
-    .av-total-duration{font-size:12px; color:#8a8a94; margin-bottom:10px; font-family:var(--font-data, monospace);}
-    .av-row{display:flex; align-items:center; gap:16px; padding:12px 10px; border-radius:10px; cursor:pointer; transition:background .15s ease;}
-    .av-row:hover{background:rgba(212,175,106,0.07);}
-    .av-row-num{width:24px; text-align:center; color:#7D8A79; font-size:13px; font-family:var(--font-data, monospace);}
-    .av-row:hover .av-row-num{color:#D4AF6A;}
-    .av-row-title{flex:1; color:#EDEDED; font-size:14.5px; font-weight:500;}
-    .av-row-play{width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#0A0A10; background:#D4AF6A; opacity:0; transition:opacity .15s ease;}
-    .av-row:hover .av-row-play{opacity:1;}
-    @media(hover:none){ .av-row-play{opacity:.85;} }
-    .av-list-panel{background:rgba(255,255,255,0.05); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:6px; overflow:hidden;}
-    .av-row{opacity:0; animation:avRowIn .35s ease forwards;}
-    @keyframes avRowIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
-    .av-row.is-playing{background:linear-gradient(90deg, rgba(212,175,106,0.16), transparent);}
-    .av-row.is-playing .av-row-title{color:#F3E6C8; font-weight:600;}
-    .av-row-dot{width:6px; height:6px; border-radius:50%; background:#D4AF6A; box-shadow:0 0 6px #D4AF6A; margin-left:auto; margin-right:4px;}
-    .av-row-lyrics{font-size:11px; color:#D4AF6A; opacity:.85; margin-right:2px; margin-left:auto;}
-    .av-row-dot ~ .av-row-lyrics{margin-left:0;}
-    .av-row-lyrics ~ .av-row-streams{margin-left:0;}
-    .av-row-streams{font-size:11px; color:#7D8A79; font-family:var(--font-data, monospace); margin-right:6px; margin-left:auto; white-space:nowrap;}
-    .av-row-dot ~ .av-row-streams, .av-row-lyrics ~ .av-row-streams{margin-left:0;}
+
+    /* ---- Bouton retour, en haut à gauche, façon navigation Spotify (plutôt qu'un X) ---- */
+    .av-back{position:fixed; top:calc(14px + env(safe-area-inset-top,0)); left:14px; width:36px; height:36px; border-radius:50%; background:rgba(0,0,0,0.5); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:none; color:#fff; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .av-back:hover{background:rgba(0,0,0,0.7);}
+
+    /* ---- Zone haute : fond teinté par la pochette, qui s'assombrit vers le noir plein,
+       comme la page album de Spotify (dégradé issu de la couleur dominante de la pochette) ---- */
+    .av-hero{position:relative; padding:64px 20px 20px; display:flex; flex-direction:column; align-items:center; overflow:hidden;}
+    .av-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(60px) saturate(1.4) brightness(0.55); transform:scale(1.3);}
+    .av-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0.25) 0%, #0A0A0A 88%);}
+    .av-cover{position:relative; width:min(58vw, 240px); height:min(58vw, 240px); border-radius:6px; background-size:cover; background-position:center; box-shadow:0 18px 46px rgba(0,0,0,0.65); flex-shrink:0;}
+
+    /* ---- Bloc titre/artiste, aligné à gauche sous la pochette, comme Spotify ---- */
+    .av-info{position:relative; width:100%; max-width:640px; margin:18px auto 0; text-align:left;}
+    .av-type{color:#B3B3B3; font-size:13px; font-weight:600;}
+    .av-title{color:#fff; font-size:26px; font-weight:800; line-height:1.2; margin:6px 0 10px; word-break:break-word;}
+    .av-artist-row{display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:4px; width:fit-content;}
+    .av-artist-avatar{width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#1E8449,#0E3D2C); color:#F3E6C8; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; background-size:cover; background-position:center; flex-shrink:0;}
+    .av-artist-name{color:#fff; font-size:14.5px; font-weight:700;}
+    .av-meta{color:#B3B3B3; font-size:13px;}
+
+    /* ---- Rangée d'actions : coche/ajouter, télécharger, options … puis aléatoire + gros
+       bouton lecture rond, exactement la disposition Spotify (cluster gauche / cluster droite) ---- */
+    .av-actions{position:relative; width:100%; max-width:640px; margin:20px auto 0; padding:0 20px; display:flex; align-items:center; gap:18px;}
+    .av-actions-left{display:flex; align-items:center; gap:18px;}
+    .av-actions-spacer{flex:1;}
+    .av-actions-right{display:flex; align-items:center; gap:18px;}
+    .av-circle-btn{width:32px; height:32px; border-radius:50%; border:1.5px solid #727272; background:none; color:#B3B3B3; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .15s ease, color .15s ease, transform .1s ease;}
+    .av-circle-btn:hover{border-color:#fff; color:#fff;}
+    .av-circle-btn:active{transform:scale(0.92);}
+    .av-circle-btn.is-active{border-color:transparent; background:linear-gradient(135deg,#1E8449,#0E3D2C); color:#F3E6C8;}
+    .av-more-btn{width:32px; height:32px; border:none; background:none; color:#B3B3B3; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:color .15s ease, transform .1s ease;}
+    .av-more-btn:hover{color:#fff;}
+    .av-more-btn:active{transform:scale(0.92);}
+    .av-shuffle-btn{border:none; background:none; color:#D4AF6A; cursor:pointer; width:26px; height:26px; display:flex; align-items:center; justify-content:center; transition:color .15s ease, transform .1s ease;}
+    .av-shuffle-btn:hover{color:#F3E6C8;}
+    .av-play-all{width:52px; height:52px; border-radius:50%; border:none; background:linear-gradient(135deg,#1E8449,#0E3D2C); color:#F3E6C8; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 20px rgba(30,132,73,0.4); transition:transform .12s ease;}
+    .av-play-all:hover{transform:scale(1.05);}
+    .av-play-all:active{transform:scale(0.96);}
+
+    /* ---- Liste des pistes : deux lignes (titre + artiste), sans numéro, menu "…" à droite,
+       exactement le motif de rangée utilisé sur les pages album de Spotify ---- */
+    .av-list{max-width:640px; margin:22px auto calc(120px + env(safe-area-inset-bottom,0)); padding:0 20px;}
+    .av-total-duration{font-size:12px; color:#727272; margin-bottom:8px;}
+    .av-list-panel{display:flex; flex-direction:column;}
+    .av-row{display:flex; align-items:center; gap:12px; padding:9px 4px; border-radius:4px; cursor:pointer; opacity:0; animation:avRowIn .3s ease forwards;}
+    @keyframes avRowIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+    .av-row:hover{background:rgba(255,255,255,0.06);}
+    .av-row-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+    .av-row-title{color:#fff; font-size:15px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .av-row-artist{color:#B3B3B3; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .av-row.is-playing .av-row-title{color:#3BC26A;}
+    .av-row-eq{display:flex; align-items:flex-end; gap:2px; width:14px; height:14px; flex-shrink:0;}
+    .av-row-eq span{width:3px; background:#3BC26A; border-radius:1px; animation:avEqBounce 0.9s ease-in-out infinite;}
+    .av-row-eq span:nth-child(1){height:40%; animation-delay:0s;}
+    .av-row-eq span:nth-child(2){height:100%; animation-delay:.2s;}
+    .av-row-eq span:nth-child(3){height:65%; animation-delay:.4s;}
+    @keyframes avEqBounce{ 0%,100%{transform:scaleY(0.4);} 50%{transform:scaleY(1);} }
+    .av-row-lyrics{font-size:11px; color:#D4AF6A; opacity:.85; flex-shrink:0;}
+    .av-row-streams{font-size:11px; color:#727272; white-space:nowrap; flex-shrink:0;}
+    .av-row-menu-btn{width:30px; height:30px; border:none; background:none; color:#B3B3B3; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:color .15s ease;}
+    .av-row-menu-btn:hover{color:#fff;}
   `;
   document.head.appendChild(style);
 }
@@ -2668,6 +2691,9 @@ function ensureBadgeStyles(){
   style.id = 'nuni-badge-styles';
   style.textContent = `
     .nuni-type-badge{position:absolute; top:8px; left:8px; z-index:2; display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; background:linear-gradient(135deg,#E8C77E,#B98A3D); color:#241708; font-family:Georgia,'Times New Roman',serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:1.4px; box-shadow:0 3px 10px rgba(212,175,106,0.4); border:1px solid rgba(255,255,255,0.25);}
+    .av-icon-btn{width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); color:#EDEDED; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s ease, color .15s ease, transform .15s ease;}
+    .av-icon-btn:hover{background:rgba(212,175,106,0.18); color:#D4AF6A; transform:translateY(-1px);}
+    .av-icon-btn.is-active{background:#D4AF6A; color:#0A0A10; border-color:#D4AF6A;}
   `;
   document.head.appendChild(style);
 }
@@ -2697,7 +2723,7 @@ async function loadRealAlbumDuration(albumTracks){
     if(!totalSeconds){ el.style.display = 'none'; return; }
     const h = Math.floor(totalSeconds/3600);
     const m = Math.round((totalSeconds%3600)/60);
-    el.textContent = `⏱ Durée totale : ${h > 0 ? h+'h ' : ''}${m}min`;
+    el.textContent = `${h > 0 ? h+'h ' : ''}${m}min`;
   }catch(e){ el.style.display = 'none'; }
 }
 function openAlbumView(tr){
@@ -2714,34 +2740,45 @@ function openAlbumView(tr){
 
   const coverStyle = tr.cover ? `background-image:url(${tr.cover});` : `background:linear-gradient(135deg,#1E8449,#0E3D2C);`;
   const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+  const artistAvatarStyle = tr.artistAvatar ? `background-image:url(${tr.artistAvatar});` : '';
+  const artistInitial = (tr.a || '?').charAt(0).toUpperCase();
+  const releaseYear = tr.release ? String(tr.release).slice(-4) : '';
 
   overlay.innerHTML = `
-    <button class="av-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <button class="av-back" title="Retour"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
     <div class="av-hero">
       <div class="av-hero-bg" style="${coverStyle}"></div>
       <div class="av-hero-fade"></div>
-      <div class="av-hero-content">
-        <div class="av-cover" style="${coverStyle}"></div>
-        <div>
-          <div class="av-badge"><svg class="nuni-ic filled nuni-ic-gold" viewBox="0 0 24 24"><circle cx="7.5" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/><path d="M10 18V5l9.5-2v13"/></svg> ${tr.releaseType || 'Album'}</div>
-          <div class="av-title">${tr.album}</div>
-          <div class="av-meta"><b class="av-artist-link">${tr.a}</b> · ${albumTracks.length} titre${albumTracks.length>1?'s':''} · Sorti ${tr.release ? 'le ' + tr.release : "aujourd'hui"}</div>
+      <div class="av-cover" style="${coverStyle}"></div>
+      <div class="av-info">
+        <div class="av-type">${tr.releaseType || 'Album'}</div>
+        <div class="av-title">${tr.album}</div>
+        <div class="av-artist-row av-artist-link">
+          <div class="av-artist-avatar" style="${artistAvatarStyle}">${artistAvatarStyle ? '' : artistInitial}</div>
+          <span class="av-artist-name">${tr.a}</span>
         </div>
+        <div class="av-meta">${tr.releaseType || 'Album'} · ${albumTracks.length} titre${albumTracks.length>1?'s':''}${releaseYear ? ' · ' + releaseYear : ''}</div>
       </div>
     </div>
     <div class="av-actions">
-      <button class="av-play-all"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Tout écouter</button>
-      <button class="av-icon-btn av-shuffle-btn" title="Écouter en aléatoire"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h3.5a3 3 0 0 1 2.4 1.2L15 15a3 3 0 0 0 2.4 1.2H20M4 18h3.5a3 3 0 0 0 2.4-1.2l1-1.3M16.5 6H20M16.5 18H20"/><path d="M18 3l3 3-3 3M18 15l3 3-3 3"/></svg></button>
-      <button class="av-icon-btn av-fav-btn" title="Ajouter aux favoris"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
-      <button class="av-icon-btn av-download-btn" title="Télécharger"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button>
+      <div class="av-actions-left">
+        <button class="av-circle-btn av-fav-btn" title="Ajouter à Votre bibliothèque"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+        <button class="av-circle-btn av-download-btn" title="Télécharger"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg></button>
+        <button class="av-more-btn av-more-album-btn" title="Plus d'options"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+      </div>
+      <div class="av-actions-spacer"></div>
+      <div class="av-actions-right">
+        <button class="av-shuffle-btn" title="Écouter en aléatoire"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h3.5a3 3 0 0 1 2.4 1.2L15 15a3 3 0 0 0 2.4 1.2H20M4 18h3.5a3 3 0 0 0 2.4-1.2l1-1.3M16.5 6H20M16.5 18H20"/><path d="M18 3l3 3-3 3M18 15l3 3-3 3"/></svg></button>
+        <button class="av-play-all" title="Tout écouter"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+      </div>
     </div>
     <div class="av-list">
-      <div class="av-total-duration" id="av-total-duration">⏱ Calcul de la durée totale…</div>
+      <div class="av-total-duration" id="av-total-duration">Calcul de la durée totale…</div>
       <div class="av-list-panel"></div>
     </div>
   `;
 
-  overlay.querySelector('.av-close').onclick = closeOverlay;
+  overlay.querySelector('.av-back').onclick = closeOverlay;
   overlay.querySelector('.av-artist-link').onclick = ()=>{ closeOverlay(); openArtistPage(tr.a, tr.artistId); };
   overlay.querySelector('.av-play-all').onclick = ()=>{
     const albumIsPlaying = playing && currentTrack && albumTracks.some(t=> t.t === currentTrack.t);
@@ -2765,7 +2802,7 @@ function openAlbumView(tr){
       if(nowFav && !already) favoritesPlaylist.unshift(t);
       if(!nowFav && already) favoritesPlaylist = favoritesPlaylist.filter(f=>f.t!==t.t);
     });
-    toast(nowFav ? 'Album ajouté à vos favoris.' : 'Album retiré de vos favoris.');
+    toast(nowFav ? 'Ajouté à Votre bibliothèque.' : 'Retiré de Votre bibliothèque.');
   };
   overlay.querySelector('.av-download-btn').onclick = ()=>{
     let count = 0;
@@ -2782,6 +2819,9 @@ function openAlbumView(tr){
     });
     toast(count ? `Téléchargement de ${count} fichier(s) lancé.` : 'Aucun fichier audio disponible pour le téléchargement.');
   };
+  // "…" au niveau de l'album entier : réutilise le même tiroir d'options qu'un morceau,
+  // ouvert sur le premier titre (mêmes actions : file d'attente, favoris, voir l'artiste).
+  overlay.querySelector('.av-more-album-btn').onclick = (e)=>{ openTrackCardMenu(albumTracks[0], e.currentTarget); };
 
   const list = overlay.querySelector('.av-list-panel');
   const PLAY_ICON_PATH = 'M8 5v14l11-7z';
@@ -2791,15 +2831,9 @@ function openAlbumView(tr){
       const t = albumTracks[i];
       const isPlaying = playing && currentTrack && currentTrack.t === t.t;
       row.classList.toggle('is-playing', isPlaying);
-      const numEl = row.querySelector('.av-row-num');
- if(numEl) numEl.textContent = isPlaying ? ' ' : i+1;
-      const existingDot = row.querySelector('.av-row-dot');
-      if(isPlaying && !existingDot) row.querySelector('.av-row-title').insertAdjacentHTML('afterend', '<span class="av-row-dot"></span>');
-      if(!isPlaying && existingDot) existingDot.remove();
-      // Avant : cette icône restait figée sur "lecture" (triangle), jamais mise à jour selon
-      // le vrai état — donnait l'impression que rien ne changeait, même en train de jouer.
-      const rowPlayIcon = row.querySelector('.av-row-play svg path');
-      if(rowPlayIcon) rowPlayIcon.setAttribute('d', isPlaying ? PAUSE_ICON_PATH : PLAY_ICON_PATH);
+      const existingEq = row.querySelector('.av-row-eq');
+      if(isPlaying && !existingEq) row.querySelector('.av-row-body').insertAdjacentHTML('beforebegin', '<div class="av-row-eq"><span></span><span></span><span></span></div>');
+      if(!isPlaying && existingEq) existingEq.remove();
     });
     refreshAvPlayAllIcon();
   }
@@ -2808,13 +2842,12 @@ function openAlbumView(tr){
     const icon = btn.querySelector('svg path');
     const albumIsPlaying = playing && currentTrack && albumTracks.some(t=> t.t === currentTrack.t);
     icon.setAttribute('d', albumIsPlaying ? PAUSE_ICON_PATH : PLAY_ICON_PATH);
-    btn.lastChild.textContent = albumIsPlaying ? ' Mettre en pause' : ' Tout écouter';
   }
   albumTracks.forEach((t, i)=>{
     const row = document.createElement('div');
     const isPlaying = playing && currentTrack && currentTrack.t === t.t;
     row.className = 'av-row' + (isPlaying ? ' is-playing' : '');
-    row.style.animationDelay = (i * 0.05) + 's';
+    row.style.animationDelay = (i * 0.04) + 's';
     // Vraies infos par morceau — vrai nombre d'écoutes déjà en base, vrai indicateur si des
     // paroles ont réellement été renseignées pour ce titre (jamais une fausse mention).
     // Les écoutes détaillées par morceau ne sont visibles que pour un compte Artiste — un
@@ -2823,17 +2856,21 @@ function openAlbumView(tr){
     const canSeeStreams = currentUser && currentUser.account_type === 'artist';
     const realStreams = (canSeeStreams && t.isReal) ? Number(t.streams)||0 : null;
     row.innerHTML = `
-      <div class="av-row-num">${isPlaying ? '♪' : i+1}</div>
-      <div class="av-row-title">${t.t}</div>
-      ${isPlaying ? '<span class="av-row-dot"></span>' : ''}
+      ${isPlaying ? '<div class="av-row-eq"><span></span><span></span><span></span></div>' : ''}
+      <div class="av-row-body">
+        <div class="av-row-title">${t.t}</div>
+        <div class="av-row-artist">${t.a}</div>
+      </div>
       ${t.lyrics ? '<span class="av-row-lyrics" title="Paroles disponibles">🅻</span>' : ''}
-      ${realStreams !== null ? `<span class="av-row-streams"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> ${realStreams.toLocaleString('fr-FR')}</span>` : ''}
-      <div class="av-row-play"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>`;
-    row.onclick = ()=>{
+      ${realStreams !== null ? `<span class="av-row-streams">${realStreams.toLocaleString('fr-FR')}</span>` : ''}
+      <button class="av-row-menu-btn" title="Plus d'options"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>`;
+    row.onclick = (e)=>{
+      if(e.target.closest('.av-row-menu-btn')) return; // le menu gère son propre clic, ne joue pas le morceau en plus
       const isThisPlaying = playing && currentTrack && currentTrack.t === t.t;
       if(isThisPlaying){ togglePlay(); } else { playTrack(t); }
       refreshAvRowHighlights();
     };
+    row.querySelector('.av-row-menu-btn').onclick = (e)=>{ e.stopPropagation(); openTrackCardMenu(t, e.currentTarget); };
     list.appendChild(row);
   });
 
