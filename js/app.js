@@ -1667,11 +1667,38 @@ function initArtistHeroParallax(){
     const view = document.getElementById('view-artist');
     if(!view || view.style.display === 'none') return;
     const hero = view.querySelector('.ap-hero-photo');
+    const heroFg = document.getElementById('artist-page-avatar-fg');
     if(!hero) return;
     const y = Math.min(window.scrollY, 420);
-    hero.style.transform = `translateY(${y * 0.32}px) scale(${1 + y/2400})`;
-    hero.style.opacity = String(Math.max(0.15, 1 - y/460));
+    const t = `translateY(${y * 0.32}px) scale(${1 + y/2400})`;
+    const o = String(Math.max(0.15, 1 - y/460));
+    hero.style.transform = t;
+    hero.style.opacity = o;
+    if(heroFg){ heroFg.style.transform = t; heroFg.style.opacity = o; }
   }, { passive:true });
+}
+// ---------- Photo du hero de la page artiste — s'adapte à N'IMPORTE QUELLE taille/format
+// envoyé par l'artiste, sans jamais couper un morceau important de l'image. ----------
+// Avant : une seule couche en background-size:cover, qui recadre l'image pour remplir tout
+// le cadre — sur une photo carrée ou portrait étirée dans un bandeau large, ça coupait
+// n'importe où (bras, épaule…) selon la composition d'origine, sans aucun moyen de deviner
+// où se trouve le sujet. Maintenant : deux couches. Une en arrière-plan, floutée et assombrie,
+// en cover (remplit tout l'espace, sert juste d'ambiance colorée). Une au premier plan, en
+// contain (jamais recadrée, jamais coupée), qui affiche l'image entière quel que soit son
+// ratio — portrait, paysage ou carrée.
+function setArtistHeroPhoto(url, initials){
+  const bg = document.getElementById('artist-page-avatar');
+  const fg = document.getElementById('artist-page-avatar-fg');
+  if(!bg) return;
+  if(url){
+    bg.style.backgroundImage = `url(${url})`;
+    bg.textContent = '';
+    if(fg){ fg.style.backgroundImage = `url(${url})`; fg.style.display = ''; }
+  } else {
+    bg.style.backgroundImage = '';
+    bg.textContent = initials || '';
+    if(fg){ fg.style.backgroundImage = ''; fg.style.display = 'none'; }
+  }
 }
 function openArtistPage(name, artistId){
   window.scrollTo(0, 0);
@@ -1710,11 +1737,9 @@ function openArtistPage(name, artistId){
   }
   const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   if(isOwnArtistPage && currentUser.avatar_url){
-    artistPageAvatarEl.style.backgroundImage = `url(${currentUser.avatar_url})`;
-    artistPageAvatarEl.textContent = '';
+    setArtistHeroPhoto(currentUser.avatar_url);
   } else {
-    artistPageAvatarEl.style.backgroundImage = '';
-    artistPageAvatarEl.textContent = initials;
+    setArtistHeroPhoto(null, initials);
   }
   document.getElementById('artist-page-calendar-title').textContent = 'Calendrier des sorties — ' + name;
   renderCertificationButton(isOwnArtistPage, reallyVerified);
@@ -1774,8 +1799,7 @@ function openArtistPage(name, artistId){
           // jamais avoir besoin d'une remise à zéro manuelle.
           if(statMonthlyListenersEl && typeof data.monthly_listeners === 'number') statMonthlyListenersEl.textContent = data.monthly_listeners.toLocaleString('fr-FR');
           if(data.avatar_url && !(isOwnArtistPage && currentUser.avatar_url)){
-            artistPageAvatarEl.style.backgroundImage = `url(${data.avatar_url})`;
-            artistPageAvatarEl.textContent = '';
+            setArtistHeroPhoto(data.avatar_url);
           }
           if(data.banner_url && !(isOwnArtistPage && currentUser.banner_url) && artistCoverEl){
             artistCoverEl.style.backgroundImage = `url(${data.banner_url})`;
@@ -1839,7 +1863,9 @@ function openArtistPage(name, artistId){
   }
   initArtistHeroParallax();
   const heroPhotoEl = document.querySelector('#view-artist .ap-hero-photo');
+  const heroPhotoFgEl = document.getElementById('artist-page-avatar-fg');
   if(heroPhotoEl){ heroPhotoEl.style.transform = ''; heroPhotoEl.style.opacity = ''; }
+  if(heroPhotoFgEl){ heroPhotoFgEl.style.transform = ''; heroPhotoFgEl.style.opacity = ''; }
   if(artistTracks.length){
     fillShelf('shelf-artist', artistTracks);
     fillShelf('shelf-artist-trending', [...artistTracks].sort((a,b)=>(b.likes||0)-(a.likes||0)));

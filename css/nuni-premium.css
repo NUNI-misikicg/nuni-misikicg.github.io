@@ -356,6 +356,7 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
   border-radius: inherit;
   opacity: 0; transition: opacity .25s ease;
   pointer-events: none;
+  z-index: 5;
 }
 .artist-avatar.is-editable:hover::after{ opacity: 1; }
 
