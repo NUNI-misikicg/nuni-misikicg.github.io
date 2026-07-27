@@ -7827,7 +7827,8 @@ function renderSearchViewBrowse(){
       <div class="asv-genre-tile" style="background:#6E45A8;" data-concerts="1">🎤 Concerts</div>
       <div class="asv-genre-tile" style="background:#B3512E;" data-nuni-events="1">🎉 NUNI Événements</div>
       ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
-    </div>`;
+    </div>
+    ${renderRecentSearchesRow()}`;
   box.querySelector('[data-concerts]').onclick = ()=> enterApp('concerts');
   box.querySelector('[data-nuni-events]').onclick = ()=> enterApp('nuniEvents');
   box.querySelectorAll('.asv-genre-tile[data-genre]').forEach(tile=>{
@@ -7836,6 +7837,15 @@ function renderSearchViewBrowse(){
       enterApp('catalog');
       filterCatalogByGenre(g);
       document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname') && t.querySelector('.gname').textContent === g));
+    };
+  });
+  box.querySelectorAll('.asv-recent-chip').forEach(chip=>{
+    chip.onclick = ()=>{
+      const term = chip.dataset.term;
+      const input = document.getElementById('asv-input');
+      if(input) input.value = term;
+      document.getElementById('asv-clear-btn').style.display = '';
+      runSearchView(term);
     };
   });
 }
@@ -7849,9 +7859,53 @@ function clearSearchView(){
 function debouncedRunSearchView(q){
   document.getElementById('asv-clear-btn').style.display = q.trim() ? '' : 'none';
   clearTimeout(searchViewDebounceTimer);
-  searchViewDebounceTimer = setTimeout(()=> runSearchView(q), 200);
+  searchViewDebounceTimer = setTimeout(()=>{
+    runSearchView(q);
+    if(q.trim().length >= 2) logRecentSearch(q.trim());
+  }, 200);
 }
 let searchViewDebounceTimer = null;
+
+/* ============ HISTORIQUE DE RECHERCHE — dernières 24h, 5 max ============
+   Stocké en local sur l'appareil (localStorage), jamais envoyé au serveur — c'est une
+   préférence purement personnelle, pas une donnée à synchroniser entre appareils. */
+const RECENT_SEARCHES_KEY = 'nuniRecentSearches';
+const RECENT_SEARCHES_MAX = 5;
+const RECENT_SEARCHES_WINDOW_MS = 24 * 60 * 60 * 1000;
+function getRecentSearches(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+    const now = Date.now();
+    // Ne garde que les 24 dernières heures — un terme cherché hier ne doit plus traîner.
+    return raw.filter(entry => now - entry.ts < RECENT_SEARCHES_WINDOW_MS);
+  }catch(e){ return []; }
+}
+function logRecentSearch(term){
+  let list = getRecentSearches();
+  // Un même terme retapé remonte en tête plutôt que de créer un doublon.
+  list = list.filter(entry => entry.term.toLowerCase() !== term.toLowerCase());
+  list.unshift({ term, ts: Date.now() });
+  list = list.slice(0, RECENT_SEARCHES_MAX);
+  try{ localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(list)); }catch(e){ /* stockage plein ou indisponible, pas grave */ }
+}
+function clearRecentSearches(){
+  try{ localStorage.removeItem(RECENT_SEARCHES_KEY); }catch(e){}
+  renderSearchViewBrowse();
+}
+function renderRecentSearchesRow(){
+  const recent = getRecentSearches();
+  if(!recent.length) return '';
+  return `
+    <div class="asv-recent-wrap">
+      <div class="asv-recent-head">
+        <span class="asv-browse-title" style="margin:0;">Recherches récentes</span>
+        <button class="asv-recent-clear" onclick="clearRecentSearches()">Effacer</button>
+      </div>
+      <div class="asv-recent-row">
+        ${recent.map(entry => `<button class="asv-recent-chip" data-term="${entry.term.replace(/"/g,'&quot;')}">${entry.term}</button>`).join('')}
+      </div>
+    </div>`;
+}
 function runSearchView(q){
   const box = document.getElementById('asv-results');
   if(!box) return;
