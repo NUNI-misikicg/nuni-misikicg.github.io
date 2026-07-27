@@ -2907,11 +2907,16 @@ function handleTrackCardClick(tr){
 /* Durée totale réelle d'un album — mesurée sur les vrais fichiers audio (métadonnées
    chargées en arrière-plan, jamais une estimation ou une valeur inventée). Visible pour
    tout le monde (artiste comme consommateur), contrairement aux écoutes par morceau. */
-async function loadRealAlbumDuration(albumTracks){
+async function loadRealAlbumDuration(albumTracks, releaseDateLabel, creditsText){
   const el = document.getElementById('av-total-duration');
   if(!el) return;
+  const count = albumTracks.length;
+  const countLabel = `${count} titre${count>1?'s':''}`;
+  const creditsLine = creditsText ? ' ' + creditsText : '';
+  const baseLine = [releaseDateLabel, countLabel].filter(Boolean).join(' · ');
+  el.textContent = baseLine + creditsLine; // affiché tout de suite ; la durée vient compléter juste après
   const withAudio = albumTracks.filter(t=>t.audioUrl);
-  if(!withAudio.length){ el.style.display = 'none'; return; }
+  if(!withAudio.length) return;
   try{
     const durations = await Promise.all(withAudio.map(t=> new Promise(resolve=>{
       const probe = new Audio();
@@ -2922,11 +2927,12 @@ async function loadRealAlbumDuration(albumTracks){
       setTimeout(()=> resolve(0), 8000); // sécurité : ne bloque jamais indéfiniment sur un fichier lent
     })));
     const totalSeconds = durations.reduce((a,b)=>a+b, 0);
-    if(!totalSeconds){ el.style.display = 'none'; return; }
+    if(!totalSeconds) return;
     const h = Math.floor(totalSeconds/3600);
     const m = Math.round((totalSeconds%3600)/60);
-    el.textContent = `${h > 0 ? h+'h ' : ''}${m}min`;
-  }catch(e){ el.style.display = 'none'; }
+    const durationLabel = `${h > 0 ? h+'h ' : ''}${m}min`;
+    el.textContent = [releaseDateLabel, `${countLabel}, ${durationLabel}`].filter(Boolean).join(' · ') + creditsLine;
+  }catch(e){ /* la ligne de base (date · nb titres + crédits) reste affichée, pas grave */ }
 }
 function openAlbumView(tr){
   const albumTracks = tracks.filter(t => t.album === tr.album && t.a === tr.a);
@@ -3077,7 +3083,10 @@ function openAlbumView(tr){
   });
 
   refreshAvRowHighlights(); // état correct dès l'ouverture, pas seulement après un clic
-  loadRealAlbumDuration(albumTracks);
+  // Crédits — pris sur le premier morceau de l'album qui en a renseigné (en pratique, tous
+  // les morceaux d'un même album partagent la même mention, saisie une fois par l'artiste).
+  const albumCredits = albumTracks.find(t => t.credits)?.credits || null;
+  loadRealAlbumDuration(albumTracks, tr.release, albumCredits);
   renderAlbumLeSuggestion(overlay, tr, albumTracks);
   renderSimilarTracksRow(overlay, tr, albumTracks);
 
@@ -3425,7 +3434,7 @@ async function loadRealTracks(){
       releaseType: r.release_type || 'Single',
       artistId: r.artist_id, artistAvatarUrl: r.artist_avatar_url || null,
       lyrics: r.lyrics || null,
-      composer: r.composer || null, featuring: r.featuring || null, studio: r.studio || null, description: r.description || null,
+      composer: r.composer || null, featuring: r.featuring || null, studio: r.studio || null, description: r.description || null, credits: r.credits || null,
       realId: r.id,
     }));
     tracks.unshift(...mapped);
@@ -4890,6 +4899,7 @@ async function publishRelease(){
   const featuring = document.getElementById('rf-feat').value.trim();
   const composer = document.getElementById('rf-auteur').value.trim();
   const studio = document.getElementById('rf-studio').value.trim();
+  const credits = document.getElementById('rf-credits').value.trim();
 
   const artistDisplayName = (currentUser && currentUser.artist_name) ? currentUser.artist_name : 'Bibi Mwana';
   const filesForUpload = [...uploadedFiles];
@@ -4914,7 +4924,7 @@ async function publishRelease(){
       streams: '0', release: releaseLabel, verified: true, likes: 0,
       cover: coverUrl, audioUrl: URL.createObjectURL(file), releaseType: currentReleaseType,
       lyrics: paroles || null,
-      description: description || null, featuring: featuring || null, composer: composer || null, studio: studio || null,
+      description: description || null, featuring: featuring || null, composer: composer || null, studio: studio || null, credits: credits || null,
       isReal: true, // aperçu local déjà considéré comme réel — sinon exclu du pool suivant/précédent/aléatoire juste après publication
     };
   });
@@ -4967,7 +4977,7 @@ async function publishRelease(){
             body: JSON.stringify({
               title: perTrackTitle, album: titre, genre: genre, releaseType: currentReleaseType,
               coverUrl: cloudCoverUrl, audioUrl: cloudAudioUrl, lyrics: paroles || null,
-              composer: composer || null, featuring: featuring || null, studio: studio || null,
+              composer: composer || null, featuring: featuring || null, studio: studio || null, credits: credits || null,
               description: description || null, releaseDate: dateVal || null,
               scheduledReleaseAt: isScheduledForFuture ? dateVal : null,
             })
@@ -5013,6 +5023,7 @@ async function publishRelease(){
   document.getElementById('rf-feat').value = '';
   document.getElementById('rf-auteur').value = '';
   document.getElementById('rf-studio').value = '';
+  document.getElementById('rf-credits').value = '';
   document.getElementById('rf-paroles').value = '';
   document.getElementById('rf-date').value = '';
   document.getElementById('rf-explicit').checked = false;
