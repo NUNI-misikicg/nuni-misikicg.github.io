@@ -884,6 +884,8 @@ async function loadLabelDashboardStatus(){
         loadLabelArtists();
         loadLabelPayments();
         loadLabelTeam();
+        loadLabelAnalytics();
+        loadLabelCatalog();
       }
     }
   }catch(e){
@@ -1003,6 +1005,103 @@ async function removeLabelTeamMember(id){
     await fetch(NUNI_API_BASE + '/api/label/team/' + id, { method:'DELETE', headers:{ 'Authorization':'Bearer ' + realAuthToken } });
     loadLabelTeam();
   }catch(e){ toast('Impossible de contacter le serveur.'); }
+}
+
+/* ---------- Analytics du Label (Phase 5) — uniquement de vraies données ---------- */
+async function loadLabelAnalytics(){
+  const chart = document.getElementById('label-streams-chart');
+  const growthEl = document.getElementById('label-growth-val');
+  const retentionEl = document.getElementById('label-retention-val');
+  const countriesBox = document.getElementById('label-top-countries');
+  const citiesBox = document.getElementById('label-top-cities');
+  if(!chart || !realAuthToken) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/analytics', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok) return;
+    growthEl.textContent = data.growthPct == null ? '—' : (data.growthPct >= 0 ? '+' : '') + data.growthPct + '%';
+    growthEl.style.color = data.growthPct == null ? 'var(--text)' : (data.growthPct >= 0 ? '#3BC26A' : '#E05252');
+    retentionEl.textContent = data.retentionPct == null ? '—' : data.retentionPct + '%';
+
+    chart.innerHTML = '';
+    if(data.streamsByMonth.length){
+      const max = Math.max(1, ...data.streamsByMonth.map(m=>m.streams));
+      data.streamsByMonth.forEach(m=>{
+        const col = document.createElement('div');
+        col.className = 'bar-col';
+        col.innerHTML = `<div class="bar-fill" style="height:0%" data-h="${(m.streams/max*100)}" title="${m.streams} streams · ${m.listeners} auditeurs"></div><div class="m-lbl">${m.month}</div>`;
+        chart.appendChild(col);
+      });
+      setTimeout(()=>{ chart.querySelectorAll('.bar-fill').forEach(b=> b.style.height = b.dataset.h + '%'); }, 200);
+    } else {
+      chart.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Pas encore assez d\'écoutes pour un graphique.</p>';
+    }
+    const barRow = (label, count, max) => `<div style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:3px;"><span>${label}</span><span style="color:var(--text-faint);">${count}</span></div><div style="height:6px; border-radius:4px; background:var(--bg-card);"><div style="height:100%; border-radius:4px; width:${(count/max*100)}%; background:var(--grad-envol);"></div></div></div>`;
+    if(data.topCountries.length){
+      const maxC = Math.max(...data.topCountries.map(c=>c.plays));
+      countriesBox.innerHTML = data.topCountries.map(c=> barRow(c.country, c.plays, maxC)).join('');
+    } else { countriesBox.innerHTML = '<p style="color:var(--text-faint); font-size:12.5px;">Pas encore de données.</p>'; }
+    if(data.topCities.length){
+      const maxV = Math.max(...data.topCities.map(c=>c.plays));
+      citiesBox.innerHTML = data.topCities.map(c=> barRow(c.city, c.plays, maxV)).join('');
+    } else { citiesBox.innerHTML = '<p style="color:var(--text-faint); font-size:12.5px;">Pas encore de données.</p>'; }
+  }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
+}
+
+/* ---------- Catalogue consolidé du Label (Phase 5) ---------- */
+let lastLabelCatalogData = null;
+let currentLabelCatalogFilter = 'all';
+async function loadLabelCatalog(){
+  const list = document.getElementById('label-catalog-list');
+  if(!list || !realAuthToken) return;
+  list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/catalog', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ list.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    lastLabelCatalogData = data;
+    currentLabelCatalogFilter = 'all';
+    document.querySelectorAll('#label-catalog-tabs .concerts-filter-btn').forEach(b=> b.classList.toggle('is-active', b.dataset.cat === 'all'));
+    renderLabelCatalogList();
+  }catch(e){
+    list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>';
+  }
+}
+function setLabelCatalogFilter(cat){
+  currentLabelCatalogFilter = cat;
+  document.querySelectorAll('#label-catalog-tabs .concerts-filter-btn').forEach(b=> b.classList.toggle('is-active', b.dataset.cat === cat));
+  renderLabelCatalogList();
+}
+function renderLabelCatalogList(){
+  const list = document.getElementById('label-catalog-list');
+  if(!list || !lastLabelCatalogData) return;
+  const { tracks, clips, scheduled } = lastLabelCatalogData;
+  let items = [];
+  if(currentLabelCatalogFilter === 'all'){
+    items = [
+      ...tracks.map(t=> ({...t, kind:'track'})),
+      ...clips.map(c=> ({...c, kind:'clip'})),
+    ];
+  } else if(currentLabelCatalogFilter === 'Clips'){
+    items = clips.map(c=> ({...c, kind:'clip'}));
+  } else if(currentLabelCatalogFilter === 'Scheduled'){
+    items = scheduled.map(t=> ({...t, kind:'scheduled'}));
+  } else {
+    items = tracks.filter(t=> (t.release_type||'Single') === currentLabelCatalogFilter).map(t=> ({...t, kind:'track'}));
+  }
+  if(!items.length){ list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Rien à afficher dans cette catégorie.</p>'; return; }
+  list.innerHTML = items.map(it=>{
+    const cover = it.cover_url || it.thumb_url;
+    const coverStyle = cover ? `background-image:url(${cover});` : '';
+    let metaLine;
+    if(it.kind === 'clip') metaLine = `${it.artist_name} · Clip · ${Number(it.views||0).toLocaleString('fr-FR')} vues`;
+    else if(it.kind === 'scheduled') metaLine = `${it.artist_name} · ${it.release_type||'Single'} · Programmé le ${new Date(it.scheduled_release_at).toLocaleDateString('fr-FR')}`;
+    else metaLine = `${it.artist_name} · ${it.release_type||'Single'} · ${Number(it.streams||0).toLocaleString('fr-FR')} streams`;
+    return `<div class="label-artist-row">
+      <div class="av" style="border-radius:8px; ${coverStyle}"></div>
+      <div class="info"><div class="name">${it.title}</div><div class="meta">${metaLine}</div></div>
+    </div>`;
+  }).join('');
 }
 
 /* ---------- Vue d'ensemble du Label (Phase 2) ---------- */

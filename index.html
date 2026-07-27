@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727o">
-<link rel="stylesheet" href="css/corners.css?v=20260727o">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727o">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727o">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727o">
+<link rel="stylesheet" href="css/style.css?v=20260727p">
+<link rel="stylesheet" href="css/corners.css?v=20260727p">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727p">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727p">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727p">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -1139,6 +1139,42 @@
           <div id="label-team-msg" style="margin-top:8px; font-size:12.5px;"></div>
           <div id="label-team-list" style="margin-top:16px; display:flex; flex-direction:column; gap:8px;"></div>
         </div>
+
+        <!-- ---- Analytics (Phase 5) ---- -->
+        <div class="card" style="margin-top:20px;">
+          <b style="color:var(--accent); font-size:13px;">Analytics</b>
+          <div style="display:flex; gap:20px; margin:14px 0 20px; flex-wrap:wrap;">
+            <div><div style="font-size:11px; color:var(--text-faint); text-transform:uppercase;">Croissance (vs mois dernier)</div><div id="label-growth-val" style="font-weight:700; font-size:18px;">—</div></div>
+            <div><div style="font-size:11px; color:var(--text-faint); text-transform:uppercase;">Rétention des auditeurs</div><div id="label-retention-val" style="font-weight:700; font-size:18px;">—</div></div>
+          </div>
+          <div style="font-size:12px; color:var(--text-faint); margin-bottom:8px;">Streams par mois (6 derniers mois)</div>
+          <div class="bar-chart" id="label-streams-chart" style="margin-bottom:26px;"></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+            <div>
+              <div style="font-size:12px; color:var(--text-faint); margin-bottom:8px;">Top pays</div>
+              <div id="label-top-countries"></div>
+            </div>
+            <div>
+              <div style="font-size:12px; color:var(--text-faint); margin-bottom:8px;">Top villes</div>
+              <div id="label-top-cities"></div>
+            </div>
+          </div>
+          <p style="font-size:11px; color:var(--text-faint); margin-top:16px;">Le suivi par plateforme (mobile/web) n'est pas encore disponible sur NUNI.</p>
+        </div>
+
+        <!-- ---- Catalogue consolidé (Phase 5) ---- -->
+        <div class="card" style="margin-top:20px;">
+          <b style="color:var(--accent); font-size:13px;">Catalogue</b>
+          <div style="display:flex; gap:8px; margin:12px 0;" id="label-catalog-tabs">
+            <button class="btn btn-sm concerts-filter-btn is-active" data-cat="all" onclick="setLabelCatalogFilter('all')">Tout</button>
+            <button class="btn btn-sm concerts-filter-btn" data-cat="Album" onclick="setLabelCatalogFilter('Album')">Albums</button>
+            <button class="btn btn-sm concerts-filter-btn" data-cat="Single" onclick="setLabelCatalogFilter('Single')">Singles</button>
+            <button class="btn btn-sm concerts-filter-btn" data-cat="EP" onclick="setLabelCatalogFilter('EP')">EP</button>
+            <button class="btn btn-sm concerts-filter-btn" data-cat="Clips" onclick="setLabelCatalogFilter('Clips')">Clips</button>
+            <button class="btn btn-sm concerts-filter-btn" data-cat="Scheduled" onclick="setLabelCatalogFilter('Scheduled')">Sorties programmées</button>
+          </div>
+          <div id="label-catalog-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
       </div>
     </div>
     <div id="artist-dashboard-body">
@@ -1744,8 +1780,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727o"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727p"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727o"></script>
+<script src="js/app.js?v=20260727p"></script>
 </body>
 </html>
