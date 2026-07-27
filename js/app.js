@@ -1540,7 +1540,17 @@ function enterApp(view){
   if(view === 'nuniEvents') loadNuniEventsPage();
   ['catalog','clips','ads','library','artist','dashboard','admin','search','concerts','nuniEvents'].forEach(v=>{
     const el = document.getElementById('view-'+v);
-    if(el) el.style.display = (v===view) ? 'block' : 'none';
+    if(!el) return;
+    if(v === view){
+      el.style.display = 'block';
+      // Transition en fondu douce entre les pages — retire puis réapplique la classe pour
+      // que l'animation CSS se relance à chaque changement de vue, pas juste la première fois.
+      el.classList.remove('app-view-fade-in');
+      void el.offsetWidth; // force le navigateur à "oublier" l'état précédent avant de réappliquer la classe
+      el.classList.add('app-view-fade-in');
+    } else {
+      el.style.display = 'none';
+    }
   });
   // ---- Pendant que la recherche plein écran (ou les pages Concerts/Événements qui en
   // découlent) est active, les autres onglets disparaissent de la navigation (desktop +
@@ -5358,7 +5368,8 @@ function concertCardHtml(c){
   const hasPurchaseInfo = c.purchase_locations || c.purchase_phone_numbers || c.purchase_link;
   return `
     <div class="concert-card">
-      <div class="concert-flyer" style="${c.flyer_url ? `background-image:url(${c.flyer_url});` : ''}">
+      <div class="concert-flyer">
+        ${c.flyer_url ? `<img src="${c.flyer_url}" alt="" loading="lazy" decoding="async">` : ''}
         ${isShowcase ? '<span class="concert-type-badge">🎬 Showcase</span>' : ''}
       </div>
       <div class="concert-body">
@@ -5568,7 +5579,8 @@ function nuniEventCardHtml(ev){
   const gallery = (ev.gallery_urls || '').split(',').map(u=>u.trim()).filter(Boolean);
   return `
     <div class="concert-card">
-      <div class="concert-flyer" style="${ev.flyer_url ? `background-image:url(${ev.flyer_url});` : ''}">
+      <div class="concert-flyer">
+        ${ev.flyer_url ? `<img src="${ev.flyer_url}" alt="" loading="lazy" decoding="async">` : ''}
         <span class="concert-type-badge">${ev.category}</span>
       </div>
       <div class="concert-body">
@@ -5576,7 +5588,7 @@ function nuniEventCardHtml(ev){
         <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> ${dateLabel}${ev.start_time ? ' · ' + ev.start_time : ''}</div>
         ${ev.venue || ev.address ? `<div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg> ${[ev.venue, ev.address].filter(Boolean).join(', ')}</div>` : ''}
         ${ev.description ? `<p class="concert-desc">${ev.description}</p>` : ''}
-        ${gallery.length ? `<div class="ev-gallery-row">${gallery.slice(0,4).map(u=> `<div class="ev-gallery-thumb" style="background-image:url(${u});"></div>`).join('')}</div>` : ''}
+        ${gallery.length ? `<div class="ev-gallery-row">${gallery.slice(0,4).map(u=> `<img class="ev-gallery-thumb" src="${u}" alt="" loading="lazy" decoding="async">`).join('')}</div>` : ''}
         ${ev.promo_video_url ? `<video class="ev-promo-video" src="${ev.promo_video_url}" controls preload="metadata"></video>` : ''}
         <div class="concert-foot-row">
           ${ev.price ? `<span class="concert-price">${ev.price}</span>` : '<span></span>'}

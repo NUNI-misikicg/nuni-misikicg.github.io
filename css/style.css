@@ -401,7 +401,8 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .concert-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:18px; }
 .concert-card{ background:var(--bg-card); border:1px solid var(--border); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; transition:transform .15s ease; }
 .concert-card:hover{ transform:translateY(-2px); }
-.concert-flyer{ height:180px; background:var(--grad-envol); background-size:cover; background-position:center; }
+.concert-flyer{ height:180px; background:var(--grad-envol); overflow:hidden; }
+.concert-flyer img{ width:100%; height:100%; object-fit:cover; display:block; }
 .concert-body{ padding:16px; display:flex; flex-direction:column; gap:8px; }
 .concert-artist-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--accent); }
 .concert-artist-av{ width:24px; height:24px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#0A0A10; flex-shrink:0; }
@@ -410,7 +411,7 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .concert-meta-row .nuni-ic{ width:15px; height:15px; flex-shrink:0; }
 .concert-desc{ font-size:12.5px; color:var(--text-faint); line-height:1.5; margin:2px 0 0; }
 .ev-gallery-row{ display:flex; gap:6px; margin-top:4px; }
-.ev-gallery-thumb{ flex:1; height:56px; border-radius:6px; background-size:cover; background-position:center; }
+.ev-gallery-thumb{ flex:1; height:56px; border-radius:6px; object-fit:cover; display:block; }
 .ev-promo-video{ width:100%; border-radius:8px; margin-top:4px; max-height:180px; background:#000; }
 .concert-tiers{ display:flex; flex-wrap:wrap; gap:6px; margin-top:2px; }
 .concert-tier{ font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:20px; background:rgba(255,255,255,0.06); border:1px solid var(--border-strong); color:var(--text-dim); }
@@ -523,6 +524,11 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .user-chip span{ font-size:13px; font-weight:500; }
 
 .app-main{ max-width:1180px; margin:0 auto; padding:36px 34px 20px; }
+/* ---- Transition douce entre les pages (Accueil, Recherche, Concerts…) — voir enterApp
+   dans app.js, qui rejoue cette classe à chaque changement de vue. ---- */
+.app-view-fade-in{ animation:appViewFadeIn .28s ease; }
+@keyframes appViewFadeIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+@media(prefers-reduced-motion: reduce){ .app-view-fade-in{ animation:none; } }
 
 /* genre chips */
 .radio-banner{
