@@ -875,13 +875,170 @@ async function loadLabelDashboardStatus(){
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding-top:16px; border-top:1px solid var(--border);">
         <div><div style="font-size:11px; color:var(--text-faint); text-transform:uppercase;">Palier</div><div style="font-weight:600; font-size:14px;">${planLabels[label.plan] || label.plan}</div></div>
         <div><div style="font-size:11px; color:var(--text-faint); text-transform:uppercase;">Artistes gérés</div><div style="font-weight:600; font-size:14px;">${data.artistCount} / ${data.maxArtists == null ? '∞' : data.maxArtists}</div></div>
-      </div>
-      ${label.verification_status === 'validated' ? '<p style="font-size:12px; color:var(--text-faint); margin-top:16px;">La gestion complète de vos artistes (ajout, streams, revenus consolidés, équipe) arrive prochainement dans cet espace.</p>' : ''}`;
+      </div>`;
+    const phase2 = document.getElementById('label-dash-phase2');
+    if(phase2){
+      phase2.style.display = label.verification_status === 'validated' ? 'block' : 'none';
+      if(label.verification_status === 'validated'){
+        loadLabelOverview();
+        loadLabelArtists();
+      }
+    }
   }catch(e){
     card.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>';
   }
 }
 
+/* ---------- Côté artiste : invitations reçues d'un Label (Phase 2) ---------- */
+async function loadMyLabelInvites(){
+  const wrap = document.getElementById('label-invites-wrap');
+  if(!wrap || !realAuthToken) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/label-invites', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    if(!res.ok){ wrap.style.display = 'none'; return; }
+    const data = await res.json();
+    if(!data.invites || !data.invites.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    wrap.innerHTML = data.invites.map(inv => `
+      <div class="card" style="display:flex; align-items:center; gap:14px; border-color:var(--accent);">
+        ${inv.logo_url ? `<div style="width:44px; height:44px; border-radius:10px; background:url(${inv.logo_url}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : ''}
+        <div style="flex:1;"><b>${inv.label_name}</b> vous invite à rejoindre son label sur NUNI.</div>
+        <button class="btn btn-primary btn-sm" onclick="respondLabelInvite(${inv.id}, true)">Accepter</button>
+        <button class="btn btn-ghost btn-sm" onclick="respondLabelInvite(${inv.id}, false)">Refuser</button>
+      </div>`).join('');
+  }catch(e){ wrap.style.display = 'none'; }
+}
+async function respondLabelInvite(id, accept){
+  try{
+    await fetch(NUNI_API_BASE + '/api/me/label-invites/' + id + '/' + (accept ? 'accept' : 'decline'), {
+      method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken },
+    });
+    toast(accept ? 'Invitation acceptée.' : 'Invitation refusée.');
+    loadMyLabelInvites();
+  }catch(e){ toast('Impossible de contacter le serveur.'); }
+}
+
+/* ---------- Vue d'ensemble du Label (Phase 2) ---------- */
+async function loadLabelOverview(){
+  const box = document.getElementById('label-overview-stats');
+  if(!box || !realAuthToken) return;
+  box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/overview', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const s = await res.json();
+    if(!res.ok){ box.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${s.error||'Erreur.'}</p>`; return; }
+    const fmt = n => Number(n||0).toLocaleString('fr-FR');
+    const cards = [
+      { num: fmt(s.artistCount), lbl: 'Artistes gérés' },
+      { num: fmt(s.totalStreams), lbl: 'Streams totaux' },
+      { num: fmt(s.estimatedRevenueFcfa) + ' FCFA', lbl: 'Revenus estimés' },
+      { num: fmt(s.collectedRevenueFcfa) + ' FCFA', lbl: 'Revenus encaissés' },
+      { num: s.topArtist ? s.topArtist.artist_name : '—', lbl: 'Top artiste du label' },
+      { num: s.topTrack ? s.topTrack.title : '—', lbl: 'Top morceau du label' },
+    ];
+    box.innerHTML = cards.map(c=> `<div class="dash-stat-card"><div class="num">${c.num}</div><div class="lbl">${c.lbl}</div></div>`).join('');
+  }catch(e){
+    box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>';
+  }
+}
+
+/* ---------- Gestion des artistes du Label (Phase 2) ---------- */
+async function loadLabelArtists(){
+  const list = document.getElementById('label-artists-list');
+  if(!list || !realAuthToken) return;
+  list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/artists', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ list.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    if(!data.artists.length){ list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Aucun artiste rattaché pour l\'instant.</p>'; return; }
+    const statusLabels = { active: 'Actif', invited: 'Invitation envoyée', suspended: 'Suspendu' };
+    list.innerHTML = '';
+    data.artists.forEach(a=>{
+      const initials = (a.artist_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const avatarStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
+      const row = document.createElement('div');
+      row.className = 'label-artist-row';
+      row.innerHTML = `
+        <div class="av" style="${avatarStyle}">${avatarStyle ? '' : initials}</div>
+        <div class="info">
+          <div class="name">${a.artist_name}${a.is_verified ? ' ✓' : ''}</div>
+          <div class="meta">${a.track_count} titre${a.track_count>1?'s':''} · ${Number(a.total_streams).toLocaleString('fr-FR')} streams</div>
+        </div>
+        <span class="label-artist-status ${a.affiliation_status}">${statusLabels[a.affiliation_status] || a.affiliation_status}</span>
+        <div style="display:flex; gap:6px;">
+          ${a.affiliation_status === 'active' ? `<button class="btn-icon" title="Suspendre" onclick="suspendLabelArtist(${a.affiliation_id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>` : ''}
+          ${a.affiliation_status === 'suspended' ? `<button class="btn-icon" title="Réactiver" onclick="reactivateLabelArtist(${a.affiliation_id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg></button>` : ''}
+          <button class="btn-icon" title="Retirer du Label" onclick="removeLabelArtist(${a.affiliation_id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>`;
+      list.appendChild(row);
+    });
+  }catch(e){
+    list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>';
+  }
+}
+async function createLabelArtist(){
+  const msg = document.getElementById('label-artist-form-msg');
+  const artistName = document.getElementById('la-create-artistname').value.trim();
+  const firstName = document.getElementById('la-create-firstname').value.trim();
+  const lastName = document.getElementById('la-create-lastname').value.trim();
+  const email = document.getElementById('la-create-email').value.trim();
+  const password = document.getElementById('la-create-password').value;
+  if(!artistName || !firstName || !lastName || !email || !password){
+    msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Merci de remplir tous les champs.';
+    return;
+  }
+  msg.style.color = 'var(--text-dim)'; msg.textContent = 'Création en cours…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/artists/create', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ artistName, firstName, lastName, email, password }),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
+    msg.style.color = '#7FC79A'; msg.textContent = data.message;
+    ['la-create-artistname','la-create-firstname','la-create-lastname','la-create-email','la-create-password'].forEach(id=> document.getElementById(id).value = '');
+    loadLabelArtists();
+    loadLabelOverview();
+  }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+async function inviteLabelArtist(){
+  const msg = document.getElementById('label-artist-form-msg');
+  const email = document.getElementById('la-invite-email').value.trim();
+  if(!email){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Renseignez un email.'; return; }
+  msg.style.color = 'var(--text-dim)'; msg.textContent = 'Envoi de l\'invitation…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/artists/invite', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
+    msg.style.color = '#7FC79A'; msg.textContent = data.message;
+    document.getElementById('la-invite-email').value = '';
+    loadLabelArtists();
+  }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+async function suspendLabelArtist(affId){
+  try{
+    await fetch(NUNI_API_BASE + '/api/label/artists/' + affId + '/suspend', { method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    loadLabelArtists();
+  }catch(e){ toast('Impossible de contacter le serveur.'); }
+}
+async function reactivateLabelArtist(affId){
+  try{
+    await fetch(NUNI_API_BASE + '/api/label/artists/' + affId + '/reactivate', { method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    loadLabelArtists();
+  }catch(e){ toast('Impossible de contacter le serveur.'); }
+}
+async function removeLabelArtist(affId){
+  if(!confirm('Retirer cet artiste du Label ? Son compte NUNI reste actif et indépendant.')) return;
+  try{
+    await fetch(NUNI_API_BASE + '/api/label/artists/' + affId, { method:'DELETE', headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    loadLabelArtists();
+    loadLabelOverview();
+  }catch(e){ toast('Impossible de contacter le serveur.'); }
+}
 function confirmPlanViaWhatsApp(){
   const type = pendingPlanType;
   const planLabel = type === 'artist' ? 'Pass Artiste' : 'Pass Consommateur';
@@ -1685,6 +1842,7 @@ function enterApp(view){
       }
       loadFeaturedPicker();
       loadDashboardConcerts();
+      loadMyLabelInvites();
     }
   }
   if(view === 'search'){

@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727l">
-<link rel="stylesheet" href="css/corners.css?v=20260727l">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727l">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727l">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727l">
+<link rel="stylesheet" href="css/style.css?v=20260727m">
+<link rel="stylesheet" href="css/corners.css?v=20260727m">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727m">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727m">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727m">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -1056,15 +1056,55 @@
 
   <!-- ---- DASHBOARD ---- -->
   <main class="app-main" id="view-dashboard" style="display:none;">
-    <!-- ============ ÉCRAN DÉDIÉ LABEL (Phase 1) — le vrai dashboard multi-artistes vient en
-         Phase 2. Pour l'instant : statut de vérification + infos de base du label. ============ -->
+    <!-- ============ ÉCRAN DÉDIÉ LABEL — Phase 1 (statut) + Phase 2 (vue d'ensemble +
+         gestion des artistes, visibles uniquement une fois le compte validé). ============ -->
     <div id="label-dashboard-placeholder" style="display:none;">
       <div class="page-head">
         <div><h1>Espace Label</h1><p id="label-dash-subtitle">Chargement de votre profil…</p></div>
       </div>
       <div id="label-dash-status-card" class="card" style="max-width:640px;"></div>
+
+      <div id="label-dash-phase2" style="display:none; margin-top:30px;">
+        <!-- ---- Vue d'ensemble ---- -->
+        <div class="dash-stats-grid" id="label-overview-stats" style="margin-bottom:34px;"></div>
+
+        <!-- ---- Gestion des artistes ---- -->
+        <div class="card" style="margin-bottom:20px;">
+          <b style="color:var(--accent); font-size:13px;">Ajouter un artiste</b>
+          <div class="field-row" style="margin-top:12px;">
+            <div class="field"><label>Créer un nouvel artiste</label>
+              <input type="text" id="la-create-artistname" placeholder="Nom d'artiste">
+            </div>
+            <div class="field"><label>&nbsp;</label>
+              <input type="text" id="la-create-firstname" placeholder="Prénom (personne)">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field"><input type="text" id="la-create-lastname" placeholder="Nom (personne)"></div>
+            <div class="field"><input type="email" id="la-create-email" placeholder="Email de connexion"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><input type="password" id="la-create-password" placeholder="Mot de passe (8 car. min.)"></div>
+            <div class="field"><button class="btn btn-primary" style="width:100%;" onclick="createLabelArtist()">Créer l'artiste</button></div>
+          </div>
+          <div style="border-top:1px solid var(--border); margin:18px 0 14px; padding-top:14px;">
+            <b style="color:var(--accent); font-size:13px;">Ou inviter un artiste déjà inscrit sur NUNI</b>
+            <div class="field-row" style="margin-top:10px;">
+              <div class="field"><input type="email" id="la-invite-email" placeholder="Email du compte artiste existant"></div>
+              <div class="field"><button class="btn btn-ghost" style="width:100%;" onclick="inviteLabelArtist()">Envoyer l'invitation</button></div>
+            </div>
+          </div>
+          <div id="label-artist-form-msg" style="margin-top:6px; font-size:12.5px;"></div>
+        </div>
+
+        <div class="card">
+          <b style="color:var(--accent); font-size:13px;">Vos artistes</b>
+          <div id="label-artists-list" style="margin-top:14px; display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </div>
     </div>
     <div id="artist-dashboard-body">
+    <div id="label-invites-wrap" style="display:none; margin-bottom:22px;"></div>
     <div class="page-head">
       <div><h1>Tableau de bord artiste</h1><p>Vos performances et revenus du mois en cours.</p></div>
       <div style="display:flex; gap:10px; align-items:center;">
@@ -1665,7 +1705,7 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727l"></script>
-<script src="js/app.js?v=20260727l"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727m"></script>
+<script src="js/app.js?v=20260727m"></script>
 </body>
 </html>

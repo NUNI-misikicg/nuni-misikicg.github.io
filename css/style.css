@@ -283,6 +283,8 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 }
 .plan-card.consumer .plan-tag{ background:rgba(30,132,73,.18); color:var(--emeraude,#1E8449); }
 .plan-card.artist .plan-tag{ background:rgba(212,175,106,.18); color:var(--accent); }
+.plan-card.label .plan-tag{ background:rgba(184,115,51,.2); color:#C97A3D; }
+.plan-card.label{ border-color:rgba(184,115,51,.35); }
 .plan-card h2{ font-family:var(--font-display); font-size:30px; font-weight:600; margin-bottom:6px; }
 .plan-card .plan-price{ font-family:var(--font-data); font-size:15px; color:var(--text-dim); margin-bottom:24px; }
 .plan-card .plan-price b{ color:var(--text); font-size:22px; }
@@ -1022,6 +1024,20 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 
 .artist-stats{ display:flex; gap:34px; padding:30px 28px 0; flex-wrap:wrap; }
 .stat-block .num{ font-family:var(--font-data); font-size:26px; font-weight:600; }
+/* ---- Dashboard Label — vue d'ensemble (Phase 2) ---- */
+.dash-stats-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:14px; }
+.dash-stat-card{ background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:18px; }
+.dash-stat-card .num{ font-family:var(--font-data); font-size:24px; font-weight:700; color:var(--text); }
+.dash-stat-card .lbl{ font-size:12px; color:var(--text-faint); margin-top:4px; }
+.label-artist-row{ display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border); }
+.label-artist-row .av{ width:44px; height:44px; border-radius:50%; background:var(--grad-envol); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; color:#0A0A10; flex-shrink:0; }
+.label-artist-row .info{ flex:1; min-width:0; }
+.label-artist-row .name{ font-weight:600; font-size:14px; }
+.label-artist-row .meta{ font-size:12px; color:var(--text-faint); margin-top:2px; }
+.label-artist-status{ font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; text-transform:uppercase; }
+.label-artist-status.active{ background:rgba(59,194,106,.15); color:#3BC26A; }
+.label-artist-status.invited{ background:rgba(212,175,106,.15); color:var(--accent); }
+.label-artist-status.suspended{ background:rgba(224,82,82,.15); color:#E05252; }
 .stat-block .lbl{ font-size:12px; color:var(--text-faint); margin-top:2px; }
 
 .artist-actions{ display:flex; gap:12px; padding:24px 28px 0; flex-wrap:wrap; }
