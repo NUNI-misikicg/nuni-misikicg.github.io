@@ -862,15 +862,17 @@ async function submitLabelRegistration(){
 // Le vrai tableau de bord multi-artistes (streams, revenus, gestion d'équipe...) arrive en
 // Phase 2 — pour l'instant, seul le statut de vérification et les infos de base du dossier
 // sont affichés, honnêtement, sans rien inventer.
+let labelStatusPollTimer = null;
 async function loadLabelDashboardStatus(){
   const subtitle = document.getElementById('label-dash-subtitle');
   const card = document.getElementById('label-dash-status-card');
   if(!card || !realAuthToken) return;
-  card.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  if(!card.dataset.hasLoadedOnce) card.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
   try{
     const res = await fetch(NUNI_API_BASE + '/api/label/me', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
     const data = await res.json();
     if(!res.ok){ card.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    card.dataset.hasLoadedOnce = '1';
     const label = data.label;
     if(subtitle) subtitle.textContent = label.label_name;
     const statusMap = {
@@ -878,16 +880,20 @@ async function loadLabelDashboardStatus(){
       verification: { label: 'Vérification en cours', color: '#D4AF6A', desc: "Votre dossier est en cours d'examen par l'équipe NUNI." },
       validated:    { label: 'Compte validé', color: '#3BC26A', desc: 'Votre compte Label est actif.' },
       refused:      { label: 'Demande refusée', color: '#E05252', desc: label.refusal_reason || "Votre demande n'a pas été retenue. Contactez le support pour plus d'informations." },
+      suspended:    { label: 'Compte suspendu', color: '#E05252', desc: label.refusal_reason || "Votre compte Label a été suspendu par l'équipe NUNI. Contactez le support pour plus d'informations." },
     };
     const st = statusMap[label.verification_status] || statusMap.pending;
     const planLabels = { start: 'Label Start (2 artistes max)', pro: 'Label Pro (5 artistes max)', premium: 'Label Premium (10 artistes max)', elite: 'Label Elite (illimité)' };
     card.innerHTML = `
-      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-        ${label.logo_url ? `<div style="width:56px; height:56px; border-radius:12px; background:url(${label.logo_url}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : ''}
-        <div>
-          <div style="font-weight:700; font-size:16px;">${label.label_name}</div>
-          <div style="font-size:12.5px; color:var(--text-faint);">${label.legal_name || ''}</div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          ${label.logo_url ? `<div style="width:56px; height:56px; border-radius:12px; background:url(${label.logo_url}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : ''}
+          <div>
+            <div style="font-weight:700; font-size:16px;">${label.label_name}</div>
+            <div style="font-size:12.5px; color:var(--text-faint);">${label.legal_name || ''}</div>
+          </div>
         </div>
+        <button class="btn-icon" title="Actualiser le statut" onclick="loadLabelDashboardStatus()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
       </div>
       <div style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; border-radius:20px; background:${st.color}22; color:${st.color}; font-weight:700; font-size:13px; margin-bottom:12px;">
         <span style="width:8px; height:8px; border-radius:50%; background:${st.color};"></span> ${st.label}
@@ -897,6 +903,18 @@ async function loadLabelDashboardStatus(){
         <div><div style="font-size:11px; color:var(--text-faint); text-transform:uppercase;">Palier</div><div style="font-weight:600; font-size:14px;">${planLabels[label.plan] || label.plan}</div></div>
         <div><div style="font-size:11px; color:var(--text-faint); text-transform:uppercase;">Artistes gérés</div><div style="font-weight:600; font-size:14px;">${data.artistCount} / ${data.maxArtists == null ? '∞' : data.maxArtists}</div></div>
       </div>`;
+    // ---- Synchronisation automatique : tant que le compte n'est pas encore validé/refusé/
+    // suspendu, on revérifie le vrai statut toutes les 20 secondes — inutile de recharger la
+    // page à la main pour voir qu'une validation admin vient d'arriver. Le polling s'arrête
+    // tout seul dès que le statut change, ou si on quitte la page. ----
+    clearTimeout(labelStatusPollTimer);
+    const stillWaiting = label.verification_status === 'pending' || label.verification_status === 'verification';
+    if(stillWaiting){
+      labelStatusPollTimer = setTimeout(()=>{
+        const view = document.getElementById('view-dashboard');
+        if(view && view.style.display !== 'none') loadLabelDashboardStatus();
+      }, 20000);
+    }
     const phase2 = document.getElementById('label-dash-phase2');
     if(phase2){
       phase2.style.display = label.verification_status === 'validated' ? 'block' : 'none';
@@ -2092,6 +2110,7 @@ function enterApp(view){
   if(view === 'catalog'){ updateGreeting(); renderContinueListening(); loadProgress(); }
   if(view === 'clips') loadRealClips(); // recharge les vrais clips à chaque ouverture (loadRealClips appelle renderClips())
   if(view === 'library') renderLibrary();
+  if(view !== 'dashboard'){ clearTimeout(labelStatusPollTimer); }
   if(view === 'artist' && currentUser && currentUser.account_type === 'artist' && !isOpeningArtistPage){
     openArtistPage(currentUser.artist_name, currentUser.id); // sinon l'onglet ne fait qu'afficher l'ancien contenu, jamais rafraîchi
     return; // openArtistPage rappelle enterApp('artist') lui-même (avec le garde-fou actif) pour finir l'affichage
