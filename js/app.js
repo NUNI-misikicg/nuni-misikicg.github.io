@@ -2531,8 +2531,14 @@ function filterCatalogByGenre(genreName){
 
   const row = document.getElementById('genre-filtered-row');
   row.innerHTML = '';
+  const artistsWrap = document.getElementById('genre-filtered-artists-wrap');
+  const artistsRow = document.getElementById('genre-filtered-artists-row');
+  const clipsWrap = document.getElementById('genre-filtered-clips-wrap');
+  const clipsRow = document.getElementById('genre-filtered-clips-row');
   if(!filtered.length){
     row.innerHTML = `<p style="color:var(--text-faint); font-size:13px;">Aucun titre dans ce genre pour le moment.</p>`;
+    if(artistsWrap) artistsWrap.style.display = 'none';
+    if(clipsWrap) clipsWrap.style.display = 'none';
     return;
   }
   filtered = dedupeAlbums(filtered);
@@ -2542,6 +2548,57 @@ function filterCatalogByGenre(genreName){
     card.classList.add('reveal-in');
     row.appendChild(card);
   });
+
+  // ---- Artistes de ce genre — uniquement pour un genre précis (pas Nouveautés/Top Congo,
+  // qui mélangent déjà tous les genres). ----
+  if(artistsWrap && artistsRow){
+    if(genreName === 'Nouveautés' || genreName === 'Top Congo'){
+      artistsWrap.style.display = 'none';
+    } else {
+      const artistNames = [...new Set(tracks.filter(t=>t.genre===genreName && t.isReal).map(t=>t.a))].slice(0, 10);
+      if(artistNames.length){
+        artistsWrap.style.display = 'block';
+        artistsRow.innerHTML = '';
+        artistNames.forEach(name=>{
+          const t = tracks.find(tr=>tr.a===name);
+          const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+          const avatarStyle = t && t.artistAvatarUrl ? `background-image:url(${t.artistAvatarUrl}); background-size:cover; background-position:center;` : '';
+          const card = document.createElement('div');
+          card.className = 'artist-suggest-card';
+          card.innerHTML = `
+            <div class="av" style="${avatarStyle}">${avatarStyle ? '' : initials}</div>
+            <div class="n">${name}${t && t.verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+            <div class="g">${genreName}</div>
+            <button onclick="event.stopPropagation(); openArtistPage('${name.replace(/'/g,"\\'")}', ${t && t.artistId ? t.artistId : 'null'})">Voir le profil</button>`;
+          card.querySelector('.av').style.cursor = 'pointer';
+          card.querySelector('.n').style.cursor = 'pointer';
+          card.querySelector('.av').onclick = ()=> openArtistPage(name, t && t.artistId);
+          card.querySelector('.n').onclick = ()=> openArtistPage(name, t && t.artistId);
+          artistsRow.appendChild(card);
+        });
+      } else {
+        artistsWrap.style.display = 'none';
+      }
+    }
+  }
+
+  // ---- Clips de ce genre — approximé via les artistes qui publient dans ce genre (les
+  // clips eux-mêmes ne portent pas encore de genre propre côté base de données). ----
+  if(clipsWrap && clipsRow){
+    if(genreName === 'Nouveautés' || genreName === 'Top Congo'){
+      clipsWrap.style.display = 'none';
+    } else {
+      const genreArtists = new Set(tracks.filter(t=>t.genre===genreName && t.isReal).map(t=>t.a));
+      const genreClips = clips.filter(c=> genreArtists.has(c.artist)).slice(0, 8);
+      if(genreClips.length){
+        clipsWrap.style.display = 'block';
+        clipsRow.innerHTML = '';
+        genreClips.forEach(c=> clipsRow.appendChild(clipCard(c)));
+      } else {
+        clipsWrap.style.display = 'none';
+      }
+    }
+  }
 }
 
 /* ============ NUNI ADS (espace annonceurs) ============ */
@@ -7424,22 +7481,34 @@ const ASV_GENRE_COLORS = {
   'Afro': '#1E8449', 'Rap': '#8E2DE2', 'Rumba': '#B3512E', 'Gospel': '#1976D2',
   'Hip-Hop': '#C0392B', 'Top Congo': '#B98A3D', 'Nouveautés': '#0E3D2C',
 };
+// Concerts et NUNI Événements : catégories prévues, pas encore construites (aucun système
+// de publication de concert côté artiste, aucune gestion d'événement côté admin pour
+// l'instant) — la carte existe déjà visuellement, mais dit honnêtement "Bientôt disponible"
+// plutôt que de prétendre qu'il y a du contenu à afficher.
+const ASV_COMING_SOON = {
+  'Concerts': '#6E45A8', 'NUNI Événements': '#B3512E',
+};
 function renderSearchViewBrowse(){
   const box = document.getElementById('asv-results');
   if(!box) return;
   const genres = Object.keys(ASV_GENRE_COLORS);
+  const comingSoon = Object.keys(ASV_COMING_SOON);
   box.innerHTML = `
     <div class="asv-browse-title">Parcourir</div>
     <div class="asv-genre-grid">
       ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
+      ${comingSoon.map(g => `<div class="asv-genre-tile is-coming-soon" style="background:${ASV_COMING_SOON[g]};" data-coming-soon="${g}">${g}<span class="asv-soon-badge">Bientôt</span></div>`).join('')}
     </div>`;
-  box.querySelectorAll('.asv-genre-tile').forEach(tile=>{
+  box.querySelectorAll('.asv-genre-tile[data-genre]').forEach(tile=>{
     tile.onclick = ()=>{
       const g = tile.dataset.genre;
       enterApp('catalog');
       filterCatalogByGenre(g);
       document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname') && t.querySelector('.gname').textContent === g));
     };
+  });
+  box.querySelectorAll('.asv-genre-tile[data-coming-soon]').forEach(tile=>{
+    tile.onclick = ()=> toast(`« ${tile.dataset.comingSoon} » arrive bientôt sur NUNI.`);
   });
 }
 function clearSearchView(){
