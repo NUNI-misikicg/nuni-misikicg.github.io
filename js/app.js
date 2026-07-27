@@ -5369,7 +5369,16 @@ function concertCardHtml(c){
 // ---------- Modal "Se procurer un ticket" — affiche tout ce que l'artiste a renseigné :
 // lieux physiques, numéros à contacter, et/ou lien en ligne. Jamais de paiement traité par
 // NUNI directement, exactement comme pour le soutien direct aux artistes. ----------
-function openTicketInfoModal(concertId){
+let nuniInfoCache = null;
+async function fetchNuniInfo(){
+  if(nuniInfoCache) return nuniInfoCache;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/nuni-info');
+    if(res.ok) nuniInfoCache = await res.json();
+  }catch(e){ /* pas grave */ }
+  return nuniInfoCache;
+}
+async function openTicketInfoModal(concertId){
   const c = concertsRegistry[concertId];
   const title = document.getElementById('ticket-info-title');
   const body = document.getElementById('ticket-info-body');
@@ -5389,11 +5398,41 @@ function openTicketInfoModal(concertId){
       ${numbers.map(n=> `<div style="font-size:16px; font-weight:700; color:var(--accent); letter-spacing:0.5px; margin-bottom:4px;">${n}</div>`).join('')}
     </div>`;
   }
-  html += c.purchase_link
-    ? `<a class="btn btn-primary" style="width:100%; text-align:center; display:block; text-decoration:none; margin-top:4px;" href="${c.purchase_link}" target="_blank" rel="noopener noreferrer">Acheter en ligne</a>`
-    : `<button class="btn btn-primary" style="width:100%; margin-top:4px;" onclick="toast('Achat en ligne bientôt disponible pour ce concert.')">Acheter en ligne</button>`;
+  // ---- Événement NUNI (pas un concert d'artiste) sans lien d'achat renseigné : on montre
+  // les vraies coordonnées officielles NUNI (locaux, service client) plutôt qu'un message
+  // générique — ça a du sens ici puisque l'événement appartient à la plateforme elle-même. ----
+  const isNuniEvent = typeof concertId === 'string' && concertId.startsWith('ev_');
+  if(isNuniEvent && !c.purchase_link){
+    const info = await fetchNuniInfo();
+    if(info && (info.locations || info.phone || info.email)){
+      if(info.locations){
+        html += `<div class="pi-sub-card" style="margin-bottom:12px;">
+          <div style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Nos locaux</div>
+          <div style="font-size:13.5px; color:var(--text); line-height:1.6; white-space:pre-line;">${info.locations}</div>
+        </div>`;
+      }
+      if(info.phone){
+        html += `<div class="pi-sub-card" style="margin-bottom:12px;">
+          <div style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Service client</div>
+          <div style="font-size:16px; font-weight:700; color:var(--accent); letter-spacing:0.5px;">${info.phone}</div>
+        </div>`;
+      }
+      if(info.email){
+        html += `<div class="pi-sub-card" style="margin-bottom:12px;">
+          <div style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Email</div>
+          <div style="font-size:14px; color:var(--text);">${info.email}</div>
+        </div>`;
+      }
+    } else {
+      html += `<button class="btn btn-primary" style="width:100%; margin-top:4px;" onclick="toast('Achat en ligne bientôt disponible pour cet événement.')">Acheter en ligne</button>`;
+    }
+  } else {
+    html += c.purchase_link
+      ? `<a class="btn btn-primary" style="width:100%; text-align:center; display:block; text-decoration:none; margin-top:4px;" href="${c.purchase_link}" target="_blank" rel="noopener noreferrer">Acheter en ligne</a>`
+      : `<button class="btn btn-primary" style="width:100%; margin-top:4px;" onclick="toast('Achat en ligne bientôt disponible pour ce concert.')">Acheter en ligne</button>`;
+  }
   if(!html){
-    html = `<p style="color:var(--text-faint); font-size:13px;">Aucune information de billetterie renseignée par l'artiste pour le moment.</p>`;
+    html = `<p style="color:var(--text-faint); font-size:13px;">Aucune information de billetterie renseignée pour le moment.</p>`;
   }
   body.innerHTML = html;
   document.getElementById('ticket-info-overlay').classList.add('show');
