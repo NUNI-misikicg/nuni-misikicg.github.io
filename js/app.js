@@ -5402,7 +5402,8 @@ async function openTicketInfoModal(concertId){
   // les vraies coordonnées officielles NUNI (locaux, service client) plutôt qu'un message
   // générique — ça a du sens ici puisque l'événement appartient à la plateforme elle-même. ----
   const isNuniEvent = typeof concertId === 'string' && concertId.startsWith('ev_');
-  if(isNuniEvent && !c.purchase_link){
+  const hasOwnPurchaseInfo = c.purchase_locations || c.purchase_phone_numbers || c.purchase_link;
+  if(isNuniEvent && !hasOwnPurchaseInfo){
     const info = await fetchNuniInfo();
     if(info && (info.locations || info.phone || info.email)){
       if(info.locations){
@@ -5522,7 +5523,7 @@ function renderConcertsList(concerts){
 // purchase_locations / purchase_phone_numbers — un événement NUNI n'a qu'un lien direct,
 // donc on adapte l'objet avant de l'enregistrer dans le registre).
 function nuniEventCardHtml(ev){
-  concertsRegistry['ev_' + ev.id] = { id: 'ev_' + ev.id, title: ev.title, purchase_link: ev.purchase_link, purchase_locations: null, purchase_phone_numbers: null };
+  concertsRegistry['ev_' + ev.id] = { id: 'ev_' + ev.id, title: ev.title, purchase_link: ev.purchase_link, purchase_locations: ev.purchase_locations || null, purchase_phone_numbers: ev.purchase_phone_numbers || null };
   const dateLabel = new Date(ev.event_date).toLocaleDateString('fr-FR', {weekday:'short', day:'2-digit', month:'short', year:'numeric'});
   const gallery = (ev.gallery_urls || '').split(',').map(u=>u.trim()).filter(Boolean);
   return `
