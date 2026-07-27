@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727r">
-<link rel="stylesheet" href="css/corners.css?v=20260727r">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727r">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727r">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727r">
+<link rel="stylesheet" href="css/style.css?v=20260727s">
+<link rel="stylesheet" href="css/corners.css?v=20260727s">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727s">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727s">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727s">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -1063,6 +1063,20 @@
         <div><h1>Espace Label</h1><p id="label-dash-subtitle">Chargement de votre profil…</p></div>
       </div>
       <div id="label-dash-status-card" class="card" style="max-width:640px;"></div>
+      <div class="card" id="label-change-plan-card" style="max-width:640px; margin-top:14px; display:none;">
+        <b style="color:var(--accent); font-size:13px;">Changer de palier</b>
+        <p style="font-size:12px; color:var(--text-faint); margin-top:4px;">Votre Pass Label est valable 1 an à compter de sa validation. Le tout premier changement de palier bénéficie de 25% de réduction.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+          <select id="lcp-new-plan">
+            <option value="start">Label Start — 2 artistes max</option>
+            <option value="pro">Label Pro — 5 artistes max</option>
+            <option value="premium">Label Premium — 10 artistes max</option>
+            <option value="elite">Label Elite — illimité</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="requestLabelPlanChange()">Voir le prix &amp; continuer sur WhatsApp</button>
+        </div>
+        <div id="lcp-msg" style="margin-top:10px; font-size:12.5px;"></div>
+      </div>
 
       <div id="label-dash-phase2" style="display:none; margin-top:30px;">
         <!-- ---- Vue d'ensemble ---- -->
@@ -1780,8 +1794,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727r"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727s"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727r"></script>
+<script src="js/app.js?v=20260727s"></script>
 </body>
 </html>

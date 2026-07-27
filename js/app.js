@@ -916,6 +916,12 @@ async function loadLabelDashboardStatus(){
       }, 20000);
     }
     const phase2 = document.getElementById('label-dash-phase2');
+    const changePlanCard = document.getElementById('label-change-plan-card');
+    if(changePlanCard){
+      changePlanCard.style.display = label.verification_status === 'validated' ? 'block' : 'none';
+      const sel = document.getElementById('lcp-new-plan');
+      if(sel) sel.value = label.plan;
+    }
     if(phase2){
       phase2.style.display = label.verification_status === 'validated' ? 'block' : 'none';
       if(label.verification_status === 'validated'){
@@ -1144,6 +1150,27 @@ function renderLabelCatalogList(){
 }
 
 /* ---------- Vue d'ensemble du Label (Phase 2) ---------- */
+/* ---------- Changer de palier (Phase 6+) — calcule le vrai prix (avec 25% de réduction au
+   premier changement), puis bascule sur WhatsApp pour finaliser, comme tout Pass NUNI. ---------- */
+async function requestLabelPlanChange(){
+  const msg = document.getElementById('lcp-msg');
+  const newPlan = document.getElementById('lcp-new-plan').value;
+  msg.style.color = 'var(--text-dim)'; msg.textContent = 'Calcul du prix…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/change-plan-request', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ newPlan }),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
+    const fmt = n => Number(n).toLocaleString('fr-FR');
+    msg.style.color = 'var(--text)';
+    msg.innerHTML = data.discounted
+      ? `<b style="color:#3BC26A;">${fmt(data.finalPrice)} FCFA</b> <span style="text-decoration:line-through; color:var(--text-faint);">${fmt(data.fullPrice)} FCFA</span> — 25% de réduction sur votre premier changement de palier ! <a href="${data.whatsapp}?text=${encodeURIComponent(data.whatsappMessage)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:600;">Continuer sur WhatsApp →</a>`
+      : `<b>${fmt(data.finalPrice)} FCFA</b> — <a href="${data.whatsapp}?text=${encodeURIComponent(data.whatsappMessage)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent); font-weight:600;">Continuer sur WhatsApp →</a>`;
+  }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+
 async function loadLabelOverview(){
   const box = document.getElementById('label-overview-stats');
   if(!box || !realAuthToken) return;
