@@ -409,6 +409,13 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .concert-meta-row{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-dim); }
 .concert-meta-row .nuni-ic{ width:15px; height:15px; flex-shrink:0; }
 .concert-desc{ font-size:12.5px; color:var(--text-faint); line-height:1.5; margin:2px 0 0; }
+.concert-tiers{ display:flex; flex-wrap:wrap; gap:6px; margin-top:2px; }
+.concert-tier{ font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:20px; background:rgba(255,255,255,0.06); border:1px solid var(--border-strong); color:var(--text-dim); }
+.concert-tier.is-vip{ background:rgba(232,199,126,0.16); border-color:rgba(212,175,106,0.4); color:var(--accent); }
+.concert-type-badge{ position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.55); color:#fff; font-size:10.5px; font-weight:700; padding:4px 10px; border-radius:20px; }
+.concerts-filter-btn{ background:none; border:1.5px solid var(--border-strong); color:var(--text-dim); }
+.concerts-filter-btn.is-active{ background:var(--grad-envol); border-color:transparent; color:#0A0A10; }
+.concert-flyer{ position:relative; }
 .concert-foot-row{ display:flex; justify-content:space-between; align-items:center; margin-top:4px; }
 .concert-price{ font-size:13px; font-weight:700; color:var(--text); }
 .concert-places{ font-size:11.5px; color:var(--text-faint); }

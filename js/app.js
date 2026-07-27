@@ -5240,6 +5240,7 @@ async function publishConcert(){
       method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
       body: JSON.stringify({
         title, eventDate, city, country,
+        eventType: document.getElementById('concert-event-type').value,
         description: document.getElementById('concert-description').value.trim() || null,
         tourName: document.getElementById('concert-tour-name').value.trim() || null,
         startTime: document.getElementById('concert-start-time').value || null,
@@ -5248,21 +5249,25 @@ async function publishConcert(){
         address: document.getElementById('concert-address').value.trim() || null,
         gpsLat: latVal ? Number(latVal) : null,
         gpsLng: lngVal ? Number(lngVal) : null,
-        ticketPrice: document.getElementById('concert-ticket-price').value.trim() || null,
-        ticketType: document.getElementById('concert-ticket-type').value.trim() || null,
+        ticketPriceVip: document.getElementById('concert-ticket-price-vip').value.trim() || null,
+        ticketPriceStandard: document.getElementById('concert-ticket-price-standard').value.trim() || null,
         capacity: capacityVal ? Number(capacityVal) : null,
+        purchaseLocations: document.getElementById('concert-purchase-locations').value.trim() || null,
+        purchasePhoneNumbers: document.getElementById('concert-purchase-phones').value.trim() || null,
         purchaseLink: document.getElementById('concert-purchase-link').value.trim() || null,
         flyerUrl,
       }),
     });
     const data = await res.json();
-    if(!res.ok){ toast(data.error || 'Impossible de publier ce concert.'); return; }
-    toast('Concert publié — visible dans la recherche.');
+    if(!res.ok){ toast(data.error || 'Impossible de publier.'); return; }
+    toast('Publié — visible dans la recherche.');
     ['concert-title','concert-tour-name','concert-description','concert-date','concert-start-time','concert-end-time',
      'concert-city','concert-country','concert-venue','concert-address','concert-gps-lat','concert-gps-lng',
-     'concert-ticket-price','concert-ticket-type','concert-capacity','concert-purchase-link'].forEach(id=>{
+     'concert-ticket-price-vip','concert-ticket-price-standard','concert-capacity','concert-purchase-locations',
+     'concert-purchase-phones','concert-purchase-link'].forEach(id=>{
       const el = document.getElementById(id); if(el) el.value = '';
     });
+    document.getElementById('concert-event-type').value = 'concert';
     pendingConcertFlyerFile = null;
     const preview = document.getElementById('concert-flyer-preview');
     preview.style.backgroundImage = ''; preview.textContent = 'Choisir une image';
@@ -5319,14 +5324,22 @@ function concertMapsUrl(c){
   const q = encodeURIComponent([c.venue, c.address, c.city, c.country].filter(Boolean).join(', '));
   return `https://www.google.com/maps/search/?api=1&query=${q}`;
 }
+// Registre des concerts déjà rendus à l'écran (par id) — permet au bouton "Acheter un
+// ticket" d'ouvrir le modal avec les bonnes infos sans avoir à tout redemander au serveur.
+let concertsRegistry = {};
 function concertCardHtml(c){
+  concertsRegistry[c.id] = c;
   const dateLabel = new Date(c.event_date).toLocaleDateString('fr-FR', {weekday:'short', day:'2-digit', month:'short', year:'numeric'});
   const timeLabel = [c.start_time, c.end_time].filter(Boolean).join(' – ');
   const initials = (c.artist_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const avatarStyle = c.artist_avatar_url ? `background-image:url(${c.artist_avatar_url}); background-size:cover; background-position:center;` : '';
+  const isShowcase = c.event_type === 'showcase';
+  const hasPurchaseInfo = c.purchase_locations || c.purchase_phone_numbers || c.purchase_link;
   return `
     <div class="concert-card">
-      <div class="concert-flyer" style="${c.flyer_url ? `background-image:url(${c.flyer_url});` : ''}"></div>
+      <div class="concert-flyer" style="${c.flyer_url ? `background-image:url(${c.flyer_url});` : ''}">
+        ${isShowcase ? '<span class="concert-type-badge">🎬 Showcase</span>' : ''}
+      </div>
       <div class="concert-body">
         <div class="concert-artist-row">
           <div class="concert-artist-av" style="${avatarStyle}">${avatarStyle ? '' : initials}</div>
@@ -5336,76 +5349,130 @@ function concertCardHtml(c){
         <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> ${dateLabel}${timeLabel ? ' · ' + timeLabel : ''}</div>
         <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg> ${[c.venue, c.city, c.country].filter(Boolean).join(', ')}</div>
         ${c.description ? `<p class="concert-desc">${c.description}</p>` : ''}
+        ${(c.ticket_price_vip || c.ticket_price_standard) ? `<div class="concert-tiers">
+          ${c.ticket_price_vip ? `<span class="concert-tier is-vip">💛 VIP — ${c.ticket_price_vip}</span>` : ''}
+          ${c.ticket_price_standard ? `<span class="concert-tier">Standard — ${c.ticket_price_standard}</span>` : ''}
+        </div>` : ''}
         <div class="concert-foot-row">
-          ${c.ticket_price ? `<span class="concert-price">${c.ticket_price}${c.ticket_type ? ' · ' + c.ticket_type : ''}</span>` : '<span></span>'}
+          <span></span>
           ${c.places_restantes != null ? `<span class="concert-places">${c.places_restantes} place${c.places_restantes>1?'s':''} restante${c.places_restantes>1?'s':''}</span>` : ''}
         </div>
         <div class="concert-actions">
-          ${c.purchase_link ? `<a class="btn btn-primary btn-sm" href="${c.purchase_link}" target="_blank" rel="noopener noreferrer">Acheter un ticket</a>` : ''}
+          ${hasPurchaseInfo ? `<button class="btn btn-primary btn-sm" onclick="openTicketInfoModal(${c.id})">Acheter un ticket</button>` : ''}
           <a class="btn btn-ghost btn-sm" href="${concertMapsUrl(c)}" target="_blank" rel="noopener noreferrer">Voir l'emplacement</a>
         </div>
       </div>
     </div>`;
 }
+// ---------- Modal "Se procurer un ticket" — affiche tout ce que l'artiste a renseigné :
+// lieux physiques, numéros à contacter, et/ou lien en ligne. Jamais de paiement traité par
+// NUNI directement, exactement comme pour le soutien direct aux artistes. ----------
+function openTicketInfoModal(concertId){
+  const c = concertsRegistry[concertId];
+  const title = document.getElementById('ticket-info-title');
+  const body = document.getElementById('ticket-info-body');
+  if(!c){ return; }
+  title.textContent = c.title;
+  let html = '';
+  if(c.purchase_locations){
+    html += `<div class="pi-sub-card" style="margin-bottom:12px;">
+      <div style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Points de vente</div>
+      <div style="font-size:13.5px; color:var(--text); line-height:1.6; white-space:pre-line;">${c.purchase_locations}</div>
+    </div>`;
+  }
+  if(c.purchase_phone_numbers){
+    const numbers = c.purchase_phone_numbers.split(',').map(n=>n.trim()).filter(Boolean);
+    html += `<div class="pi-sub-card" style="margin-bottom:12px;">
+      <div style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Numéros à contacter</div>
+      ${numbers.map(n=> `<div style="font-size:16px; font-weight:700; color:var(--accent); letter-spacing:0.5px; margin-bottom:4px;">${n}</div>`).join('')}
+    </div>`;
+  }
+  if(c.purchase_link){
+    html += `<a class="btn btn-primary" style="width:100%; text-align:center; display:block; text-decoration:none; margin-top:4px;" href="${c.purchase_link}" target="_blank" rel="noopener noreferrer">Acheter en ligne</a>`;
+  }
+  if(!html){
+    html = `<p style="color:var(--text-faint); font-size:13px;">Aucune information de billetterie renseignée par l'artiste pour le moment.</p>`;
+  }
+  body.innerHTML = html;
+  document.getElementById('ticket-info-overlay').classList.add('show');
+}
+function closeTicketInfoModal(){
+  document.getElementById('ticket-info-overlay').classList.remove('show');
+}
+let allConcertsCache = [];
+let currentConcertsFilter = 'all';
 async function loadConcertsPage(){
   const box = document.getElementById('concerts-list');
   if(!box) return;
   box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement des concerts…</p>';
+  currentConcertsFilter = 'all';
+  document.querySelectorAll('.concerts-filter-btn').forEach(b=> b.classList.toggle('is-active', b.dataset.filter === 'all'));
   try{
     const res = await fetch(NUNI_API_BASE + '/api/concerts');
     if(!res.ok) throw new Error();
     const data = await res.json();
-    const concerts = data.concerts || [];
-    if(!concerts.length){
-      box.innerHTML = '<p style="color:var(--text-faint); font-size:13px; padding:30px 0;">Aucun concert programmé pour le moment — revenez bientôt.</p>';
-      return;
-    }
-    // Regroupement par tournée : même artiste + même tour_name renseigné.
-    const tourGroups = {};
-    const standalone = [];
-    concerts.forEach(c=>{
-      if(c.tour_name){
-        const key = c.artist_id + '::' + c.tour_name;
-        (tourGroups[key] = tourGroups[key] || []).push(c);
-      } else {
-        standalone.push(c);
-      }
-    });
-
-    let html = '';
-    Object.values(tourGroups).forEach(dates=>{
-      dates.sort((a,b)=> new Date(a.event_date) - new Date(b.event_date));
-      const first = dates[0];
-      html += `<div class="concert-tour-block">
-        <h3 class="concert-tour-title"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> ${first.tour_name} — ${first.artist_name}</h3>
-        <div class="concert-timeline">
-          ${dates.map(c=>{
-            const dateLabel = new Date(c.event_date).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
-            return `<div class="concert-timeline-item">
-              <div class="concert-timeline-dot"></div>
-              <div class="concert-timeline-date">${dateLabel}</div>
-              <div class="concert-timeline-place">${[c.venue, c.city, c.country].filter(Boolean).join(', ')}</div>
-            </div>`;
-          }).join('')}
-        </div>
-        <div class="concert-grid">${dates.map(concertCardHtml).join('')}</div>
-      </div>`;
-    });
-    if(standalone.length){
-      html += `<div class="concert-grid">${standalone.map(concertCardHtml).join('')}</div>`;
-    }
-    box.innerHTML = html;
-    // Clic sur le nom/avatar de l'artiste → sa page profil (association par ordre de rendu).
-    const orderedConcerts = [...Object.values(tourGroups).flat(), ...standalone];
-    box.querySelectorAll('.concert-card').forEach((card, i)=>{
-      const c = orderedConcerts[i];
-      if(!c) return;
-      const row = card.querySelector('.concert-artist-row');
-      if(row){ row.style.cursor = 'pointer'; row.onclick = ()=> openArtistPage(c.artist_name, c.artist_id); }
-    });
+    allConcertsCache = data.concerts || [];
+    renderConcertsList(allConcertsCache);
   }catch(e){
     box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de charger les concerts pour le moment.</p>';
   }
+}
+function setConcertsFilter(type){
+  currentConcertsFilter = type;
+  document.querySelectorAll('.concerts-filter-btn').forEach(b=> b.classList.toggle('is-active', b.dataset.filter === type));
+  const filtered = type === 'all' ? allConcertsCache : allConcertsCache.filter(c=> (c.event_type || 'concert') === type);
+  renderConcertsList(filtered);
+}
+function renderConcertsList(concerts){
+  const box = document.getElementById('concerts-list');
+  if(!box) return;
+  if(!concerts.length){
+    box.innerHTML = '<p style="color:var(--text-faint); font-size:13px; padding:30px 0;">Rien à afficher pour le moment — revenez bientôt.</p>';
+    return;
+  }
+  // Regroupement par tournée : même artiste + même tour_name renseigné.
+  const tourGroups = {};
+  const standalone = [];
+  concerts.forEach(c=>{
+    if(c.tour_name){
+      const key = c.artist_id + '::' + c.tour_name;
+      (tourGroups[key] = tourGroups[key] || []).push(c);
+    } else {
+      standalone.push(c);
+    }
+  });
+
+  let html = '';
+  Object.values(tourGroups).forEach(dates=>{
+    dates.sort((a,b)=> new Date(a.event_date) - new Date(b.event_date));
+    const first = dates[0];
+    html += `<div class="concert-tour-block">
+      <h3 class="concert-tour-title"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> ${first.tour_name} — ${first.artist_name}</h3>
+      <div class="concert-timeline">
+        ${dates.map(c=>{
+          const dateLabel = new Date(c.event_date).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
+          return `<div class="concert-timeline-item">
+            <div class="concert-timeline-dot"></div>
+            <div class="concert-timeline-date">${dateLabel}</div>
+            <div class="concert-timeline-place">${[c.venue, c.city, c.country].filter(Boolean).join(', ')}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="concert-grid">${dates.map(concertCardHtml).join('')}</div>
+    </div>`;
+  });
+  if(standalone.length){
+    html += `<div class="concert-grid">${standalone.map(concertCardHtml).join('')}</div>`;
+  }
+  box.innerHTML = html;
+  // Clic sur le nom/avatar de l'artiste → sa page profil (association par ordre de rendu).
+  const orderedConcerts = [...Object.values(tourGroups).flat(), ...standalone];
+  box.querySelectorAll('.concert-card').forEach((card, i)=>{
+    const c = orderedConcerts[i];
+    if(!c) return;
+    const row = card.querySelector('.concert-artist-row');
+    if(row){ row.style.cursor = 'pointer'; row.onclick = ()=> openArtistPage(c.artist_name, c.artist_id); }
+  });
 }
 
 // Point d'entrée unique pour changer sa photo de profil, quel que soit le bouton utilisé
