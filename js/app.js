@@ -1958,6 +1958,25 @@ function openArtistPage(name, artistId){
     }
   }
 
+  // ---- Événements NUNI auxquels cet artiste participe — filtrés par correspondance de
+  // nom (voir featured_artist_names, renseigné par l'admin lors de la création). ----
+  const nuniEventsSection = document.getElementById('artist-nuni-events-section');
+  const nuniEventsGrid = document.getElementById('artist-page-nuni-events');
+  if(nuniEventsSection && nuniEventsGrid){
+    nuniEventsSection.style.display = 'none';
+    nuniEventsGrid.innerHTML = '';
+    fetch(NUNI_API_BASE + '/api/nuni-events')
+      .then(r=>r.json()).then(data=>{
+        const nameLower = name.trim().toLowerCase();
+        const matching = (data.events || []).filter(ev=>
+          (ev.featured_artist_names || '').split(',').map(n=>n.trim().toLowerCase()).includes(nameLower)
+        );
+        if(!matching.length) return;
+        nuniEventsSection.style.display = 'block';
+        nuniEventsGrid.innerHTML = matching.map(nuniEventCardHtml).join('');
+      }).catch(()=>{});
+  }
+
   renderArtistClips(name);
 
   isOpeningArtistPage = true;
