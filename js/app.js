@@ -335,7 +335,10 @@ async function restoreSession(){
     realUserId = stored.userId;
     currentUser = data.user;
     applyAccountType();
-    if(currentUser.subscription_status === 'active'){
+    if(currentUser.account_type === 'label'){
+      enterApp('dashboard');
+ toast(`Bon retour, ${currentUser.first_name} `);
+    } else if(currentUser.subscription_status === 'active'){
       enterApp('catalog');
  toast(`Bon retour, ${currentUser.first_name} `);
       if(currentUser.plan === 'discovery') startDiscoveryFromServer();
@@ -597,7 +600,12 @@ async function submitLogin(){
     applyAccountType();
     setTimeout(()=>{
       closeLoginModal();
-      if(currentUser.subscription_status === 'active'){
+      // Un compte Label n'a ni subscription_status ni plan au sens Pass Consommateur/Artiste
+      // (il a son propre système : labels.verification_status) — le router en premier, avant
+      // toute logique ci-dessous qui ne concerne que les comptes consumer/artist.
+      if(currentUser.account_type === 'label'){
+        enterApp('dashboard');
+      } else if(currentUser.subscription_status === 'active'){
         enterApp('catalog');
         if(currentUser.plan === 'discovery') startDiscoveryFromServer();
       handleSharedTrackLink(); // reprend un lien partagé en attente, si la personne y était arrivée avant de se connecter
@@ -621,7 +629,11 @@ async function choosePlan(type, isDiscovery){
   // Compte déjà existant et connecté : pas besoin de repasser par le formulaire d'inscription
   // complet — on redemande juste le Pass, puis on l'envoie directement sur WhatsApp payer,
   // et il n'aura plus qu'à saisir son nouveau code d'accès une fois le paiement confirmé.
-  if(currentUser && realAuthToken){
+  // IMPORTANT : uniquement si le compte connecté est bien du MÊME type que le Pass choisi —
+  // un Label (ou un Artiste cliquant sur Pass Consommateur, etc.) qui clique sur un Pass qui
+  // ne correspond pas à son propre compte ne doit jamais atterrir sur WhatsApp sans
+  // explication : il faut d'abord clairement lui dire qu'il doit se déconnecter.
+  if(currentUser && realAuthToken && currentUser.account_type === type){
     try{
       await fetch(NUNI_API_BASE + '/api/subscribe/request', {
         method:'POST',
@@ -630,6 +642,15 @@ async function choosePlan(type, isDiscovery){
       });
     }catch(e){ /* pas bloquant : on affiche WhatsApp même si cet appel échoue */ }
     document.getElementById('whatsapp-modal-overlay').classList.add('show');
+    return;
+  }
+  if(currentUser && realAuthToken && currentUser.account_type !== type){
+    const typeLabels = { consumer: 'Consommateur', artist: 'Artiste', label: 'Label' };
+    const wantsLogout = confirm(
+      `Vous êtes déjà connecté avec un compte ${typeLabels[currentUser.account_type] || currentUser.account_type} (${currentUser.email || currentUser.first_name}).\n\n` +
+      `Pour créer un compte ${typeLabels[type] || type} distinct, il faut d'abord vous déconnecter.\n\nSe déconnecter maintenant ?`
+    );
+    if(wantsLogout){ logoutUser(); }
     return;
   }
   // Filet de sécurité supplémentaire : quelle que soit la façon exacte dont on arrive ici,
