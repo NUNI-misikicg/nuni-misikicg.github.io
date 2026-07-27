@@ -3312,7 +3312,7 @@ async function loadRealTracks(){
       verified: !!r.is_verified, likes: r.likes || 0,
       cover: r.cover_url || null, audioUrl: r.audio_url || null, isReal: true,
       releaseType: r.release_type || 'Single',
-      artistId: r.artist_id,
+      artistId: r.artist_id, artistAvatarUrl: r.artist_avatar_url || null,
       lyrics: r.lyrics || null,
       composer: r.composer || null, featuring: r.featuring || null, studio: r.studio || null, description: r.description || null,
       realId: r.id,
@@ -3325,8 +3325,8 @@ async function loadRealTracks(){
     // démonstration fictifs — aucun vrai artiste ni morceau réel n'était encore chargé.
     // Ici : dès que les vraies données arrivent, on relance la recherche si un texte est
     // toujours dans le champ, pour que les vrais résultats apparaissent sans avoir à retaper.
-    const searchInputEl = document.getElementById('app-search-input');
-    if(searchInputEl && searchInputEl.value.trim()) runSearch(searchInputEl.value);
+    const searchViewInputEl = document.getElementById('asv-input');
+    if(searchViewInputEl && searchViewInputEl.value.trim()) runSearchView(searchViewInputEl.value);
     // Le lecteur démarrait sur un morceau de démo sans vrai fichier audio (silence simulé si
     // on appuyait sur ▶ avant d'avoir cliqué un vrai morceau) — dès que de vrais morceaux sont
     // chargés, et si rien n'a encore été lancé, on bascule le lecteur sur le premier vrai son.
@@ -7463,6 +7463,18 @@ function runSearchView(q){
 
   const artistNames = [...new Set(tracks.map(t=>t.a||''))].filter(Boolean);
   const artistMatches = artistNames.filter(a => a.toLowerCase().includes(query)).slice(0, 6);
+  // Albums/EP — un morceau par album unique (artiste + titre d'album), pour retrouver un
+  // projet entier plutôt que juste ses morceaux un par un. Les Singles ne comptent pas comme
+  // "album" ici (ils apparaissent déjà dans la section Morceaux).
+  const albumSeen = new Set();
+  const albumMatches = tracks.filter(t=>{
+    if(!t.album || t.releaseType === 'Single') return false;
+    const key = t.a + '::' + t.album;
+    if(albumSeen.has(key)) return false;
+    const matches = (t.album||'').toLowerCase().includes(query) || (t.a||'').toLowerCase().includes(query);
+    if(matches) albumSeen.add(key);
+    return matches;
+  }).slice(0, 6);
   const trackMatches = tracks.filter(t =>
     (t.t||'').toLowerCase().includes(query) || (t.a||'').toLowerCase().includes(query) || (t.album||'').toLowerCase().includes(query)
   ).slice(0, 10);
@@ -7470,7 +7482,7 @@ function runSearchView(q){
     (c.title||'').toLowerCase().includes(query) || (c.artist||'').toLowerCase().includes(query)
   ).slice(0, 6);
 
-  if(!artistMatches.length && !trackMatches.length && !clipMatches.length){
+  if(!artistMatches.length && !albumMatches.length && !trackMatches.length && !clipMatches.length){
     box.innerHTML = `<div class="asv-empty">Aucun résultat pour « ${q} ».</div>`;
     return;
   }
@@ -7479,9 +7491,23 @@ function runSearchView(q){
   if(artistMatches.length){
     html += `<div class="asv-section"><div class="asv-section-title">Artistes</div>${artistMatches.map(name=>{
       const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      // Vraie photo de profil si un morceau de cet artiste en a déjà ramené une (voir
+      // artistAvatarUrl dans loadRealTracks) — sinon repli honnête sur les initiales.
+      const artistTrackWithAvatar = tracks.find(t => t.a === name && t.artistAvatarUrl);
+      const avatarUrl = artistTrackWithAvatar ? artistTrackWithAvatar.artistAvatarUrl : null;
+      const avatarStyle = avatarUrl ? `background-image:url(${avatarUrl}); background-size:cover; background-position:center;` : 'background:var(--grad-envol);';
       return `<div class="asv-row" data-kind="artist" data-name="${name.replace(/"/g,'&quot;')}">
-        <div class="asv-row-cover is-round" style="background:var(--grad-envol);">${initials}</div>
+        <div class="asv-row-cover is-round" style="${avatarStyle}">${avatarUrl ? '' : initials}</div>
         <div><div class="asv-row-title">${name}</div><div class="asv-row-sub">Artiste</div></div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  if(albumMatches.length){
+    html += `<div class="asv-section"><div class="asv-section-title">Albums</div>${albumMatches.map(t=>{
+      const coverStyle = t.cover ? `background-image:url(${t.cover});` : '';
+      return `<div class="asv-row" data-kind="album" data-idx="${tracks.indexOf(t)}">
+        <div class="asv-row-cover ${t.cover ? '' : (t.p||'')}" style="${coverStyle}"></div>
+        <div><div class="asv-row-title">${t.album}</div><div class="asv-row-sub">${t.releaseType || 'Album'} · ${t.a}</div></div>
       </div>`;
     }).join('')}</div>`;
   }
@@ -7512,6 +7538,9 @@ function runSearchView(q){
       enterApp('catalog');
       openArtistPage(name, topTrack && topTrack.artistId);
     };
+  });
+  box.querySelectorAll('.asv-row[data-kind="album"]').forEach(row=>{
+    row.onclick = ()=>{ const t = tracks[Number(row.dataset.idx)]; enterApp('catalog'); openAlbumView(t); };
   });
   box.querySelectorAll('.asv-row[data-kind="track"]').forEach(row=>{
     row.onclick = ()=>{ const t = tracks[Number(row.dataset.idx)]; enterApp('catalog'); handleTrackCardClick(t); };
