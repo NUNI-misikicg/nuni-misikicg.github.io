@@ -1528,6 +1528,7 @@ function enterApp(view){
       coverDash.style.backgroundImage = `url(${currentUser.banner_url})`;
     }
     loadFeaturedPicker();
+    loadDashboardConcerts();
   }
   if(view === 'search'){
     renderSearchViewBrowse();
@@ -1535,14 +1536,15 @@ function enterApp(view){
     if(input){ input.value = ''; setTimeout(()=> input.focus(), 50); }
     document.getElementById('asv-clear-btn').style.display = 'none';
   }
-  ['catalog','clips','ads','library','artist','dashboard','admin','search'].forEach(v=>{
+  if(view === 'concerts') loadConcertsPage();
+  ['catalog','clips','ads','library','artist','dashboard','admin','search','concerts'].forEach(v=>{
     const el = document.getElementById('view-'+v);
     if(el) el.style.display = (v===view) ? 'block' : 'none';
   });
-  // ---- Pendant que la recherche plein écran est active, les autres onglets disparaissent
-  // de la navigation (desktop + mobile) — ne reste que "Accueil" à côté de la recherche,
-  // comme demandé (même principe que l'onglet Recherche d'Apple Music). ----
-  const searchActive = view === 'search';
+  // ---- Pendant que la recherche plein écran (ou la page Concerts qui en découle) est
+  // active, les autres onglets disparaissent de la navigation (desktop + mobile) — ne reste
+  // que "Accueil", comme demandé (même principe que l'onglet Recherche d'Apple Music). ----
+  const searchActive = view === 'search' || view === 'concerts';
   document.querySelectorAll('.app-nav-link').forEach(l=>{
     l.style.display = searchActive ? (l.dataset.appLink === 'catalog' ? '' : 'none') : '';
   });
@@ -1930,6 +1932,27 @@ function openArtistPage(name, artistId){
         }).catch(()=>{
           releaseRow.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Calendrier momentanément indisponible.</p>`;
         });
+    }
+  }
+
+  // ---- Concerts à venir — visible sur la page de n'importe quel artiste, alimenté
+  // automatiquement dès qu'il publie un concert (voir POST /api/dashboard/concerts). ----
+  const concertsSection = document.getElementById('artist-concerts-section');
+  const concertsGrid = document.getElementById('artist-page-concerts');
+  if(concertsSection && concertsGrid){
+    concertsSection.style.display = 'none';
+    concertsGrid.innerHTML = '';
+    if(currentArtistPageRealId){
+      fetch(NUNI_API_BASE + '/api/artists/' + currentArtistPageRealId + '/concerts')
+        .then(r=>r.json()).then(data=>{
+          const list = data.concerts || [];
+          if(!list.length) return;
+          // concertCardHtml attend artist_name/artist_avatar_url/is_verified — pas renvoyés
+          // par cette route (déjà connus ici, pas besoin de les redemander au serveur).
+          const enriched = list.map(c => ({ ...c, artist_name: name, artist_avatar_url: (isOwnArtistPage ? currentUser.avatar_url : null), is_verified: reallyVerified }));
+          concertsSection.style.display = 'block';
+          concertsGrid.innerHTML = enriched.map(concertCardHtml).join('');
+        }).catch(()=>{});
     }
   }
 
@@ -5177,6 +5200,214 @@ async function deleteMyTrack(trackId){
   }
 }
 
+/* ============ CONCERTS (Phase 2) ============
+   Publication directe par l'artiste — dès qu'il publie, le concert est visible dans l'onglet
+   Concerts de la recherche, sans validation d'équipe (voir POST /api/dashboard/concerts). */
+let pendingConcertFlyerFile = null;
+function previewConcertFlyer(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  pendingConcertFlyerFile = file;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const preview = document.getElementById('concert-flyer-preview');
+    preview.style.backgroundImage = `url(${reader.result})`;
+    preview.textContent = '';
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+async function publishConcert(){
+  if(!realAuthToken){ toast('Connectez-vous pour publier un concert.'); return; }
+  const title = document.getElementById('concert-title').value.trim();
+  const eventDate = document.getElementById('concert-date').value;
+  const city = document.getElementById('concert-city').value.trim();
+  const country = document.getElementById('concert-country').value.trim();
+  if(!title || !eventDate || !city || !country){
+    toast('Titre, date, ville et pays sont obligatoires.');
+    return;
+  }
+  toast('Publication du concert en cours…');
+  try{
+    let flyerUrl = null;
+    if(pendingConcertFlyerFile){
+      flyerUrl = await uploadFileToCloudinary(pendingConcertFlyerFile, 'image');
+    }
+    const capacityVal = document.getElementById('concert-capacity').value;
+    const latVal = document.getElementById('concert-gps-lat').value;
+    const lngVal = document.getElementById('concert-gps-lng').value;
+    const res = await fetch(NUNI_API_BASE + '/api/dashboard/concerts', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({
+        title, eventDate, city, country,
+        description: document.getElementById('concert-description').value.trim() || null,
+        tourName: document.getElementById('concert-tour-name').value.trim() || null,
+        startTime: document.getElementById('concert-start-time').value || null,
+        endTime: document.getElementById('concert-end-time').value || null,
+        venue: document.getElementById('concert-venue').value.trim() || null,
+        address: document.getElementById('concert-address').value.trim() || null,
+        gpsLat: latVal ? Number(latVal) : null,
+        gpsLng: lngVal ? Number(lngVal) : null,
+        ticketPrice: document.getElementById('concert-ticket-price').value.trim() || null,
+        ticketType: document.getElementById('concert-ticket-type').value.trim() || null,
+        capacity: capacityVal ? Number(capacityVal) : null,
+        purchaseLink: document.getElementById('concert-purchase-link').value.trim() || null,
+        flyerUrl,
+      }),
+    });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || 'Impossible de publier ce concert.'); return; }
+    toast('Concert publié — visible dans la recherche.');
+    ['concert-title','concert-tour-name','concert-description','concert-date','concert-start-time','concert-end-time',
+     'concert-city','concert-country','concert-venue','concert-address','concert-gps-lat','concert-gps-lng',
+     'concert-ticket-price','concert-ticket-type','concert-capacity','concert-purchase-link'].forEach(id=>{
+      const el = document.getElementById(id); if(el) el.value = '';
+    });
+    pendingConcertFlyerFile = null;
+    const preview = document.getElementById('concert-flyer-preview');
+    preview.style.backgroundImage = ''; preview.textContent = 'Choisir une image';
+    loadDashboardConcerts();
+  }catch(e){
+    toast('Publication impossible : ' + (e.message || 'erreur inconnue'));
+  }
+}
+async function loadDashboardConcerts(){
+  const list = document.getElementById('dashboard-concerts-list');
+  if(!list || !realAuthToken) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/dashboard/concerts', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    if(!res.ok) return;
+    const data = await res.json();
+    list.innerHTML = '';
+    if(!data.concerts || !data.concerts.length){
+      list.innerHTML = '<p style="font-size:12.5px; color:var(--text-faint);">Aucun concert publié pour le moment.</p>';
+      return;
+    }
+    data.concerts.forEach(c=>{
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; background:var(--bg-card); border:1px solid var(--border);';
+      const dateLabel = new Date(c.event_date).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
+      row.innerHTML = `
+        <div style="width:48px; height:60px; border-radius:6px; background:${c.flyer_url ? `url(${c.flyer_url})` : 'var(--grad-envol)'}; background-size:cover; background-position:center; flex-shrink:0;"></div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:600; font-size:13.5px;">${c.title}</div>
+          <div style="font-size:11.5px; color:var(--text-faint);">${dateLabel} · ${c.city}, ${c.country}${c.places_restantes != null ? ' · ' + c.places_restantes + ' places restantes' : ''}</div>
+        </div>
+        <button class="btn-icon" title="Supprimer" onclick="deleteConcert(${c.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg></button>`;
+      list.appendChild(row);
+    });
+  }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
+}
+async function deleteConcert(id){
+  if(!confirm('Supprimer définitivement ce concert ?')) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/dashboard/concerts/' + id, {
+      method:'DELETE', headers:{ 'Authorization':'Bearer ' + realAuthToken }
+    });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || 'Suppression impossible.'); return; }
+    toast('Concert supprimé.');
+    loadDashboardConcerts();
+  }catch(e){ toast('Suppression impossible : ' + (e.message || 'erreur inconnue')); }
+}
+
+// ---------- Page Concerts (publique) — alimentée automatiquement dès qu'un artiste publie.
+// Les dates d'une même tournée (même artiste + même tour_name) sont regroupées et affichées
+// sous forme de timeline plutôt qu'en cartes séparées répétitives. ----------
+function concertMapsUrl(c){
+  if(c.gps_lat && c.gps_lng) return `https://www.google.com/maps/search/?api=1&query=${c.gps_lat},${c.gps_lng}`;
+  const q = encodeURIComponent([c.venue, c.address, c.city, c.country].filter(Boolean).join(', '));
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+function concertCardHtml(c){
+  const dateLabel = new Date(c.event_date).toLocaleDateString('fr-FR', {weekday:'short', day:'2-digit', month:'short', year:'numeric'});
+  const timeLabel = [c.start_time, c.end_time].filter(Boolean).join(' – ');
+  const initials = (c.artist_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const avatarStyle = c.artist_avatar_url ? `background-image:url(${c.artist_avatar_url}); background-size:cover; background-position:center;` : '';
+  return `
+    <div class="concert-card">
+      <div class="concert-flyer" style="${c.flyer_url ? `background-image:url(${c.flyer_url});` : ''}"></div>
+      <div class="concert-body">
+        <div class="concert-artist-row">
+          <div class="concert-artist-av" style="${avatarStyle}">${avatarStyle ? '' : initials}</div>
+          <span>${c.artist_name}${c.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</span>
+        </div>
+        <h3 class="concert-title">${c.title}</h3>
+        <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> ${dateLabel}${timeLabel ? ' · ' + timeLabel : ''}</div>
+        <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg> ${[c.venue, c.city, c.country].filter(Boolean).join(', ')}</div>
+        ${c.description ? `<p class="concert-desc">${c.description}</p>` : ''}
+        <div class="concert-foot-row">
+          ${c.ticket_price ? `<span class="concert-price">${c.ticket_price}${c.ticket_type ? ' · ' + c.ticket_type : ''}</span>` : '<span></span>'}
+          ${c.places_restantes != null ? `<span class="concert-places">${c.places_restantes} place${c.places_restantes>1?'s':''} restante${c.places_restantes>1?'s':''}</span>` : ''}
+        </div>
+        <div class="concert-actions">
+          ${c.purchase_link ? `<a class="btn btn-primary btn-sm" href="${c.purchase_link}" target="_blank" rel="noopener noreferrer">Acheter un ticket</a>` : ''}
+          <a class="btn btn-ghost btn-sm" href="${concertMapsUrl(c)}" target="_blank" rel="noopener noreferrer">Voir l'emplacement</a>
+        </div>
+      </div>
+    </div>`;
+}
+async function loadConcertsPage(){
+  const box = document.getElementById('concerts-list');
+  if(!box) return;
+  box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement des concerts…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/concerts');
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    const concerts = data.concerts || [];
+    if(!concerts.length){
+      box.innerHTML = '<p style="color:var(--text-faint); font-size:13px; padding:30px 0;">Aucun concert programmé pour le moment — revenez bientôt.</p>';
+      return;
+    }
+    // Regroupement par tournée : même artiste + même tour_name renseigné.
+    const tourGroups = {};
+    const standalone = [];
+    concerts.forEach(c=>{
+      if(c.tour_name){
+        const key = c.artist_id + '::' + c.tour_name;
+        (tourGroups[key] = tourGroups[key] || []).push(c);
+      } else {
+        standalone.push(c);
+      }
+    });
+
+    let html = '';
+    Object.values(tourGroups).forEach(dates=>{
+      dates.sort((a,b)=> new Date(a.event_date) - new Date(b.event_date));
+      const first = dates[0];
+      html += `<div class="concert-tour-block">
+        <h3 class="concert-tour-title"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> ${first.tour_name} — ${first.artist_name}</h3>
+        <div class="concert-timeline">
+          ${dates.map(c=>{
+            const dateLabel = new Date(c.event_date).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
+            return `<div class="concert-timeline-item">
+              <div class="concert-timeline-dot"></div>
+              <div class="concert-timeline-date">${dateLabel}</div>
+              <div class="concert-timeline-place">${[c.venue, c.city, c.country].filter(Boolean).join(', ')}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="concert-grid">${dates.map(concertCardHtml).join('')}</div>
+      </div>`;
+    });
+    if(standalone.length){
+      html += `<div class="concert-grid">${standalone.map(concertCardHtml).join('')}</div>`;
+    }
+    box.innerHTML = html;
+    // Clic sur le nom/avatar de l'artiste → sa page profil (association par ordre de rendu).
+    const orderedConcerts = [...Object.values(tourGroups).flat(), ...standalone];
+    box.querySelectorAll('.concert-card').forEach((card, i)=>{
+      const c = orderedConcerts[i];
+      if(!c) return;
+      const row = card.querySelector('.concert-artist-row');
+      if(row){ row.style.cursor = 'pointer'; row.onclick = ()=> openArtistPage(c.artist_name, c.artist_id); }
+    });
+  }catch(e){
+    box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de charger les concerts pour le moment.</p>';
+  }
+}
+
 // Point d'entrée unique pour changer sa photo de profil, quel que soit le bouton utilisé
 // (menu profil en haut à droite, ou "Photos de mon profil artiste" dans le Dashboard) —
 // avant, ces deux boutons ne se parlaient jamais : chacun ne mettait à jour qu'un seul
@@ -7486,7 +7717,7 @@ const ASV_GENRE_COLORS = {
 // l'instant) — la carte existe déjà visuellement, mais dit honnêtement "Bientôt disponible"
 // plutôt que de prétendre qu'il y a du contenu à afficher.
 const ASV_COMING_SOON = {
-  'Concerts': '#6E45A8', 'NUNI Événements': '#B3512E',
+  'NUNI Événements': '#B3512E',
 };
 function renderSearchViewBrowse(){
   const box = document.getElementById('asv-results');
@@ -7496,9 +7727,11 @@ function renderSearchViewBrowse(){
   box.innerHTML = `
     <div class="asv-browse-title">Parcourir</div>
     <div class="asv-genre-grid">
+      <div class="asv-genre-tile" style="background:#6E45A8;" data-concerts="1">🎤 Concerts</div>
       ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
       ${comingSoon.map(g => `<div class="asv-genre-tile is-coming-soon" style="background:${ASV_COMING_SOON[g]};" data-coming-soon="${g}">${g}<span class="asv-soon-badge">Bientôt</span></div>`).join('')}
     </div>`;
+  box.querySelector('[data-concerts]').onclick = ()=> enterApp('concerts');
   box.querySelectorAll('.asv-genre-tile[data-genre]').forEach(tile=>{
     tile.onclick = ()=>{
       const g = tile.dataset.genre;

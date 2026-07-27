@@ -389,6 +389,31 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 @media(max-width:640px){
   .asv-genre-grid{ grid-template-columns:repeat(2, 1fr); }
 }
+
+/* ============ CONCERTS (Phase 2) — cartes immersives + timeline de tournée ============ */
+.concert-tour-block{ margin-bottom:36px; }
+.concert-tour-title{ display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-size:17px; margin-bottom:16px; }
+.concert-timeline{ display:flex; flex-direction:column; gap:0; margin-bottom:20px; padding-left:6px; border-left:2px solid var(--border-strong); }
+.concert-timeline-item{ position:relative; padding:6px 0 6px 20px; }
+.concert-timeline-dot{ position:absolute; left:-7px; top:12px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); }
+.concert-timeline-date{ font-size:12.5px; font-weight:700; color:var(--accent); }
+.concert-timeline-place{ font-size:12.5px; color:var(--text-dim); }
+.concert-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:18px; }
+.concert-card{ background:var(--bg-card); border:1px solid var(--border); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; transition:transform .15s ease; }
+.concert-card:hover{ transform:translateY(-2px); }
+.concert-flyer{ height:180px; background:var(--grad-envol); background-size:cover; background-position:center; }
+.concert-body{ padding:16px; display:flex; flex-direction:column; gap:8px; }
+.concert-artist-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--accent); }
+.concert-artist-av{ width:24px; height:24px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#0A0A10; flex-shrink:0; }
+.concert-title{ font-family:var(--font-display); font-size:17px; margin:0; }
+.concert-meta-row{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-dim); }
+.concert-meta-row .nuni-ic{ width:15px; height:15px; flex-shrink:0; }
+.concert-desc{ font-size:12.5px; color:var(--text-faint); line-height:1.5; margin:2px 0 0; }
+.concert-foot-row{ display:flex; justify-content:space-between; align-items:center; margin-top:4px; }
+.concert-price{ font-size:13px; font-weight:700; color:var(--text); }
+.concert-places{ font-size:11.5px; color:var(--text-faint); }
+.concert-actions{ display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
+.concert-actions .btn{ flex:1; text-align:center; text-decoration:none; }
 /* ============ RECHERCHE EN BULLE (façon Apple Music) ============
    Repliée par défaut : une simple icône loupe ronde, comme sur Apple Music Desktop.
    Un clic dessus la déplie en champ de saisie — elle ne prend de la place que quand

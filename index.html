@@ -703,6 +703,15 @@
     <div id="asv-results"></div>
   </main>
 
+  <!-- ---- CONCERTS — page immersive, alimentée automatiquement par les publications des artistes ---- -->
+  <main class="app-main" id="view-concerts" style="display:none;">
+    <div class="page-head">
+      <div><h1>🎤 Concerts</h1><p>Les concerts à venir des artistes NUNI.</p></div>
+      <button class="btn btn-ghost btn-sm" onclick="enterApp('search')">← Retour</button>
+    </div>
+    <div id="concerts-list"></div>
+  </main>
+
   <!-- ---- CLIPS ---- -->
   <main class="app-main" id="view-clips" style="display:none;">
     <div class="page-head">
@@ -869,6 +878,10 @@
     <div class="artist-section">
       <div class="shelf-head"><h3 class="serif">Dernières sorties</h3></div>
       <div class="shelf-row" id="shelf-artist-albums"></div>
+    </div>
+    <div class="artist-section" id="artist-concerts-section" style="display:none;">
+      <div class="shelf-head"><h3 class="serif">Concerts à venir</h3></div>
+      <div class="concert-grid" id="artist-page-concerts"></div>
     </div>
     <div class="artist-section" style="padding-bottom:50px;">
       <div class="shelf-head"><h3 class="serif" id="artist-page-calendar-title">Calendrier des sorties — Bibi Mwana</h3></div>
@@ -1074,6 +1087,47 @@
       <p style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;">Choisissez jusqu'à 6 morceaux ou albums déjà publiés à mettre en avant juste sous votre biographie.</p>
       <div id="featured-picker-list" style="display:flex; flex-direction:column; gap:8px; max-width:520px;"></div>
       <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="saveFeaturedTracks()">Enregistrer la sélection</button>
+    </div>
+
+    <!-- ============ CONCERTS (Phase 2) ============ -->
+    <div class="dash-panel">
+      <h3 class="serif"><svg class="nuni-ic filled nuni-ic-gold" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> Concerts</h3>
+      <p style="font-size:12.5px; color:var(--text-dim); margin-bottom:16px;">Publiez un concert — il apparaît immédiatement dans l'onglet Concerts de la recherche, sans validation d'équipe.</p>
+
+      <div class="field-row">
+        <div class="field"><label>Titre du concert *</label><input type="text" id="concert-title" placeholder="Ex : Bibi Mwana Live à Kinshasa"></div>
+        <div class="field"><label>Nom de la tournée (optionnel)</label><input type="text" id="concert-tour-name" placeholder="Ex : Tournée Envol 2026"></div>
+      </div>
+      <div class="field full"><label>Description</label><textarea id="concert-description" rows="3" placeholder="Ce que le public doit savoir sur ce concert…" style="width:100%; resize:vertical; font-family:inherit; font-size:14px; padding:12px; border-radius:10px; background:var(--bg-card); border:1px solid var(--border); color:var(--text);"></textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Date *</label><input type="date" id="concert-date"></div>
+        <div class="field"><label>Heure de début</label><input type="time" id="concert-start-time"></div>
+        <div class="field"><label>Heure de fin</label><input type="time" id="concert-end-time"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Ville *</label><input type="text" id="concert-city" placeholder="Kinshasa"></div>
+        <div class="field"><label>Pays *</label><input type="text" id="concert-country" placeholder="RD Congo"></div>
+        <div class="field"><label>Salle / Lieu</label><input type="text" id="concert-venue" placeholder="Palais du Peuple"></div>
+      </div>
+      <div class="field full"><label>Adresse complète</label><input type="text" id="concert-address" placeholder="Adresse précise pour le bouton « Voir l'emplacement »"></div>
+      <div class="field-row">
+        <div class="field"><label>Latitude GPS (optionnel)</label><input type="text" id="concert-gps-lat" placeholder="-4.325"></div>
+        <div class="field"><label>Longitude GPS (optionnel)</label><input type="text" id="concert-gps-lng" placeholder="15.322"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Prix du ticket</label><input type="text" id="concert-ticket-price" placeholder="10 000 FCFA"></div>
+        <div class="field"><label>Type de ticket</label><input type="text" id="concert-ticket-type" placeholder="Standard, VIP…"></div>
+        <div class="field"><label>Nombre de places</label><input type="number" id="concert-capacity" placeholder="500" min="0"></div>
+      </div>
+      <div class="field full"><label>Lien d'achat des tickets (WhatsApp, billetterie externe…)</label><input type="text" id="concert-purchase-link" placeholder="https://wa.me/..."></div>
+      <div class="field full">
+        <label>Flyer du concert</label>
+        <div id="concert-flyer-preview" style="width:160px; height:200px; border-radius:10px; background:var(--bg-card); border:1px dashed var(--border-strong); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:12px; cursor:pointer;" onclick="document.getElementById('concert-flyer-input').click()">Choisir une image</div>
+        <input type="file" id="concert-flyer-input" accept="image/*" style="display:none;" onchange="previewConcertFlyer(event)">
+      </div>
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="publishConcert()">Publier le concert</button>
+
+      <div id="dashboard-concerts-list" style="margin-top:26px; display:flex; flex-direction:column; gap:10px;"></div>
     </div>
   </main>
 
