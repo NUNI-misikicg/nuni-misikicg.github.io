@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727m">
-<link rel="stylesheet" href="css/corners.css?v=20260727m">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727m">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727m">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727m">
+<link rel="stylesheet" href="css/style.css?v=20260727n">
+<link rel="stylesheet" href="css/corners.css?v=20260727n">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727n">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727n">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727n">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -1101,6 +1101,27 @@
           <b style="color:var(--accent); font-size:13px;">Vos artistes</b>
           <div id="label-artists-list" style="margin-top:14px; display:flex; flex-direction:column; gap:10px;"></div>
         </div>
+
+        <!-- ---- Revenus & versements (Phase 3) ---- -->
+        <div class="card" style="margin-top:20px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <b style="color:var(--accent); font-size:13px;">Revenus &amp; versements</b>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="exportLabelPaymentsCSV()">Export CSV</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportLabelPaymentsXLSX()">Export Excel</button>
+            </div>
+          </div>
+          <p style="font-size:12px; color:var(--text-faint); margin-top:6px;">Historique réel des versements déjà effectués à vos artistes par NUNI (table des reversements) — consolidé ici pour votre suivi.</p>
+          <div id="label-payments-by-artist" style="margin-top:16px; display:flex; flex-direction:column; gap:8px;"></div>
+          <div style="overflow-x:auto; margin-top:18px;">
+            <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+              <thead><tr style="text-align:left; color:var(--text-faint); border-bottom:1px solid var(--border);">
+                <th style="padding:8px 6px;">Date</th><th style="padding:8px 6px;">Artiste</th><th style="padding:8px 6px;">Montant</th><th style="padding:8px 6px;">Streams couverts</th><th style="padding:8px 6px;">Méthode</th>
+              </tr></thead>
+              <tbody id="label-payments-history-tbody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
     <div id="artist-dashboard-body">
@@ -1705,7 +1726,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727m"></script>
-<script src="js/app.js?v=20260727m"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727n"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/app.js?v=20260727n"></script>
 </body>
 </html>

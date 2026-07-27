@@ -882,6 +882,7 @@ async function loadLabelDashboardStatus(){
       if(label.verification_status === 'validated'){
         loadLabelOverview();
         loadLabelArtists();
+        loadLabelPayments();
       }
     }
   }catch(e){
@@ -1039,6 +1040,82 @@ async function removeLabelArtist(affId){
     loadLabelOverview();
   }catch(e){ toast('Impossible de contacter le serveur.'); }
 }
+
+/* ---------- Revenus & versements du Label (Phase 3) ----------
+   Vue de rapport sur les VRAIS versements déjà enregistrés (payment_history, alimentée par
+   l'admin) — le Label ne fait pas transiter d'argent via NUNI, il consulte l'historique réel
+   consolidé de ses artistes. Les données sont gardées en mémoire pour permettre l'export
+   sans re-solliciter le serveur. */
+let lastLabelPaymentsData = null;
+async function loadLabelPayments(){
+  const byArtistBox = document.getElementById('label-payments-by-artist');
+  const tbody = document.getElementById('label-payments-history-tbody');
+  if(!byArtistBox || !realAuthToken) return;
+  byArtistBox.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  if(tbody) tbody.innerHTML = '';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/payments', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ byArtistBox.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    lastLabelPaymentsData = data;
+    const fmt = n => Number(n||0).toLocaleString('fr-FR');
+    byArtistBox.innerHTML = `<div style="font-weight:700; font-size:15px; margin-bottom:10px;">Total versé à tous vos artistes : ${fmt(data.totalPaidFcfa)} FCFA</div>` +
+      data.byArtist.map(a => `
+        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>${a.artist_name}</span>
+          <span style="color:var(--text-dim);">${fmt(a.total_paid_fcfa)} FCFA · ${a.payment_count} versement${a.payment_count>1?'s':''}</span>
+        </div>`).join('');
+    if(tbody){
+      if(!data.history.length){
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:14px 6px; color:var(--text-faint);">Aucun versement enregistré pour l\'instant.</td></tr>';
+      } else {
+        tbody.innerHTML = data.history.map(p => `
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 6px;">${new Date(p.created_at).toLocaleDateString('fr-FR')}</td>
+            <td style="padding:8px 6px;">${p.artist_name}</td>
+            <td style="padding:8px 6px;">${fmt(p.amount_fcfa)} FCFA</td>
+            <td style="padding:8px 6px;">${fmt(p.streams_covered)}</td>
+            <td style="padding:8px 6px;">${p.method || '—'}</td>
+          </tr>`).join('');
+      }
+    }
+  }catch(e){
+    byArtistBox.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>';
+  }
+}
+function labelPaymentsExportRows(){
+  if(!lastLabelPaymentsData) return null;
+  const rows = [['Date', 'Artiste', 'Montant (FCFA)', 'Streams couverts', 'Méthode']];
+  lastLabelPaymentsData.history.forEach(p=>{
+    rows.push([new Date(p.created_at).toLocaleDateString('fr-FR'), p.artist_name, p.amount_fcfa, p.streams_covered, p.method || '']);
+  });
+  return rows;
+}
+function exportLabelPaymentsCSV(){
+  const rows = labelPaymentsExportRows();
+  if(!rows){ toast('Chargez d\'abord les revenus.'); return; }
+  const esc = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const csv = rows.map(r => r.map(esc).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nuni-versements-${(currentUser && currentUser.first_name || 'label').toLowerCase()}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast('Export CSV téléchargé.');
+}
+function exportLabelPaymentsXLSX(){
+  const rows = labelPaymentsExportRows();
+  if(!rows){ toast('Chargez d\'abord les revenus.'); return; }
+  if(typeof XLSX === 'undefined'){ toast('Export Excel momentanément indisponible — utilisez Export CSV.'); return; }
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Versements');
+  XLSX.writeFile(wb, `nuni-versements-${(currentUser && currentUser.first_name || 'label').toLowerCase()}-${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Export Excel téléchargé.');
+}
+
 function confirmPlanViaWhatsApp(){
   const type = pendingPlanType;
   const planLabel = type === 'artist' ? 'Pass Artiste' : 'Pass Consommateur';
