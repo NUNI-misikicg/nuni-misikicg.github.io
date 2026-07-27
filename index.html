@@ -810,29 +810,29 @@
 
   <!-- ---- ARTIST ---- -->
   <main class="app-main" id="view-artist" style="display:none; padding-top:0;">
-    <div class="artist-cover"></div>
-    <div class="artist-header">
-      <div class="artist-avatar" id="artist-page-avatar" style="cursor:pointer; position:relative;" title="Cliquer pour changer votre photo" onclick="if(currentUser && currentUser.account_type==='artist') document.getElementById('avatar-upload-input').click();">BM</div>
-      <div class="artist-id">
+    <div class="artist-cover" style="display:none;"></div>
+    <div class="ap-hero">
+      <div class="artist-avatar ap-hero-photo" id="artist-page-avatar" style="cursor:pointer;" title="Cliquer pour changer votre photo" onclick="if(currentUser && currentUser.account_type==='artist') document.getElementById('avatar-upload-input').click();">BM</div>
+      <div class="ap-hero-fade"></div>
+      <div class="ap-hero-content">
         <div class="artist-name-row">
-          <h1 class="serif" id="artist-page-name">Bibi Mwana</h1>
+          <h1 class="serif ap-hero-title" id="artist-page-name">Bibi Mwana</h1>
           <span class="badge-verified" id="artist-page-badge">${ico('check')} Vérifié</span>
         </div>
-        <p class="artist-meta" id="artist-page-meta">Rumba · Afro · Kinshasa</p>
+        <p class="artist-meta ap-hero-meta" id="artist-page-meta">Rumba · Afro · Kinshasa</p>
       </div>
     </div>
-    <div class="artist-stats">
-      <div class="stat-block"><div class="num data" id="artist-stat-streams">—</div><div class="lbl">Streams totaux</div></div>
-      <div class="stat-block"><div class="num data" id="artist-stat-monthly-listeners">—</div><div class="lbl">Auditeurs par mois</div></div>
-      <div class="stat-block"><div class="num data" id="artist-stat-followers">—</div><div class="lbl">Followers</div></div>
-      <div class="stat-block"><div class="num data" id="artist-stat-supports">—</div><div class="lbl">Soutiens reçus</div></div>
+    <div class="ap-actions">
+      <div class="ap-actions-left">
+        <button class="btn btn-primary ap-support-btn" id="artist-page-support-btn" onclick="openSupportArtistModal(currentArtistPageRealId, 'Bibi Mwana')">Soutenir cet artiste</button>
+        <button class="ap-follow-btn" id="follow-btn" onclick="toggleFollow(this)">Suivre</button>
+      </div>
+      <div class="av-actions-spacer"></div>
+      <div class="ap-actions-right">
+        <button class="av-shuffle-btn" id="artist-page-shuffle-btn" title="Lecture aléatoire"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h3.5a3 3 0 0 1 2.4 1.2L15 15a3 3 0 0 0 2.4 1.2H20M4 18h3.5a3 3 0 0 0 2.4-1.2l1-1.3M16.5 6H20M16.5 18H20"/><path d="M18 3l3 3-3 3M18 15l3 3-3 3"/></svg></button>
+        <button class="av-play-all" id="artist-page-play-btn" title="Tout écouter"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+      </div>
     </div>
-    <div class="artist-actions">
-      <button class="btn btn-primary" id="artist-page-support-btn" onclick="openSupportArtistModal(currentArtistPageRealId, 'Bibi Mwana')">Soutenir cet artiste</button>
-      <button class="btn btn-ghost" id="follow-btn" onclick="toggleFollow(this)">Suivre</button>
-    </div>
-    <p class="artist-bio" id="artist-page-bio">Bibi Mwana réinvente la rumba congolaise avec des arrangements modernes et une voix habitée. Entre Kinshasa et la diaspora, son univers tisse mémoire et avenir — chaque sortie est pensée comme un envol collectif pour la scène locale.</p>
-    <button class="btn-icon" id="artist-page-bio-edit-btn" onclick="enterApp('dashboard'); document.getElementById('artist-bio-input').focus();" style="display:none; width:26px; height:26px; padding:0; margin-top:-8px; margin-bottom:16px; background:none; border:none; color:var(--text-faint); opacity:.7;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'" aria-label="Modifier ma biographie"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="m14 7 3 3"/></svg></button>
     <div class="artist-section" id="artist-featured-section" style="display:none;">
       <div class="shelf-head"><h3 class="serif">En vedette</h3></div>
       <div class="shelf-row" id="shelf-artist-featured"></div>
@@ -857,6 +857,25 @@
       <div class="shelf-head"><h3 class="serif" id="artist-page-calendar-title">Calendrier des sorties — Bibi Mwana</h3></div>
       <p style="font-size:12.5px; color:var(--text-faint); margin-top:-10px; margin-bottom:16px;">Pour ne manquer aucune date de sortie de ses prochains projets.</p>
       <div class="release-row" id="artist-release-row"></div>
+    </div>
+    <!-- ---- À propos — style Spotify : grande photo de fond, auditeurs mensuels en avant,
+         bio et statistiques réunies ici plutôt qu'en haut de page ---- -->
+    <div class="artist-section ap-about-section" style="padding-bottom:60px;">
+      <div class="shelf-head"><h3 class="serif">À propos</h3></div>
+      <div class="ap-about-card">
+        <div class="ap-about-bg" id="ap-about-bg"></div>
+        <div class="ap-about-fade"></div>
+        <div class="ap-about-content">
+          <div class="ap-about-listeners" id="artist-stat-monthly-listeners-label"><span class="num data" id="artist-stat-monthly-listeners">—</span> auditeurs par mois</div>
+          <p class="artist-bio" id="artist-page-bio">Bibi Mwana réinvente la rumba congolaise avec des arrangements modernes et une voix habitée. Entre Kinshasa et la diaspora, son univers tisse mémoire et avenir — chaque sortie est pensée comme un envol collectif pour la scène locale.</p>
+          <button class="btn-icon" id="artist-page-bio-edit-btn" onclick="enterApp('dashboard'); document.getElementById('artist-bio-input').focus();" style="display:none; width:26px; height:26px; padding:0; margin-top:-8px; margin-bottom:10px; background:none; border:none; color:var(--text-faint); opacity:.7;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'" aria-label="Modifier ma biographie"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="m14 7 3 3"/></svg></button>
+          <div class="ap-about-stats-row">
+            <div class="stat-block"><div class="num data" id="artist-stat-streams">—</div><div class="lbl">Streams totaux</div></div>
+            <div class="stat-block"><div class="num data" id="artist-stat-followers">—</div><div class="lbl">Followers</div></div>
+            <div class="stat-block"><div class="num data" id="artist-stat-supports">—</div><div class="lbl">Soutiens reçus</div></div>
+          </div>
+        </div>
+      </div>
     </div>
   </main>
 

@@ -1655,7 +1655,26 @@ let currentArtistPageRealId = null;
 // Cache léger { artistId: {avatar_url, bio} } — évite de refaire l'appel réseau à chaque
 // changement de morceau du même artiste dans le lecteur plein écran (voir syncFullPlayer).
 let artistPublicInfoCache = {};
+// ---------- Effet de parallaxe sur la photo du hero de la page artiste ----------
+// Au scroll, la photo se translate légèrement vers le bas et s'estompe — même sensation
+// que sur les pages artiste de Spotify. Un seul listener posé une fois (dataset flag),
+// qui vérifie à chaque scroll si la page artiste est bien celle affichée à l'écran.
+let artistHeroParallaxBound = false;
+function initArtistHeroParallax(){
+  if(artistHeroParallaxBound) return;
+  artistHeroParallaxBound = true;
+  window.addEventListener('scroll', ()=>{
+    const view = document.getElementById('view-artist');
+    if(!view || view.style.display === 'none') return;
+    const hero = view.querySelector('.ap-hero-photo');
+    if(!hero) return;
+    const y = Math.min(window.scrollY, 420);
+    hero.style.transform = `translateY(${y * 0.32}px) scale(${1 + y/2400})`;
+    hero.style.opacity = String(Math.max(0.15, 1 - y/460));
+  }, { passive:true });
+}
 function openArtistPage(name, artistId){
+  window.scrollTo(0, 0);
   // Avant : cette page était identifiée uniquement par le NOM affiché (chaîne de texte) —
   // rien n'empêche deux vrais comptes artiste différents de choisir le même artist_name à
   // l'inscription, ce qui mélangeait leurs morceaux sur une seule page et pouvait faire
@@ -1783,11 +1802,13 @@ function openArtistPage(name, artistId){
     } else {
       followBtn.style.display = '';
       followBtn.textContent = 'Suivre';
+      followBtn.classList.remove('is-following');
       if(currentArtistPageRealId && realAuthToken){
         fetch(NUNI_API_BASE + '/api/follow/' + currentArtistPageRealId + '/status', {
           headers:{ 'Authorization':'Bearer ' + realAuthToken }
         }).then(r=>r.json()).then(data=>{
  followBtn.textContent = data.following ? 'Suivi ' : 'Suivre';
+          followBtn.classList.toggle('is-following', !!data.following);
         }).catch(()=>{});
       }
     }
@@ -1796,6 +1817,29 @@ function openArtistPage(name, artistId){
     const row = document.getElementById(id);
     if(row) row.innerHTML = '';
   });
+  // ---- Boutons "Tout écouter" / "Aléatoire" du hero — jouent les vrais morceaux de cet
+  // artiste (le premier de la discographie, ou un tirage aléatoire parmi eux). ----
+  const apPlayBtn = document.getElementById('artist-page-play-btn');
+  const apShuffleBtn = document.getElementById('artist-page-shuffle-btn');
+  if(apPlayBtn){
+    apPlayBtn.style.display = artistTracks.length ? '' : 'none';
+    apPlayBtn.onclick = ()=>{
+      if(!artistTracks.length) return;
+      const isArtistPlaying = playing && currentTrack && artistTracks.some(t=>t.t===currentTrack.t);
+      if(isArtistPlaying){ togglePlay(); } else { playTrack(artistTracks[0]); }
+    };
+  }
+  if(apShuffleBtn){
+    apShuffleBtn.style.display = artistTracks.length > 1 ? '' : 'none';
+    apShuffleBtn.onclick = ()=>{
+      if(!artistTracks.length) return;
+      playTrack(artistTracks[Math.floor(Math.random()*artistTracks.length)]);
+      toast('Lecture aléatoire de ' + name);
+    };
+  }
+  initArtistHeroParallax();
+  const heroPhotoEl = document.querySelector('#view-artist .ap-hero-photo');
+  if(heroPhotoEl){ heroPhotoEl.style.transform = ''; heroPhotoEl.style.opacity = ''; }
   if(artistTracks.length){
     fillShelf('shelf-artist', artistTracks);
     fillShelf('shelf-artist-trending', [...artistTracks].sort((a,b)=>(b.likes||0)-(a.likes||0)));
@@ -4091,6 +4135,7 @@ function toggleFollow(btn){
       btn.disabled = false;
  if(data.error){ toast(' ' + data.error); return; }
  btn.textContent = data.following ? 'Suivi ' : 'Suivre';
+      btn.classList.toggle('is-following', !!data.following);
       if(data.following) hapticPing();
       // Le compteur de followers affiché sur le profil se met à jour tout de suite, sans
       // attendre un rechargement — avant, ce chiffre renvoyé par le serveur était ignoré.
@@ -4101,6 +4146,7 @@ function toggleFollow(btn){
     return;
   }
  btn.textContent = following ? 'Suivre' : 'Suivi ';
+  btn.classList.toggle('is-following', !following);
   toast(following ? 'Vous ne suivez plus Bibi Mwana.' : 'Vous suivez maintenant Bibi Mwana.');
 }
 /* Avant : ce réglage n'était jamais mémorisé — un artiste qui masquait ses revenus pour la

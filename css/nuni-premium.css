@@ -387,6 +387,15 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
   background-position: center !important;
   overflow: hidden;
 }
+/* Le hero plein écran de la page artiste (redesign façon Spotify) réutilise .artist-avatar
+   pour la photo — sélecteur plus spécifique que la règle ci-dessus, donc il prend le dessus
+   même avec !important des deux côtés (deux classes battent une classe seule). */
+.artist-avatar.ap-hero-photo{
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  border-width: 0 !important;
+}
 .user-chip{ padding: 5px 16px 5px 5px !important; gap: 10px !important; }
 .avatar{
   width: 34px !important;

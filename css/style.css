@@ -831,7 +831,61 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   mix-blend-mode:overlay;
 }
 
-/* ============ ARTIST PAGE ============ */
+/* ============ ARTIST PAGE — style Spotify ============
+   Une seule grande photo (la photo de profil de l'artiste) sert de hero plein écran, avec
+   le nom en overlay en bas — l'ancienne bannière séparée (.artist-cover) reste dans le DOM
+   pour ne rien casser côté JS (applyBannerEverywhere), mais n'est plus affichée : on ne
+   garde que la photo de profil, comme demandé. L'effet de parallaxe au scroll est géré en
+   JS (voir initArtistHeroParallax dans app.js). */
+.ap-hero{
+  position:relative; height:min(46vh, 380px); min-height:260px; margin:0 -34px; overflow:hidden;
+  display:flex; align-items:flex-end;
+}
+.ap-hero-photo{
+  position:absolute; inset:0; width:100%; height:100%; border-radius:0; border:none;
+  background:var(--grad-envol); background-size:cover; background-position:center top;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-size:64px; font-weight:600; color:rgba(10,10,16,0.5);
+  will-change:transform, opacity; transition:none;
+}
+.ap-hero-fade{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.35) 55%, var(--bg) 96%); pointer-events:none; }
+.ap-hero-content{ position:relative; z-index:2; padding:0 34px 26px; width:100%; }
+.ap-hero-title{ font-size:clamp(30px,5.5vw,56px); font-weight:800; color:#fff; text-shadow:0 4px 20px rgba(0,0,0,0.5); line-height:1.05; }
+.ap-hero-meta{ color:rgba(255,255,255,0.85); margin-top:8px; text-shadow:0 2px 10px rgba(0,0,0,0.5); }
+
+/* ---- Rangée d'actions, même logique que la page album : cluster gauche (Soutenir/Suivre),
+   cluster droite (aléatoire + gros bouton lecture rond) ---- */
+.ap-actions{ display:flex; align-items:center; gap:16px; padding:22px 0 0; flex-wrap:wrap; }
+.ap-actions-left{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.ap-actions-right{ display:flex; align-items:center; gap:16px; }
+.ap-support-btn{ padding:11px 22px; border-radius:999px; }
+.ap-follow-btn{
+  padding:9px 20px; border-radius:999px; background:none; border:1.5px solid var(--text-faint);
+  color:var(--text); font-weight:600; font-size:13.5px; cursor:pointer; transition:border-color .15s ease, color .15s ease;
+}
+.ap-follow-btn:hover{ border-color:var(--text); }
+.ap-follow-btn.is-following{ border-color:var(--accent); color:var(--accent); }
+
+/* ---- Section "À propos" : grande photo de fond assombrie, auditeurs mensuels en grand,
+   puis bio et statistiques — regroupe ce qui était éparpillé en haut de page avant ---- */
+.ap-about-card{ position:relative; border-radius:var(--radius-l); overflow:hidden; min-height:340px; display:flex; align-items:flex-end; }
+.ap-about-bg{ position:absolute; inset:0; background:var(--grad-envol); background-size:cover; background-position:center; filter:saturate(1.1) brightness(0.75); }
+.ap-about-fade{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.88) 100%); }
+.ap-about-content{ position:relative; z-index:2; padding:34px 30px; width:100%; }
+.ap-about-listeners{ color:#fff; font-size:15px; font-weight:600; margin-bottom:14px; }
+.ap-about-listeners .num{ font-size:26px; font-weight:800; margin-right:4px; }
+.ap-about-card .artist-bio{ padding:0; max-width:680px; color:rgba(255,255,255,0.88); }
+.ap-about-stats-row{ display:flex; gap:34px; flex-wrap:wrap; margin-top:22px; padding-top:18px; border-top:1px solid rgba(255,255,255,0.15); }
+.ap-about-stats-row .num{ color:#fff; }
+.ap-about-stats-row .lbl{ color:rgba(255,255,255,0.65); }
+
+@media(max-width:640px){
+  .ap-hero{ margin:0 -18px; height:min(42vh, 320px); }
+  .ap-hero-content{ padding:0 18px 20px; }
+  .ap-about-content{ padding:24px 20px; }
+}
+
+/* ============ ARTIST PAGE — legacy (conservé pour compatibilité JS, non affiché) ============ */
 .artist-cover{
   height:280px; border-radius:var(--radius-l); position:relative; overflow:hidden; margin-bottom:-70px;
   background:linear-gradient(135deg,#6E45A8 0%, #141A38 55%, #0A0A10 100%);
@@ -863,6 +917,7 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .artist-bio{ max-width:680px; padding:26px 28px 0; color:var(--text-dim); line-height:1.7; font-size:14.5px; }
 
 .artist-section{ padding:40px 28px 0; }
+
 
 /* ============ DASHBOARD ============ */
 .dash-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:34px; }
@@ -1750,7 +1805,8 @@ html.is-playing .fp-title{ font-weight:800; }
   .app-search-wrap.mobile-open .nuni-mobile-search-close{ display:flex; position:absolute; top:8px; right:8px; z-index:1; width:26px; height:26px; }
   .dash-grid{ grid-template-columns:1fr 1fr; }
   .artist-header{ flex-direction:column; align-items:flex-start; gap:14px; }
-  .artist-avatar{ width:96px; height:96px; border-radius:24px; font-size:34px; }
+  /* .artist-avatar sert maintenant de hero plein écran sur la page artiste (voir .ap-hero-photo) —
+     l'ancien override mobile qui le réduisait à 96px a été retiré, il le casserait. */
   .mobile-tabbar{ display:flex; }
   .bird-hero{ width:64px; height:64px; margin-bottom:14px; box-shadow:0 8px 20px -8px rgba(14,61,44,.5); }
   .player-bar{ bottom:64px; padding-bottom:0; }
