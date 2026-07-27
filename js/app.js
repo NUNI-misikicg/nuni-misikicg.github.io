@@ -5449,6 +5449,10 @@ async function loadConcertsPage(){
   box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement des concerts…</p>';
   currentConcertsFilter = 'all';
   document.querySelectorAll('.concerts-filter-btn').forEach(b=> b.classList.toggle('is-active', b.dataset.filter === 'all'));
+  const cityInput = document.getElementById('concerts-city-filter');
+  const dateInput = document.getElementById('concerts-date-from-filter');
+  if(cityInput) cityInput.value = '';
+  if(dateInput) dateInput.value = '';
   try{
     const res = await fetch(NUNI_API_BASE + '/api/concerts');
     if(!res.ok) throw new Error();
@@ -5462,8 +5466,25 @@ async function loadConcertsPage(){
 function setConcertsFilter(type){
   currentConcertsFilter = type;
   document.querySelectorAll('.concerts-filter-btn').forEach(b=> b.classList.toggle('is-active', b.dataset.filter === type));
-  const filtered = type === 'all' ? allConcertsCache : allConcertsCache.filter(c=> (c.event_type || 'concert') === type);
-  renderConcertsList(filtered);
+  renderConcertsList(getFilteredConcerts());
+}
+// Ville (recherche partielle, insensible à la casse) + date de début — appliqués en plus du
+// filtre Tout/Concerts/Showcases déjà actif, sans jamais re-fetch le serveur.
+function getFilteredConcerts(){
+  let list = currentConcertsFilter === 'all' ? allConcertsCache : allConcertsCache.filter(c=> (c.event_type || 'concert') === currentConcertsFilter);
+  const cityQuery = (document.getElementById('concerts-city-filter')?.value || '').trim().toLowerCase();
+  const dateFrom = document.getElementById('concerts-date-from-filter')?.value || '';
+  if(cityQuery) list = list.filter(c=> (c.city||'').toLowerCase().includes(cityQuery) || (c.country||'').toLowerCase().includes(cityQuery));
+  if(dateFrom) list = list.filter(c=> c.event_date >= dateFrom);
+  return list;
+}
+function applyConcertsSearchFilters(){
+  renderConcertsList(getFilteredConcerts());
+}
+function resetConcertsSearchFilters(){
+  document.getElementById('concerts-city-filter').value = '';
+  document.getElementById('concerts-date-from-filter').value = '';
+  applyConcertsSearchFilters();
 }
 function renderConcertsList(concerts){
   const box = document.getElementById('concerts-list');
@@ -5549,20 +5570,55 @@ function nuniEventCardHtml(ev){
       </div>
     </div>`;
 }
+let allNuniEventsCache = [];
+function renderNuniEventsList(events){
+  const box = document.getElementById('nuni-events-list');
+  if(!box) return;
+  if(!events.length){
+    box.innerHTML = '<p style="color:var(--text-faint); font-size:13px; padding:30px 0;">Rien à afficher pour le moment.</p>';
+    return;
+  }
+  box.innerHTML = `<div class="concert-grid">${events.map(nuniEventCardHtml).join('')}</div>`;
+}
+function getFilteredNuniEvents(){
+  let list = allNuniEventsCache;
+  const cityQuery = (document.getElementById('nuni-events-city-filter')?.value || '').trim().toLowerCase();
+  const dateFrom = document.getElementById('nuni-events-date-from-filter')?.value || '';
+  const category = document.getElementById('nuni-events-category-filter')?.value || '';
+  if(cityQuery) list = list.filter(ev=> (ev.venue||'').toLowerCase().includes(cityQuery) || (ev.address||'').toLowerCase().includes(cityQuery));
+  if(dateFrom) list = list.filter(ev=> ev.event_date >= dateFrom);
+  if(category) list = list.filter(ev=> ev.category === category);
+  return list;
+}
+function applyNuniEventsSearchFilters(){
+  renderNuniEventsList(getFilteredNuniEvents());
+}
+function resetNuniEventsSearchFilters(){
+  document.getElementById('nuni-events-city-filter').value = '';
+  document.getElementById('nuni-events-date-from-filter').value = '';
+  document.getElementById('nuni-events-category-filter').value = '';
+  applyNuniEventsSearchFilters();
+}
 async function loadNuniEventsPage(){
   const box = document.getElementById('nuni-events-list');
   if(!box) return;
   box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement des événements…</p>';
+  const cityInput = document.getElementById('nuni-events-city-filter');
+  const dateInput = document.getElementById('nuni-events-date-from-filter');
+  const catInput = document.getElementById('nuni-events-category-filter');
+  if(cityInput) cityInput.value = '';
+  if(dateInput) dateInput.value = '';
+  if(catInput) catInput.value = '';
   try{
     const res = await fetch(NUNI_API_BASE + '/api/nuni-events');
     if(!res.ok) throw new Error();
     const data = await res.json();
-    const events = data.events || [];
-    if(!events.length){
+    allNuniEventsCache = data.events || [];
+    if(!allNuniEventsCache.length){
       box.innerHTML = '<p style="color:var(--text-faint); font-size:13px; padding:30px 0;">Aucun événement NUNI programmé pour le moment — revenez bientôt.</p>';
       return;
     }
-    box.innerHTML = `<div class="concert-grid">${events.map(nuniEventCardHtml).join('')}</div>`;
+    renderNuniEventsList(allNuniEventsCache);
   }catch(e){
     box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de charger les événements pour le moment.</p>';
   }

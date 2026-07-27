@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727e">
-<link rel="stylesheet" href="css/corners.css?v=20260727e">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727e">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727e">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727e">
+<link rel="stylesheet" href="css/style.css?v=20260727f">
+<link rel="stylesheet" href="css/corners.css?v=20260727f">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727f">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727f">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727f">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -727,6 +727,11 @@
       <button class="btn btn-sm concerts-filter-btn" data-filter="concert" onclick="setConcertsFilter('concert')">🎤 Concerts</button>
       <button class="btn btn-sm concerts-filter-btn" data-filter="showcase" onclick="setConcertsFilter('showcase')">🎬 Showcases</button>
     </div>
+    <div class="events-search-row">
+      <input type="text" id="concerts-city-filter" placeholder="Filtrer par ville…" oninput="applyConcertsSearchFilters()">
+      <input type="date" id="concerts-date-from-filter" title="À partir du" onchange="applyConcertsSearchFilters()">
+      <button class="btn btn-ghost btn-sm" onclick="resetConcertsSearchFilters()">Réinitialiser</button>
+    </div>
     <div id="concerts-list"></div>
   </main>
 
@@ -735,6 +740,24 @@
     <div class="page-head">
       <div><h1>🎉 NUNI Événements</h1><p>Festivals, castings, showcases et soirées organisés par NUNI.</p></div>
       <button class="btn btn-ghost btn-sm" onclick="enterApp('search')">← Retour</button>
+    </div>
+    <div class="events-search-row">
+      <input type="text" id="nuni-events-city-filter" placeholder="Filtrer par ville/lieu…" oninput="applyNuniEventsSearchFilters()">
+      <input type="date" id="nuni-events-date-from-filter" title="À partir du" onchange="applyNuniEventsSearchFilters()">
+      <select id="nuni-events-category-filter" onchange="applyNuniEventsSearchFilters()">
+        <option value="">Toutes catégories</option>
+        <option>Showcase</option>
+        <option>Festival</option>
+        <option>Casting</option>
+        <option>Conférence</option>
+        <option>Masterclass</option>
+        <option>Soirée privée</option>
+        <option>Cérémonie</option>
+        <option>Remise de prix</option>
+        <option>Lancement d'album</option>
+        <option>Événement sponsorisé</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="resetNuniEventsSearchFilters()">Réinitialiser</button>
     </div>
     <div id="nuni-events-list"></div>
   </main>
@@ -1537,7 +1560,7 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727e"></script>
-<script src="js/app.js?v=20260727e"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727f"></script>
+<script src="js/app.js?v=20260727f"></script>
 </body>
 </html>
