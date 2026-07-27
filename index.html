@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727n">
-<link rel="stylesheet" href="css/corners.css?v=20260727n">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727n">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727n">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727n">
+<link rel="stylesheet" href="css/style.css?v=20260727o">
+<link rel="stylesheet" href="css/corners.css?v=20260727o">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727o">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727o">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727o">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -1122,10 +1122,28 @@
             </table>
           </div>
         </div>
+
+        <!-- ---- Équipe & rôles (Phase 4) ---- -->
+        <div class="card" style="margin-top:20px;" id="label-team-card">
+          <b style="color:var(--accent); font-size:13px;">Équipe</b>
+          <p style="font-size:12px; color:var(--text-faint); margin-top:6px;">Propriétaire, Admin, Manager, Assistant — chaque rôle a ses propres permissions. Seuls Propriétaire et Admin peuvent inviter ou retirer des membres.</p>
+          <div id="label-team-invite-form" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+            <input type="email" id="lt-invite-email" placeholder="Email d'un compte NUNI existant" style="flex:1; min-width:200px; padding:9px 12px; border-radius:10px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);">
+            <select id="lt-invite-role" style="padding:9px 12px; border-radius:10px; border:1px solid var(--border); background:var(--bg-card); color:var(--text);">
+              <option value="admin">Admin</option>
+              <option value="manager" selected>Manager</option>
+              <option value="assistant">Assistant</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="inviteLabelTeamMember()">Inviter</button>
+          </div>
+          <div id="label-team-msg" style="margin-top:8px; font-size:12.5px;"></div>
+          <div id="label-team-list" style="margin-top:16px; display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
       </div>
     </div>
     <div id="artist-dashboard-body">
     <div id="label-invites-wrap" style="display:none; margin-bottom:22px;"></div>
+    <div id="label-team-invites-wrap" style="display:none; margin-bottom:22px;"></div>
     <div class="page-head">
       <div><h1>Tableau de bord artiste</h1><p>Vos performances et revenus du mois en cours.</p></div>
       <div style="display:flex; gap:10px; align-items:center;">
@@ -1726,8 +1744,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727n"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727o"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727n"></script>
+<script src="js/app.js?v=20260727o"></script>
 </body>
 </html>

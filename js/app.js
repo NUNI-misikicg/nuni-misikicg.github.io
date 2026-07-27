@@ -883,6 +883,7 @@ async function loadLabelDashboardStatus(){
         loadLabelOverview();
         loadLabelArtists();
         loadLabelPayments();
+        loadLabelTeam();
       }
     }
   }catch(e){
@@ -916,6 +917,91 @@ async function respondLabelInvite(id, accept){
     });
     toast(accept ? 'Invitation acceptée.' : 'Invitation refusée.');
     loadMyLabelInvites();
+  }catch(e){ toast('Impossible de contacter le serveur.'); }
+}
+
+/* ---------- Côté utilisateur : invitations d'équipe reçues d'un Label (Phase 4) ---------- */
+async function loadMyLabelTeamInvites(){
+  const wrap = document.getElementById('label-team-invites-wrap');
+  if(!wrap || !realAuthToken) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/label-team-invites', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    if(!res.ok){ wrap.style.display = 'none'; return; }
+    const data = await res.json();
+    if(!data.invites || !data.invites.length){ wrap.style.display = 'none'; return; }
+    const roleLabels = { admin:'Admin', manager:'Manager', assistant:'Assistant' };
+    wrap.style.display = 'block';
+    wrap.innerHTML = data.invites.map(inv => `
+      <div class="card" style="display:flex; align-items:center; gap:14px; border-color:var(--accent);">
+        ${inv.logo_url ? `<div style="width:44px; height:44px; border-radius:10px; background:url(${inv.logo_url}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : ''}
+        <div style="flex:1;"><b>${inv.label_name}</b> vous invite à rejoindre son équipe en tant que <b>${roleLabels[inv.role]||inv.role}</b>.</div>
+        <button class="btn btn-primary btn-sm" onclick="respondLabelTeamInvite(${inv.id}, true)">Accepter</button>
+        <button class="btn btn-ghost btn-sm" onclick="respondLabelTeamInvite(${inv.id}, false)">Refuser</button>
+      </div>`).join('');
+  }catch(e){ wrap.style.display = 'none'; }
+}
+async function respondLabelTeamInvite(id, accept){
+  try{
+    await fetch(NUNI_API_BASE + '/api/me/label-team-invites/' + id + '/' + (accept ? 'accept' : 'decline'), {
+      method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken },
+    });
+    toast(accept ? 'Invitation acceptée.' : 'Invitation refusée.');
+    loadMyLabelTeamInvites();
+  }catch(e){ toast('Impossible de contacter le serveur.'); }
+}
+
+/* ---------- Gestion de l'équipe du Label (Phase 4) ---------- */
+async function loadLabelTeam(){
+  const list = document.getElementById('label-team-list');
+  if(!list || !realAuthToken) return;
+  list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/team', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ list.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    const canManage = data.myRole === 'owner' || data.myRole === 'admin';
+    const inviteForm = document.getElementById('label-team-invite-form');
+    if(inviteForm) inviteForm.style.display = canManage ? 'flex' : 'none';
+    const roleLabels = { owner:'Propriétaire', admin:'Admin', manager:'Manager', assistant:'Assistant' };
+    const statusLabels = { active:'Actif', invited:'Invitation envoyée' };
+    let html = `<div class="label-artist-row"><div class="av">${(data.owner.first_name||'?').charAt(0)}</div><div class="info"><div class="name">${data.owner.first_name} ${data.owner.last_name}</div><div class="meta">${data.owner.email}</div></div><span class="label-artist-status active">Propriétaire</span></div>`;
+    data.members.forEach(m=>{
+      const name = m.first_name ? `${m.first_name} ${m.last_name}` : m.email;
+      html += `<div class="label-artist-row">
+        <div class="av">${name.charAt(0).toUpperCase()}</div>
+        <div class="info"><div class="name">${name}</div><div class="meta">${m.email} · ${roleLabels[m.role]||m.role}</div></div>
+        <span class="label-artist-status ${m.status}">${statusLabels[m.status]||m.status}</span>
+        ${canManage ? `<button class="btn-icon" title="Retirer" onclick="removeLabelTeamMember(${m.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>` : ''}
+      </div>`;
+    });
+    list.innerHTML = html;
+  }catch(e){
+    list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>';
+  }
+}
+async function inviteLabelTeamMember(){
+  const msg = document.getElementById('label-team-msg');
+  const email = document.getElementById('lt-invite-email').value.trim();
+  const role = document.getElementById('lt-invite-role').value;
+  if(!email){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Renseignez un email.'; return; }
+  msg.style.color = 'var(--text-dim)'; msg.textContent = 'Envoi de l\'invitation…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/team/invite', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ email, role }),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
+    msg.style.color = '#7FC79A'; msg.textContent = data.message;
+    document.getElementById('lt-invite-email').value = '';
+    loadLabelTeam();
+  }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+async function removeLabelTeamMember(id){
+  if(!confirm('Retirer ce membre de l\'équipe ?')) return;
+  try{
+    await fetch(NUNI_API_BASE + '/api/label/team/' + id, { method:'DELETE', headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    loadLabelTeam();
   }catch(e){ toast('Impossible de contacter le serveur.'); }
 }
 
@@ -1920,6 +2006,7 @@ function enterApp(view){
       loadFeaturedPicker();
       loadDashboardConcerts();
       loadMyLabelInvites();
+      loadMyLabelTeamInvites();
     }
   }
   if(view === 'search'){
