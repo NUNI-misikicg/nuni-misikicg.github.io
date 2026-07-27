@@ -734,6 +734,154 @@ async function submitRealRegistration(){
   }
 }
 
+/* ============ INSCRIPTION LABEL (Pass Label — Phase 1) ============ */
+// Important : contrairement à la publication d'un morceau (artiste déjà connecté, jeton
+// disponible pour un upload direct signé vers Cloudinary), à l'inscription le compte
+// n'existe pas encore — aucun jeton disponible. Les fichiers sont donc lus en base64 côté
+// navigateur et envoyés dans le corps de la requête ; c'est le SERVEUR qui les envoie à
+// Cloudinary avec ses propres identifiants (voir uploadIfDataUri dans server.js), exactement
+// comme pour les pochettes de morceaux.
+let pendingLabelFiles = { logo: null, idDoc: null, labelDoc: null };
+function openLabelRegister(){
+  pendingLabelFiles = { logo: null, idDoc: null, labelDoc: null };
+  document.getElementById('lr-feedback').innerHTML = '';
+  document.getElementById('label-register-overlay').classList.add('show');
+}
+function closeLabelRegister(){
+  document.getElementById('label-register-overlay').classList.remove('show');
+}
+function readFileAsDataUri(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function previewLabelFile(e, previewElId, kind){
+  const file = e.target.files[0];
+  if(!file) return;
+  const dataUri = await readFileAsDataUri(file);
+  pendingLabelFiles[kind] = dataUri;
+  if(previewElId){
+    const preview = document.getElementById(previewElId);
+    preview.style.backgroundImage = `url(${dataUri})`;
+    preview.textContent = '';
+  } else {
+    const statusId = kind === 'idDoc' ? 'lr-id-doc-status' : 'lr-label-doc-status';
+    document.getElementById(statusId).textContent = file.name + ' — prêt à envoyer';
+  }
+}
+async function submitLabelRegistration(){
+  const feedback = document.getElementById('lr-feedback');
+  const btn = document.getElementById('lr-submit-btn');
+  const labelName = document.getElementById('lr-label-name').value.trim();
+  const legalName = document.getElementById('lr-legal-name').value.trim();
+  const country = document.getElementById('lr-country').value.trim();
+  const city = document.getElementById('lr-city').value.trim();
+  const address = document.getElementById('lr-address').value.trim();
+  const proPhone = document.getElementById('lr-pro-phone').value.trim();
+  const proEmail = document.getElementById('lr-pro-email').value.trim();
+  const firstName = document.getElementById('lr-first').value.trim();
+  const lastName = document.getElementById('lr-last').value.trim();
+  const email = document.getElementById('lr-email').value.trim();
+  const password = document.getElementById('lr-password').value;
+  if(!labelName || !legalName || !country || !city || !address || !proPhone || !proEmail || !firstName || !lastName || !email || !password){
+    feedback.style.color = 'var(--rose-braise)';
+ feedback.textContent = ' Merci de remplir tous les champs obligatoires (*).';
+    return;
+  }
+  feedback.style.color = 'var(--text-dim)';
+  feedback.textContent = 'Envoi de votre dossier au serveur NUNI…';
+  btn.disabled = true;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/register', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        accountType: 'label',
+        firstName, lastName, email, password,
+        address, city, country,
+        labelName, logoUrl: pendingLabelFiles.logo, legalName,
+        professionalPhone: proPhone, professionalEmail: proEmail,
+        website: document.getElementById('lr-website').value.trim() || null,
+        taxId: document.getElementById('lr-tax-id').value.trim() || null,
+        labelDescription: document.getElementById('lr-description').value.trim() || null,
+        socialLinks: document.getElementById('lr-social').value.trim() || null,
+        responsibleName: document.getElementById('lr-responsible-name').value.trim() || null,
+        responsibleIdDocUrl: pendingLabelFiles.idDoc, labelDocUrl: pendingLabelFiles.labelDoc,
+        labelPlan: document.getElementById('lr-plan').value,
+      }),
+    });
+    const data = await res.json();
+    if(!res.ok){
+      feedback.style.color = 'var(--rose-braise)';
+ feedback.textContent = ' ' + data.error;
+      btn.disabled = false;
+      return;
+    }
+    realAuthToken = data.token;
+    realUserId = data.user.id;
+    currentUser = data.user;
+    saveSession(data.token, data.user, true);
+    feedback.style.color = '#7FC79A';
+ feedback.textContent = ' Demande envoyée ! Votre compte Label est en attente de vérification par l\'équipe NUNI (sous 24h).';
+    btn.disabled = false;
+    setTimeout(()=>{
+      closeLabelRegister();
+      enterApp('dashboard'); // affichera l'écran "en attente" — voir applyAccountType/renderLabelDashboard (Phase 2)
+    }, 1200);
+  }catch(e){
+    feedback.style.color = 'var(--rose-braise)';
+ feedback.textContent = ' Impossible de contacter le serveur NUNI. Vérifiez votre connexion internet.';
+    btn.disabled = false;
+  }
+}
+
+// ---------- Statut réel du Label, affiché dans son Dashboard (Phase 1) ----------
+// Le vrai tableau de bord multi-artistes (streams, revenus, gestion d'équipe...) arrive en
+// Phase 2 — pour l'instant, seul le statut de vérification et les infos de base du dossier
+// sont affichés, honnêtement, sans rien inventer.
+async function loadLabelDashboardStatus(){
+  const subtitle = document.getElementById('label-dash-subtitle');
+  const card = document.getElementById('label-dash-status-card');
+  if(!card || !realAuthToken) return;
+  card.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/me', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ card.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    const label = data.label;
+    if(subtitle) subtitle.textContent = label.label_name;
+    const statusMap = {
+      pending:      { label: 'En attente de vérification', color: '#D4AF6A', desc: "Votre dossier a bien été reçu. L'équipe NUNI l'examine — délai maximum 24h." },
+      verification: { label: 'Vérification en cours', color: '#D4AF6A', desc: "Votre dossier est en cours d'examen par l'équipe NUNI." },
+      validated:    { label: 'Compte validé', color: '#3BC26A', desc: 'Votre compte Label est actif.' },
+      refused:      { label: 'Demande refusée', color: '#E05252', desc: label.refusal_reason || "Votre demande n'a pas été retenue. Contactez le support pour plus d'informations." },
+    };
+    const st = statusMap[label.verification_status] || statusMap.pending;
+    const planLabels = { start: 'Label Start (2 artistes max)', pro: 'Label Pro (5 artistes max)', premium: 'Label Premium (10 artistes max)', elite: 'Label Elite (illimité)' };
+    card.innerHTML = `
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+        ${label.logo_url ? `<div style="width:56px; height:56px; border-radius:12px; background:url(${label.logo_url}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : ''}
+        <div>
+          <div style="font-weight:700; font-size:16px;">${label.label_name}</div>
+          <div style="font-size:12.5px; color:var(--text-faint);">${label.legal_name || ''}</div>
+        </div>
+      </div>
+      <div style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; border-radius:20px; background:${st.color}22; color:${st.color}; font-weight:700; font-size:13px; margin-bottom:12px;">
+        <span style="width:8px; height:8px; border-radius:50%; background:${st.color};"></span> ${st.label}
+      </div>
+      <p style="font-size:13.5px; color:var(--text-dim); line-height:1.6; margin-bottom:16px;">${st.desc}</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding-top:16px; border-top:1px solid var(--border);">
+        <div><div style="font-size:11px; color:var(--text-faint); text-transform:uppercase;">Palier</div><div style="font-weight:600; font-size:14px;">${planLabels[label.plan] || label.plan}</div></div>
+        <div><div style="font-size:11px; color:var(--text-faint); text-transform:uppercase;">Artistes gérés</div><div style="font-weight:600; font-size:14px;">${data.artistCount} / ${data.maxArtists == null ? '∞' : data.maxArtists}</div></div>
+      </div>
+      ${label.verification_status === 'validated' ? '<p style="font-size:12px; color:var(--text-faint); margin-top:16px;">La gestion complète de vos artistes (ajout, streams, revenus consolidés, équipe) arrive prochainement dans cet espace.</p>' : ''}`;
+  }catch(e){
+    card.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>';
+  }
+}
+
 function confirmPlanViaWhatsApp(){
   const type = pendingPlanType;
   const planLabel = type === 'artist' ? 'Pass Artiste' : 'Pass Consommateur';
@@ -1509,26 +1657,35 @@ function enterApp(view){
     return; // openArtistPage rappelle enterApp('artist') lui-même (avec le garde-fou actif) pour finir l'affichage
   }
   if(view === 'dashboard'){
-    loadArtistStats();
-    loadDashboardChart();
-    loadPaymentsHistory();
-    loadRealPaymentStatus();
-    applySavedRevenuePrivacy();
-    const momoInput = document.getElementById('momo-number-input');
-    if(momoInput) momoInput.value = (currentUser && currentUser.momo_number) || '';
-    const bioInput = document.getElementById('artist-bio-input');
-    if(bioInput) bioInput.value = (currentUser && currentUser.bio) || '';
-    const avatarDash = document.getElementById('avatar-preview-dash');
-    if(avatarDash && currentUser && currentUser.avatar_url){
-      avatarDash.style.backgroundImage = `url(${currentUser.avatar_url})`;
-      avatarDash.textContent = '';
+    const labelPlaceholder = document.getElementById('label-dashboard-placeholder');
+    const artistBody = document.getElementById('artist-dashboard-body');
+    const isLabelAccount = currentUser && currentUser.account_type === 'label';
+    if(labelPlaceholder) labelPlaceholder.style.display = isLabelAccount ? 'block' : 'none';
+    if(artistBody) artistBody.style.display = isLabelAccount ? 'none' : 'block';
+    if(isLabelAccount){
+      loadLabelDashboardStatus();
+    } else {
+      loadArtistStats();
+      loadDashboardChart();
+      loadPaymentsHistory();
+      loadRealPaymentStatus();
+      applySavedRevenuePrivacy();
+      const momoInput = document.getElementById('momo-number-input');
+      if(momoInput) momoInput.value = (currentUser && currentUser.momo_number) || '';
+      const bioInput = document.getElementById('artist-bio-input');
+      if(bioInput) bioInput.value = (currentUser && currentUser.bio) || '';
+      const avatarDash = document.getElementById('avatar-preview-dash');
+      if(avatarDash && currentUser && currentUser.avatar_url){
+        avatarDash.style.backgroundImage = `url(${currentUser.avatar_url})`;
+        avatarDash.textContent = '';
+      }
+      const coverDash = document.getElementById('cover-preview-dash');
+      if(coverDash && currentUser && currentUser.banner_url){
+        coverDash.style.backgroundImage = `url(${currentUser.banner_url})`;
+      }
+      loadFeaturedPicker();
+      loadDashboardConcerts();
     }
-    const coverDash = document.getElementById('cover-preview-dash');
-    if(coverDash && currentUser && currentUser.banner_url){
-      coverDash.style.backgroundImage = `url(${currentUser.banner_url})`;
-    }
-    loadFeaturedPicker();
-    loadDashboardConcerts();
   }
   if(view === 'search'){
     renderSearchViewBrowse();
@@ -8018,11 +8175,17 @@ let demoOverride = false; // true = le bouton démo a été utilisé manuellemen
 function applyAccountType(){
   if(!demoOverride && currentUser){ accountType = currentUser.account_type; }
   const isArtist = accountType === 'artist';
+  const isLabel = accountType === 'label';
   const hasActivePass = currentUser ? (currentUser.subscription_status === 'active') : true; // true en mode démo
   document.querySelectorAll('.nav-artist-only').forEach(el=> el.style.display = isArtist ? '' : 'none');
-  document.querySelectorAll('.nav-consumer-only').forEach(el=> el.style.display = isArtist ? 'none' : '');
+  document.querySelectorAll('.nav-consumer-only').forEach(el=> el.style.display = (isArtist || isLabel) ? 'none' : '');
   document.querySelectorAll('.tab-artist-only').forEach(el=> el.style.display = isArtist ? '' : 'none');
-  document.querySelectorAll('.tab-consumer-only').forEach(el=> el.style.display = isArtist ? 'none' : '');
+  document.querySelectorAll('.tab-consumer-only').forEach(el=> el.style.display = (isArtist || isLabel) ? 'none' : '');
+  // Le Dashboard reste accessible à un compte Label (écran dédié — voir enterApp), même s'il
+  // n'a pas accès aux autres éléments réservés aux artistes (page Artiste publique, "Mon
+  // profil" au sens artiste...).
+  const dashboardLink = document.getElementById('nav-dashboard-link');
+  if(dashboardLink) dashboardLink.style.display = (isArtist || isLabel) ? '' : 'none';
   const chipLabel = document.querySelector('.user-chip span');
   if(chipLabel) chipLabel.textContent = currentUser ? (currentUser.first_name + ' ' + currentUser.last_name.charAt(0) + '.') : (isArtist ? 'Bibi M.' : 'Auditeur');
   if(currentUser && currentUser.avatar_url){ applyAvatarEverywhere(currentUser.avatar_url); }
@@ -8038,9 +8201,15 @@ function applyAccountType(){
   // connecté — ne reste utile que pendant la démo, avant inscription.
   if(switchBtn) switchBtn.style.display = currentUser ? 'none' : '';
   // si l'écran courant n'existe pas côté consommateur, on revient au catalogue
-  if(!isArtist){
+  if(!isArtist && !isLabel){
     const activeLink = document.querySelector('.app-nav-link.is-active');
     if(activeLink && ['artist','dashboard','admin'].includes(activeLink.dataset.appLink)) enterApp('catalog');
+  }
+  if(isLabel){
+    // Un compte Label n'a pas de page artiste publique — s'il traînait sur cette vue
+    // (bascule de compte, lien direct...), retour au catalogue plutôt qu'un écran vide.
+    const activeLink = document.querySelector('.app-nav-link.is-active');
+    if(activeLink && activeLink.dataset.appLink === 'artist') enterApp('catalog');
   }
 }
 function switchAccountType(){

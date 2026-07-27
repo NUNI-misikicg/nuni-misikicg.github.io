@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727k">
-<link rel="stylesheet" href="css/corners.css?v=20260727k">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727k">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727k">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727k">
+<link rel="stylesheet" href="css/style.css?v=20260727l">
+<link rel="stylesheet" href="css/corners.css?v=20260727l">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727l">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727l">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727l">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -149,6 +149,83 @@
 
     <button class="btn btn-primary" style="width:100%; margin-top:16px;" onclick="submitRealRegistration()" id="rr-submit-btn">Créer mon compte et continuer</button>
     <div id="rr-feedback" style="margin-top:12px; font-size:12.5px;"></div>
+  </div>
+</div>
+
+<!-- ============ INSCRIPTION LABEL — interface dédiée (Pass Label) ============ -->
+<div class="ai-modal-overlay" id="label-register-overlay" onclick="if(event.target===this) closeLabelRegister()">
+  <div class="ai-modal" style="max-width:520px; text-align:left; max-height:85vh; overflow-y:auto;">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeLabelRegister()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="ai-modal-avatar" style="margin:0 0 8px;"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-7h6v7"/></svg></div>
+    <span class="ai-modal-eyebrow">Pass Label</span>
+    <h2 class="serif">Devenir Label NUNI</h2>
+    <p style="margin-bottom:16px; font-size:13px; color:var(--text-dim);">Réservé aux maisons de production, labels indépendants et managers représentant plusieurs artistes. Votre compte est vérifié par l'équipe NUNI sous 24h avant activation complète.</p>
+
+    <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); margin:18px 0 8px;">Le label</p>
+    <div class="field full"><label>Nom du label *</label><input type="text" id="lr-label-name" placeholder="Ex : FAX Records"></div>
+    <div class="field full">
+      <label>Logo du label</label>
+      <div id="lr-logo-preview" style="width:96px; height:96px; border-radius:12px; background:var(--bg-card); border:1px dashed var(--border-strong); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:11px; cursor:pointer;" onclick="document.getElementById('lr-logo-input').click()">Choisir</div>
+      <input type="file" id="lr-logo-input" accept="image/*" style="display:none;" onchange="previewLabelFile(event, 'lr-logo-preview', 'logo')">
+    </div>
+    <div class="field full"><label>Nom légal de l'entreprise *</label><input type="text" id="lr-legal-name" placeholder="Raison sociale complète"></div>
+    <div class="field-row">
+      <div class="field"><label>Pays *</label><input type="text" id="lr-country" value="Congo"></div>
+      <div class="field"><label>Ville *</label><input type="text" id="lr-city"></div>
+    </div>
+    <div class="field full"><label>Adresse *</label><input type="text" id="lr-address"></div>
+    <div class="field-row">
+      <div class="field"><label>Téléphone professionnel *</label><input type="text" id="lr-pro-phone"></div>
+      <div class="field"><label>Email professionnel *</label><input type="email" id="lr-pro-email"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Site web (optionnel)</label><input type="text" id="lr-website" placeholder="https://..."></div>
+      <div class="field"><label>N° d'identification fiscale (optionnel)</label><input type="text" id="lr-tax-id"></div>
+    </div>
+    <div class="field full"><label>Description du label</label><textarea id="lr-description" rows="3" placeholder="Votre univers, vos artistes, votre mission…" style="width:100%; resize:vertical; font-family:inherit; font-size:14px; padding:12px; border-radius:10px; background:var(--bg-card); border:1px solid var(--border); color:var(--text);"></textarea></div>
+    <div class="field full"><label>Réseaux sociaux (optionnel)</label><input type="text" id="lr-social" placeholder="Instagram, Facebook…"></div>
+
+    <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); margin:22px 0 8px;">Responsable principal</p>
+    <div class="field full"><label>Nom du responsable</label><input type="text" id="lr-responsible-name" placeholder="Nom complet"></div>
+    <div class="field full">
+      <label>Pièce d'identité du responsable</label>
+      <div id="lr-id-doc-status" class="muted" style="font-size:12px; color:var(--text-faint); margin-bottom:4px;">Aucun fichier</div>
+      <input type="file" id="lr-id-doc-input" accept="image/*,.pdf" onchange="previewLabelFile(event, null, 'idDoc')">
+    </div>
+    <div class="field full">
+      <label>Document justificatif du label (registre de commerce, etc.)</label>
+      <div id="lr-label-doc-status" class="muted" style="font-size:12px; color:var(--text-faint); margin-bottom:4px;">Aucun fichier</div>
+      <input type="file" id="lr-label-doc-input" accept="image/*,.pdf" onchange="previewLabelFile(event, null, 'labelDoc')">
+    </div>
+
+    <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); margin:22px 0 8px;">Palier</p>
+    <div class="field full">
+      <label>Choisissez votre palier Label</label>
+      <select id="lr-plan">
+        <option value="start">Label Start — 2 artistes max</option>
+        <option value="pro">Label Pro — 5 artistes max</option>
+        <option value="premium">Label Premium — 10 artistes max</option>
+        <option value="elite">Label Elite — artistes illimités</option>
+      </select>
+    </div>
+
+    <p style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); margin:22px 0 8px;">Votre compte de connexion</p>
+    <div class="field-row">
+      <div class="field"><label>Prénom *</label><input type="text" id="lr-first"></div>
+      <div class="field"><label>Nom *</label><input type="text" id="lr-last"></div>
+    </div>
+    <div class="field full"><label>Email de connexion *</label><input type="email" id="lr-email"></div>
+    <div class="field full"><label>Mot de passe * (8 caractères min.)</label>
+      <div class="field-password-wrap">
+        <input type="password" id="lr-password">
+        <button type="button" class="field-eye-btn" onclick="togglePasswordVisibility('lr-password', this)" aria-label="Afficher le mot de passe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%; margin-top:16px;" onclick="submitLabelRegistration()" id="lr-submit-btn">Envoyer ma demande</button>
+    <div id="lr-feedback" style="margin-top:12px; font-size:12.5px;"></div>
   </div>
 </div>
 
@@ -518,6 +595,19 @@
         <div class="plan-paymethods"><span class="pay-pill">MTN Money</span><span class="pay-pill">Airtel Money</span></div>
         <button class="btn btn-primary" style="width:100%" onclick="choosePlan('artist')">Choisir ce pass</button>
       </div>
+      <div class="plan-card label">
+        <span class="plan-tag">Pass label</span>
+        <h2 class="serif">Gérer &amp; développer</h2>
+        <p class="plan-price"><b>À partir de Label Start</b> · paliers selon le nombre d'artistes</p>
+        <ul>
+          <li>${ico('check')} Gérez plusieurs artistes depuis un seul compte</li>
+          <li>${ico('check')} Tableau de bord dédié (revenus, streams, catalogue consolidés)</li>
+          <li>${ico('check')} Équipe &amp; rôles (Propriétaire, Admin, Manager, Assistant)</li>
+          <li>${ico('check')} Compte vérifié sous 24h par l'équipe NUNI</li>
+        </ul>
+        <p style="font-size:11.5px; color:var(--text-faint); margin:-14px 0 18px; line-height:1.5;">Réservé aux maisons de production, labels indépendants et managers représentant plusieurs artistes.</p>
+        <button class="btn btn-ghost" style="width:100%; border-color:var(--accent); color:var(--accent);" onclick="openLabelRegister()">Devenir Label NUNI</button>
+      </div>
     </div>
   </div>
 </section>
@@ -541,7 +631,7 @@
       <a class="app-nav-link" href="top.html"><svg class="nuni-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9.5 10.2l4 4L21 6"/><path d="M15 6h6v6"/></svg>Top</a>
       <button class="app-nav-link nav-consumer-only" data-app-link="library" onclick="enterApp('library')"><svg class="nuni-nav-ic" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="4" height="14" rx="1.5"/><rect x="10" y="2" width="4" height="20" rx="1.5"/><rect x="17" y="8" width="4" height="11" rx="1.5"/></svg>Bibliothèque</button>
       <button class="app-nav-link nav-artist-only" data-app-link="artist" onclick="enterApp('artist')">Artiste</button>
-      <button class="app-nav-link nav-artist-only" data-app-link="dashboard" onclick="enterApp('dashboard')">Dashboard</button>
+      <button class="app-nav-link nav-artist-only" id="nav-dashboard-link" data-app-link="dashboard" onclick="enterApp('dashboard')">Dashboard</button>
     </div>
     <button class="btn-icon nuni-desktop-search-btn" aria-label="Rechercher" onclick="enterApp('search')" title="Rechercher">
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -966,6 +1056,15 @@
 
   <!-- ---- DASHBOARD ---- -->
   <main class="app-main" id="view-dashboard" style="display:none;">
+    <!-- ============ ÉCRAN DÉDIÉ LABEL (Phase 1) — le vrai dashboard multi-artistes vient en
+         Phase 2. Pour l'instant : statut de vérification + infos de base du label. ============ -->
+    <div id="label-dashboard-placeholder" style="display:none;">
+      <div class="page-head">
+        <div><h1>Espace Label</h1><p id="label-dash-subtitle">Chargement de votre profil…</p></div>
+      </div>
+      <div id="label-dash-status-card" class="card" style="max-width:640px;"></div>
+    </div>
+    <div id="artist-dashboard-body">
     <div class="page-head">
       <div><h1>Tableau de bord artiste</h1><p>Vos performances et revenus du mois en cours.</p></div>
       <div style="display:flex; gap:10px; align-items:center;">
@@ -1193,6 +1292,7 @@
       <button class="btn btn-primary" style="margin-top:16px;" onclick="publishConcert()">Publier</button>
 
       <div id="dashboard-concerts-list" style="margin-top:26px; display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
     </div>
   </main>
 
@@ -1565,7 +1665,7 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727k"></script>
-<script src="js/app.js?v=20260727k"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727l"></script>
+<script src="js/app.js?v=20260727l"></script>
 </body>
 </html>
