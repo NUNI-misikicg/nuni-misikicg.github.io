@@ -342,6 +342,51 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .app-nav-link.is-active{ background:none; color:var(--text); }
 .app-topnav-right{ display:flex; align-items:center; gap:10px; }
 .nuni-mobile-search-btn{ display:none; }
+.nuni-desktop-search-btn{ margin:0 10px; }
+
+/* ============ RECHERCHE — interface plein écran façon Apple Music ============
+   Avant : une bulle qui se dépliait dans la barre de navigation, avec un petit tiroir de
+   résultats compact. Maintenant : cliquer sur la loupe ouvre une vraie page dédiée (comme
+   l'onglet Recherche d'Apple Music) — les autres onglets disparaissent de la navigation
+   pendant qu'elle est active (voir enterApp('search') dans app.js), pour ne laisser que
+   Accueil et la recherche elle-même, l'attention entière va à la recherche. */
+.asv-bar{ display:flex; align-items:center; gap:12px; padding-bottom:20px; position:sticky; top:0; background:var(--bg); z-index:5; }
+.asv-input-wrap{ flex:1; position:relative; display:flex; align-items:center; }
+.asv-input-wrap .search-icon{ position:absolute; left:16px; width:19px; height:19px; color:var(--text-faint); pointer-events:none; }
+#asv-input{
+  width:100%; padding:14px 40px 14px 44px; border-radius:14px; border:1px solid var(--border);
+  background:var(--surface-2, rgba(255,255,255,0.05)); color:var(--text); font-size:15.5px;
+}
+#asv-input:focus{ outline:none; border-color:var(--accent); }
+#asv-input::placeholder{ color:var(--text-faint); }
+.asv-clear-btn{ position:absolute; right:8px; width:26px; height:26px; padding:0; background:none; border:none; color:var(--text-faint); }
+.asv-cancel-btn{ background:none; border:none; color:var(--accent); font-weight:600; font-size:14.5px; cursor:pointer; white-space:nowrap; padding:6px 4px; }
+.asv-cancel-btn:hover{ opacity:0.8; }
+
+/* ---- État vide : grille de genres à parcourir, colorée, façon "Parcourir" d'Apple Music ---- */
+.asv-browse-title{ font-family:var(--font-display); font-size:20px; font-weight:600; margin:6px 0 16px; }
+.asv-genre-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:14px; }
+.asv-genre-tile{
+  position:relative; height:88px; border-radius:12px; overflow:hidden; cursor:pointer;
+  display:flex; align-items:flex-end; padding:12px; font-weight:700; font-size:15px; color:#fff;
+  text-shadow:0 1px 4px rgba(0,0,0,0.35); transition:transform .15s ease;
+}
+.asv-genre-tile:hover{ transform:translateY(-2px); }
+.asv-genre-tile::after{ content:''; position:absolute; top:-10px; right:-10px; width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,0.18); transform:rotate(20deg); }
+
+/* ---- Résultats groupés par section (Artistes / Morceaux / Clips), lignes larges ---- */
+.asv-section{ margin-bottom:28px; }
+.asv-section-title{ font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--text-dim); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px; }
+.asv-row{ display:flex; align-items:center; gap:14px; padding:10px 6px; border-radius:10px; cursor:pointer; transition:background .15s ease; }
+.asv-row:hover{ background:rgba(212,175,106,0.07); }
+.asv-row-cover{ width:52px; height:52px; border-radius:8px; background-size:cover; background-position:center; flex-shrink:0; background:var(--grad-envol); }
+.asv-row-cover.is-round{ border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-data); font-weight:700; color:#0A0A10; font-size:14px; }
+.asv-row-title{ font-size:14.5px; font-weight:600; color:var(--text); }
+.asv-row-sub{ font-size:12.5px; color:var(--text-faint); margin-top:2px; }
+.asv-empty{ color:var(--text-faint); font-size:14px; padding:30px 6px; text-align:center; }
+@media(max-width:640px){
+  .asv-genre-grid{ grid-template-columns:repeat(2, 1fr); }
+}
 /* ============ RECHERCHE EN BULLE (façon Apple Music) ============
    Repliée par défaut : une simple icône loupe ronde, comme sur Apple Music Desktop.
    Un clic dessus la déplie en champ de saisie — elle ne prend de la place que quand
@@ -1789,7 +1834,7 @@ html.is-playing .fp-title{ font-weight:800; }
   .app-main{ padding:28px 18px 86px; }
   .app-topnav{ padding:14px 18px; padding-top:calc(14px + env(safe-area-inset-top,0)); }
   .app-nav-links{ display:none; }
-  .app-search-wrap{ display:none; }
+  .nuni-desktop-search-btn{ display:none; }
   .nuni-mobile-search-btn{ display:inline-flex; }
   /* Bouton profil : juste le rond, plus le prénom — libère de la place dans une barre du
      haut déjà chargée (logo, recherche, cloche, lune, profil) sur petit écran. */

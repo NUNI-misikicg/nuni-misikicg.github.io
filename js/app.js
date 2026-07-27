@@ -1529,10 +1529,27 @@ function enterApp(view){
     }
     loadFeaturedPicker();
   }
-  ['catalog','clips','ads','library','artist','dashboard','admin'].forEach(v=>{
+  if(view === 'search'){
+    renderSearchViewBrowse();
+    const input = document.getElementById('asv-input');
+    if(input){ input.value = ''; setTimeout(()=> input.focus(), 50); }
+    document.getElementById('asv-clear-btn').style.display = 'none';
+  }
+  ['catalog','clips','ads','library','artist','dashboard','admin','search'].forEach(v=>{
     const el = document.getElementById('view-'+v);
     if(el) el.style.display = (v===view) ? 'block' : 'none';
   });
+  // ---- Pendant que la recherche plein écran est active, les autres onglets disparaissent
+  // de la navigation (desktop + mobile) — ne reste que "Accueil" à côté de la recherche,
+  // comme demandé (même principe que l'onglet Recherche d'Apple Music). ----
+  const searchActive = view === 'search';
+  document.querySelectorAll('.app-nav-link').forEach(l=>{
+    l.style.display = searchActive ? (l.dataset.appLink === 'catalog' ? '' : 'none') : '';
+  });
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.style.display = searchActive ? (b.dataset.tab === 'catalog' ? '' : 'none') : '';
+  });
+  if(!searchActive) applyAccountType(); // restaure les onglets nav-artist-only/nav-consumer-only masqués ci-dessus, selon le vrai type de compte
   document.querySelectorAll('.app-nav-link').forEach(l=>{
     l.classList.toggle('is-active', l.dataset.appLink === view);
   });
@@ -2204,6 +2221,10 @@ const nuniAnalysisAudio = new Audio();
 nuniAnalysisAudio.crossOrigin = 'anonymous';
 nuniAnalysisAudio.muted = true;
 nuniAnalysisAudio.preload = 'auto';
+// Inséré dans le DOM (invisible) — voir le commentaire détaillé au-dessus de realAudio,
+// même correctif appliqué ici par cohérence même si cet élément est muet.
+nuniAnalysisAudio.style.display = 'none';
+document.body.appendChild(nuniAnalysisAudio);
 // Avant : au lancement d'un morceau, l'élément fantôme charge son propre fichier séparément
 // du vrai lecteur — il met souvent un instant de plus à devenir réellement audible/analysable,
 // d'où un décalage visible entre le vrai son et la réaction de la sphère au démarrage. Ici :
@@ -3429,6 +3450,15 @@ const realAudio = new Audio();
 realAudio.crossOrigin = 'anonymous';
 realAudio.volume = 1;
 realAudio.preload = 'auto';
+// ---------- Correctif bug volume physique (boutons du téléphone sans effet) ----------
+// realAudio était créé via new Audio() mais jamais inséré dans le DOM. Sur mobile
+// (Android en particulier, et PWA installées), un <audio> hors du DOM n'est pas toujours
+// rattaché correctement par l'OS au flux "média" (STREAM_MUSIC) — les boutons physiques
+// de volume du téléphone n'ont alors aucun effet sur la lecture. L'insérer (invisible,
+// display:none) dans le DOM permet au navigateur/à l'OS de le reconnaître comme le vrai
+// lecteur média actif, exactement comme le fait n'importe quel lecteur audio natif.
+realAudio.style.display = 'none';
+document.body.appendChild(realAudio);
 realAudio.addEventListener('loadedmetadata', ()=>{
   if(usingRealAudio && isFinite(realAudio.duration)){ duration = realAudio.duration; updateProgress(); }
 });
@@ -6308,7 +6338,7 @@ function djSpeak(force){
   djSpeakFallbackTTS(force);
 }
 function playDjVoiceClip(src){
-  if(!djVoiceClipAudio) djVoiceClipAudio = new Audio();
+  if(!djVoiceClipAudio){ djVoiceClipAudio = new Audio(); djVoiceClipAudio.style.display = 'none'; document.body.appendChild(djVoiceClipAudio); }
   djVoiceClipAudio.pause();
   djVoiceClipAudio.src = src;
   djVoiceClipAudio.currentTime = 0;
@@ -6351,7 +6381,7 @@ function startDjCrossfade(){
   const nextTr = djQueue[(djQueuePos + 1) % djQueue.length];
   if(!nextTr || !nextTr.audioUrl) return; // repli sur le comportement naturel si le suivant n'est pas jouable
 
-  if(!djFadeAudio) djFadeAudio = new Audio();
+  if(!djFadeAudio){ djFadeAudio = new Audio(); djFadeAudio.style.display = 'none'; document.body.appendChild(djFadeAudio); }
   djFadeAudio.src = nextTr.audioUrl;
   djFadeAudio.currentTime = 0;
   djFadeAudio.volume = 0;
@@ -7383,6 +7413,111 @@ function runSearch(q){
       <div><div class="sr-t">${c.title}${clipBadge}</div><div class="sr-a">${c.artist}</div></div>`;
     item.onclick = ()=>{ enterApp('clips'); openClipWatchPage(c); box.classList.remove('open'); document.getElementById('app-search-input').value=''; };
     box.appendChild(item);
+  });
+}
+
+/* ============ RECHERCHE PLEIN ÉCRAN — état "Parcourir" (façon Apple Music) ============
+   Affiché quand le champ est vide : une grille colorée de genres, pour parcourir sans avoir
+   à taper. Couleurs fixes par genre (pas de génération aléatoire) pour rester reconnaissable
+   d'une visite à l'autre. */
+const ASV_GENRE_COLORS = {
+  'Afro': '#1E8449', 'Rap': '#8E2DE2', 'Rumba': '#B3512E', 'Gospel': '#1976D2',
+  'Hip-Hop': '#C0392B', 'Top Congo': '#B98A3D', 'Nouveautés': '#0E3D2C',
+};
+function renderSearchViewBrowse(){
+  const box = document.getElementById('asv-results');
+  if(!box) return;
+  const genres = Object.keys(ASV_GENRE_COLORS);
+  box.innerHTML = `
+    <div class="asv-browse-title">Parcourir</div>
+    <div class="asv-genre-grid">
+      ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
+    </div>`;
+  box.querySelectorAll('.asv-genre-tile').forEach(tile=>{
+    tile.onclick = ()=>{
+      const g = tile.dataset.genre;
+      enterApp('catalog');
+      filterCatalogByGenre(g);
+      document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname') && t.querySelector('.gname').textContent === g));
+    };
+  });
+}
+function clearSearchView(){
+  const input = document.getElementById('asv-input');
+  if(input) input.value = '';
+  document.getElementById('asv-clear-btn').style.display = 'none';
+  renderSearchViewBrowse();
+  if(input) input.focus();
+}
+function debouncedRunSearchView(q){
+  document.getElementById('asv-clear-btn').style.display = q.trim() ? '' : 'none';
+  clearTimeout(searchViewDebounceTimer);
+  searchViewDebounceTimer = setTimeout(()=> runSearchView(q), 200);
+}
+let searchViewDebounceTimer = null;
+function runSearchView(q){
+  const box = document.getElementById('asv-results');
+  if(!box) return;
+  const query = q.trim().toLowerCase();
+  if(!query){ renderSearchViewBrowse(); return; }
+
+  const artistNames = [...new Set(tracks.map(t=>t.a||''))].filter(Boolean);
+  const artistMatches = artistNames.filter(a => a.toLowerCase().includes(query)).slice(0, 6);
+  const trackMatches = tracks.filter(t =>
+    (t.t||'').toLowerCase().includes(query) || (t.a||'').toLowerCase().includes(query) || (t.album||'').toLowerCase().includes(query)
+  ).slice(0, 10);
+  const clipMatches = clips.filter(c =>
+    (c.title||'').toLowerCase().includes(query) || (c.artist||'').toLowerCase().includes(query)
+  ).slice(0, 6);
+
+  if(!artistMatches.length && !trackMatches.length && !clipMatches.length){
+    box.innerHTML = `<div class="asv-empty">Aucun résultat pour « ${q} ».</div>`;
+    return;
+  }
+
+  let html = '';
+  if(artistMatches.length){
+    html += `<div class="asv-section"><div class="asv-section-title">Artistes</div>${artistMatches.map(name=>{
+      const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      return `<div class="asv-row" data-kind="artist" data-name="${name.replace(/"/g,'&quot;')}">
+        <div class="asv-row-cover is-round" style="background:var(--grad-envol);">${initials}</div>
+        <div><div class="asv-row-title">${name}</div><div class="asv-row-sub">Artiste</div></div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  if(trackMatches.length){
+    html += `<div class="asv-section"><div class="asv-section-title">Morceaux</div>${trackMatches.map((t,i)=>{
+      const coverStyle = t.cover ? `background-image:url(${t.cover});` : '';
+      return `<div class="asv-row" data-kind="track" data-idx="${tracks.indexOf(t)}">
+        <div class="asv-row-cover ${t.cover ? '' : (t.p||'')}" style="${coverStyle}"></div>
+        <div><div class="asv-row-title">${t.t}</div><div class="asv-row-sub">${t.a}${t.album ? ' · ' + t.album : ''}</div></div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  if(clipMatches.length){
+    html += `<div class="asv-section"><div class="asv-section-title">Clips</div>${clipMatches.map(c=>{
+      const coverStyle = c.thumb ? `background-image:url(${c.thumb});` : '';
+      return `<div class="asv-row" data-kind="clip" data-idx="${clips.indexOf(c)}">
+        <div class="asv-row-cover ${c.thumb ? '' : (c.pal||'pal-1')}" style="${coverStyle}"></div>
+        <div><div class="asv-row-title">${c.title}</div><div class="asv-row-sub">${c.artist}</div></div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  box.innerHTML = html;
+
+  box.querySelectorAll('.asv-row[data-kind="artist"]').forEach(row=>{
+    row.onclick = ()=>{
+      const name = row.dataset.name;
+      const topTrack = tracks.find(t=>t.a===name);
+      enterApp('catalog');
+      openArtistPage(name, topTrack && topTrack.artistId);
+    };
+  });
+  box.querySelectorAll('.asv-row[data-kind="track"]').forEach(row=>{
+    row.onclick = ()=>{ const t = tracks[Number(row.dataset.idx)]; enterApp('catalog'); handleTrackCardClick(t); };
+  });
+  box.querySelectorAll('.asv-row[data-kind="clip"]').forEach(row=>{
+    row.onclick = ()=>{ const c = clips[Number(row.dataset.idx)]; enterApp('clips'); openClipWatchPage(c); };
   });
 }
 
