@@ -746,6 +746,27 @@ function openLabelRegister(){
   pendingLabelFiles = { logo: null, idDoc: null, labelDoc: null };
   document.getElementById('lr-feedback').innerHTML = '';
   document.getElementById('label-register-overlay').classList.add('show');
+  refreshLabelPlanOptionsFromServer();
+}
+// ---------- Vrais prix/limites des paliers Label (Phase 6 — configurables depuis l'admin) ----------
+async function refreshLabelPlanOptionsFromServer(){
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label-plan-settings');
+    if(!res.ok) return;
+    const data = await res.json();
+    const fmt = n => Number(n).toLocaleString('fr-FR');
+    const select = document.getElementById('lr-plan');
+    if(select){
+      select.querySelector('option[value="start"]').textContent = `Label Start — ${data.maxArtists.start} artistes max — ${fmt(data.prices.start)} FCFA/trimestre`;
+      select.querySelector('option[value="pro"]').textContent = `Label Pro — ${data.maxArtists.pro} artistes max — ${fmt(data.prices.pro)} FCFA/trimestre`;
+      select.querySelector('option[value="premium"]').textContent = `Label Premium — ${data.maxArtists.premium} artistes max — ${fmt(data.prices.premium)} FCFA/trimestre`;
+      select.querySelector('option[value="elite"]').textContent = `Label Elite — artistes illimités — ${fmt(data.prices.elite)} FCFA/trimestre`;
+    }
+    const priceDisplay = document.getElementById('label-plan-price-display');
+    if(priceDisplay){
+      priceDisplay.innerHTML = `<b>À partir de ${fmt(data.prices.start)} FCFA</b> / trimestre · Label Start`;
+    }
+  }catch(e){ /* pas grave — les libellés génériques restent affichés */ }
 }
 function closeLabelRegister(){
   document.getElementById('label-register-overlay').classList.remove('show');
@@ -8787,6 +8808,7 @@ document.addEventListener('click', (e)=>{
   if(!mimiWidget.contains(e.target)) mimiWidget.classList.remove('open');
 });
 applyAccountType();
+refreshLabelPlanOptionsFromServer();
 sessionRestorePromise = restoreSession();
 
 /* ============ REPRISE APRÈS RETOUR EN ARRIÈRE-PLAN (ex: WhatsApp) ============
