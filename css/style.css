@@ -1,9 +1,9 @@
 /* ============ TOKENS ============ */
 :root{
   --nuni-logo-img: url("assets/logo-bg.png");
-  --noir:#0A0A10;
-  --noir-2:#121219;
-  --noir-3:#191923;
+  --noir:#080808;
+  --noir-2:#111111;
+  --noir-3:#171717;
   --blanc:#FAF8F4;
   --blanc-2:#F1ECE3;
   --blanc-3:#E8E1D4;
@@ -19,6 +19,7 @@
   --vert-nuni:#1E8449;
   --jaune-nuni:#F0AC2E;
   --rouge-nuni:#C0392B;
+  --cuivre:#B8734A;
 
   --grad-envol: linear-gradient(135deg, var(--violet) 0%, var(--or) 100%);
   --grad-nuit: linear-gradient(160deg, var(--bleu-nuit) 0%, var(--noir) 100%);
@@ -929,12 +930,30 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .track-card.reveal-in{ opacity:0; animation: revealIn .55s var(--ease) forwards; }
 @keyframes revealIn{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:translateY(0);} }
 .track-card:hover .cover{ transform:translateY(-6px) scale(1.02) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); }
+/* ---- Signature NUNI : un halo lumineux qui respire derrière la pochette au survol —
+   reconnaissable même sans logo, comme demandé. Un seul pseudo-élément par carte, actif
+   uniquement au survol (jamais en continu sur des dizaines de cartes à la fois). ---- */
+.track-card{ position:relative; }
+.track-card::before{
+  content:''; position:absolute; top:6%; left:6%; right:6%; height:172px; z-index:-1;
+  border-radius:50%; filter:blur(28px); opacity:0;
+  background:radial-gradient(circle, var(--nuni-signature-glow, var(--or)) 0%, transparent 70%);
+  transition:opacity .4s ease;
+}
+.track-card:hover::before{ opacity:.45; }
+@media(prefers-reduced-motion: reduce){ .track-card::before{ transition:none; } }
 .track-card:hover .cover.pal-1{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(110,69,168,0.55); }
 .track-card:hover .cover.pal-2{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(212,175,106,0.55); }
 .track-card:hover .cover.pal-3{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(201,102,122,0.55); }
 .track-card:hover .cover.pal-4{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(142,99,201,0.45); }
 .track-card:hover .cover.pal-5{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(142,99,201,0.55); }
 .track-card:hover .cover.pal-6{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(30,132,73,0.5); }
+.track-card:has(.pal-1){ --nuni-signature-glow: #6E45A8; }
+.track-card:has(.pal-2){ --nuni-signature-glow: #D4AF6A; }
+.track-card:has(.pal-3){ --nuni-signature-glow: #C9667A; }
+.track-card:has(.pal-4){ --nuni-signature-glow: #8E63C9; }
+.track-card:has(.pal-5){ --nuni-signature-glow: #8E63C9; }
+.track-card:has(.pal-6){ --nuni-signature-glow: #1E8449; }
 .track-card .ttl{ font-size:14px; font-weight:600; margin-top:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .track-card .art{ font-size:12.5px; color:var(--text-faint); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .track-card .likes{ display:none; }

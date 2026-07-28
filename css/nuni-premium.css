@@ -739,6 +739,48 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
 #top-congo-hero .premium-hero-title{ font-size:32px; }
 
 /* ============================================================
+   HERO — vraie scène musicale : vinyle en rotation très lente, grand
+   égaliseur discret côté droit, particules qui dérivent doucement.
+   Tout est décoratif et pointer-events:none — n'interfère jamais avec
+   les vrais boutons/liens du Hero, et le fond évolue lentement pour
+   ne jamais distraire du texte/CTA.
+============================================================ */
+.premium-hero-scene{ position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
+.premium-hero-vinyl{
+  position:absolute; right:-60px; bottom:-90px; width:340px; height:340px; border-radius:50%;
+  background:
+    repeating-radial-gradient(circle at center, rgba(255,255,255,.05) 0 2px, transparent 2px 5px),
+    radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 60%, #000 100%);
+  border:1px solid rgba(255,255,255,.08);
+  opacity:.5;
+  animation:heroVinylSpin 40s linear infinite;
+}
+.premium-hero-vinyl::after{ content:''; position:absolute; inset:42%; border-radius:50%; background:radial-gradient(circle, var(--or-2,#E8C77E) 0%, #8a6a2e 100%); box-shadow:0 0 24px rgba(212,175,106,.35); }
+@keyframes heroVinylSpin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+.premium-hero-eq{ position:absolute; right:64px; bottom:32px; display:flex; align-items:flex-end; gap:5px; height:56px; opacity:.4; }
+.premium-hero-eq span{ width:4px; border-radius:3px 3px 0 0; background:linear-gradient(180deg, var(--or-2,#E8C77E), transparent); animation:eqBar 1.5s ease-in-out infinite; }
+.premium-hero-eq span:nth-child(1){ height:30%; animation-delay:-1.2s; }
+.premium-hero-eq span:nth-child(2){ height:65%; animation-delay:-.5s; }
+.premium-hero-eq span:nth-child(3){ height:45%; animation-delay:-.9s; }
+.premium-hero-eq span:nth-child(4){ height:82%; animation-delay:-.1s; }
+.premium-hero-eq span:nth-child(5){ height:55%; animation-delay:-1.4s; }
+.premium-hero-eq span:nth-child(6){ height:38%; animation-delay:-.7s; }
+.premium-hero-particle{ position:absolute; border-radius:50%; filter:blur(1px); opacity:.35; background:var(--or-2,#E8C77E); animation:heroParticleDrift linear infinite; }
+@keyframes heroParticleDrift{
+  0%{ transform:translateY(0) translateX(0); opacity:0; }
+  10%{ opacity:.35; }
+  90%{ opacity:.35; }
+  100%{ transform:translateY(-90px) translateX(14px); opacity:0; }
+}
+@media(prefers-reduced-motion: reduce){
+  .premium-hero-vinyl{ animation:none; }
+  .premium-hero-eq span{ animation:none; transform:scaleY(.7); }
+  .premium-hero-particle{ animation:none; opacity:.15; }
+}
+@media(max-width:900px){ .premium-hero-vinyl{ width:220px; height:220px; right:-50px; bottom:-60px; } .premium-hero-eq{ display:none; } }
+@media(max-width:640px){ .premium-hero-vinyl{ display:none; } }
+
+/* ============================================================
    Lecteur plein écran — reskin "verre liquide" (Liquid Glass)
    ------------------------------------------------------------
    Aucun changement de structure ni de logique JS : uniquement un

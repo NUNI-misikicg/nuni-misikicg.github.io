@@ -4257,6 +4257,27 @@ function renderHomeHero(){
     }, 8000);
   }
 }
+/* ---- Scène du Hero — quelques particules très discrètes qui dérivent lentement vers le
+   haut, façon poussière de lumière. Génération peu fréquente et peu nombreuse : jamais plus
+   de 4-5 en même temps, pas de coût de performance notable. ---- */
+function spawnHeroParticle(){
+  const layer = document.getElementById('premium-hero-scene');
+  if(!layer || document.hidden || layer.offsetParent === null) return; // pas visible (autre vue affichée) : rien à faire
+  if(layer.children.length > 8) return; // sécurité : jamais d'accumulation si l'onglet reste ouvert très longtemps
+  const p = document.createElement('div');
+  p.className = 'premium-hero-particle';
+  const size = 3 + Math.random()*4;
+  p.style.width = size + 'px';
+  p.style.height = size + 'px';
+  p.style.left = (10 + Math.random()*80) + '%';
+  p.style.bottom = (Math.random()*40) + '%';
+  const duration = 9 + Math.random()*6;
+  p.style.animationDuration = duration + 's';
+  layer.appendChild(p);
+  setTimeout(()=> p.remove(), duration*1000 + 200);
+}
+setInterval(spawnHeroParticle, 2200);
+
 function applyHeroTrack(top, hero, titleEl, subEl, playBtn){
   if(top.cover) hero.style.backgroundImage = `url(${top.cover})`;
   if(titleEl) titleEl.innerHTML = `<em>${top.t}</em>`;
