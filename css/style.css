@@ -340,6 +340,46 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .app-nav-link.is-active{ background:none; color:var(--text); }
 .app-topnav-right{ display:flex; align-items:center; gap:10px; }
 .nuni-mobile-search-btn{ display:none; }
+
+/* ============================================================
+   SIDEBAR — refonte structurelle desktop. La même nav (mêmes IDs,
+   mêmes onclick, aucun changement JS) est simplement réorientée en
+   colonne fixe à gauche plutôt qu'en barre horizontale — aucune
+   restructuration du HTML, uniquement du CSS. Le mobile (<901px)
+   n'est jamais concerné : il garde exactement son comportement
+   actuel (barre du haut simplifiée + tabbar du bas).
+============================================================ */
+@media(min-width:901px){
+  .app-shell.active{ padding-left:248px; }
+  .app-topnav{
+    position:fixed; top:0; left:0; bottom:0; width:248px; height:100vh; z-index:30;
+    flex-direction:column; align-items:stretch; justify-content:flex-start;
+    padding:28px 20px calc(20px + env(safe-area-inset-bottom,0));
+    border-right:1px solid var(--border); border-bottom:none;
+    overflow-y:auto; gap:28px;
+  }
+  .app-nav-links{ flex-direction:column; gap:2px; width:100%; }
+  .app-nav-link{ width:100%; justify-content:flex-start; padding:11px 14px; }
+  .app-nav-link.is-active{ background:rgba(212,175,106,.1); }
+  .nuni-desktop-search-btn{
+    width:100%; justify-content:flex-start; gap:10px; padding:10px 14px; border-radius:10px;
+    display:flex !important; color:var(--text-dim); font-size:13.5px;
+  }
+  .nuni-desktop-search-btn::after{ content:'Rechercher'; }
+  .nuni-desktop-search-btn:hover{ background:var(--bg-card); color:var(--text); }
+  .app-topnav-right{
+    flex-direction:column; align-items:stretch; width:100%; gap:8px;
+    margin-top:auto; padding-top:16px; border-top:1px solid var(--border);
+  }
+  .app-topnav-right > .btn-icon, .notif-wrap{ align-self:flex-start; }
+  .user-chip{ width:100%; justify-content:flex-start; }
+  /* Les menus/panneaux qui s'ouvraient vers le bas (sous un bouton en haut de page)
+     s'ouvrent maintenant vers le haut, puisque leurs déclencheurs vivent en bas de la
+     colonne de gauche plutôt qu'en haut à droite de l'écran. */
+  .profile-menu{ top:auto; bottom:calc(100% + 10px); right:auto; left:0; }
+  .notif-panel{ top:auto; bottom:calc(100% + 10px); right:auto; left:0; }
+}
+
 .nuni-desktop-search-btn{ margin:0 10px; }
 
 /* ============ RECHERCHE — interface plein écran façon Apple Music ============
