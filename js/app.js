@@ -4231,6 +4231,28 @@ function applyHeroTrack(top, hero, titleEl, subEl, playBtn){
 }
 loadRealTracks();
 
+/* ============ PHASE 2 DA — tilt 3D des pochettes au survol ============
+   Un seul listener délégué sur tout le document plutôt qu'un par carte : la souris peut
+   survoler des centaines de pochettes sans jamais multiplier les écouteurs d'événements.
+   Désactivé sur tactile (pas de vrai "survol" au doigt, --tilt-x/y restent à 0deg). */
+if(window.matchMedia && window.matchMedia('(hover: hover)').matches){
+  let tiltRaf = null;
+  document.addEventListener('mousemove', (e)=>{
+    if(tiltRaf) return; // un seul calcul par frame d'affichage, jamais plus
+    tiltRaf = requestAnimationFrame(()=>{
+      tiltRaf = null;
+      const cover = e.target.closest && e.target.closest('.track-card .cover');
+      if(!cover) return;
+      const rect = cover.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width - 0.5;
+      const py = (e.clientY - rect.top) / rect.height - 0.5;
+      const maxTilt = 7; // degrés — volontairement discret, pas un effet gadget
+      cover.style.setProperty('--tilt-y', (px * maxTilt).toFixed(2) + 'deg');
+      cover.style.setProperty('--tilt-x', (-py * maxTilt).toFixed(2) + 'deg');
+    });
+  }, { passive:true });
+}
+
 /* ============ RELEASE CALENDAR — vraies sorties, toute la plateforme ============ */
 function loadUpcomingReleases(){
   const row = document.getElementById('release-row');
