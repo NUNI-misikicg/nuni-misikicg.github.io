@@ -4232,6 +4232,9 @@ function renderHomeHero(){
   const subEl = document.getElementById('premium-hero-sub');
   const badgeEl = document.getElementById('premium-hero-badge');
   const playBtn = document.getElementById('premium-hero-play-btn');
+  const coverEl = document.getElementById('premium-hero-cover');
+  const liveCountEl = document.getElementById('premium-hero-live-count');
+  const shareBtn = document.getElementById('premium-hero-share-btn');
   if(!hero) return;
   const top5 = getTopStreamedTracks(5);
   if(!top5.length){
@@ -4245,14 +4248,14 @@ function renderHomeHero(){
   // un morceau inventé ou un chiffre de streams fictif.
   heroRotatePool = [...top5].sort(()=> Math.random()-0.5);
   heroRotateIndex = 0;
-  applyHeroTrack(heroRotatePool[0], hero, titleEl, subEl, playBtn);
+  applyHeroTrack(heroRotatePool[0], hero, titleEl, subEl, playBtn, coverEl, liveCountEl, shareBtn);
   clearInterval(heroRotateTimer);
   if(heroRotatePool.length > 1){
     heroRotateTimer = setInterval(()=>{
       heroRotateIndex = (heroRotateIndex + 1) % heroRotatePool.length;
       hero.classList.add('hero-fading');
       setTimeout(()=>{
-        applyHeroTrack(heroRotatePool[heroRotateIndex], hero, titleEl, subEl, playBtn);
+        applyHeroTrack(heroRotatePool[heroRotateIndex], hero, titleEl, subEl, playBtn, coverEl, liveCountEl, shareBtn);
         hero.classList.remove('hero-fading');
       }, 420);
     }, 8000);
@@ -4261,24 +4264,6 @@ function renderHomeHero(){
 /* ---- Scène du Hero — quelques particules très discrètes qui dérivent lentement vers le
    haut, façon poussière de lumière. Génération peu fréquente et peu nombreuse : jamais plus
    de 4-5 en même temps, pas de coût de performance notable. ---- */
-function spawnHeroParticle(){
-  const layer = document.getElementById('premium-hero-scene');
-  if(!layer || document.hidden || layer.offsetParent === null) return; // pas visible (autre vue affichée) : rien à faire
-  if(layer.children.length > 8) return; // sécurité : jamais d'accumulation si l'onglet reste ouvert très longtemps
-  const p = document.createElement('div');
-  p.className = 'premium-hero-particle';
-  const size = 3 + Math.random()*4;
-  p.style.width = size + 'px';
-  p.style.height = size + 'px';
-  p.style.left = (10 + Math.random()*80) + '%';
-  p.style.bottom = (Math.random()*40) + '%';
-  const duration = 9 + Math.random()*6;
-  p.style.animationDuration = duration + 's';
-  layer.appendChild(p);
-  setTimeout(()=> p.remove(), duration*1000 + 200);
-}
-setInterval(spawnHeroParticle, 2200);
-
 /* ============================================================
    NUNI AURA ENGINE V2 — signature NUNI, structurée pour être réutilisée
    plus tard par les clips, albums, playlists et profils artistes.
@@ -4392,11 +4377,22 @@ const NuniAura = {
 // Conservé pour compatibilité : l'ancien nom d'appel (playTrack l'utilise) délègue au moteur.
 function applyMusicAura(tr){ NuniAura.applyTrack(tr); }
 
-function applyHeroTrack(top, hero, titleEl, subEl, playBtn){
-  if(top.cover) hero.style.backgroundImage = `url(${top.cover})`;
+function applyHeroTrack(top, hero, titleEl, subEl, playBtn, coverEl, liveCountEl, shareBtn){
+  if(top.cover && coverEl) coverEl.style.backgroundImage = `url(${top.cover})`;
   if(titleEl) titleEl.innerHTML = `<em>${top.t}</em>`;
   if(subEl) subEl.textContent = `${top.a} · parmi les morceaux les plus écoutés cette semaine`;
   if(playBtn) playBtn.onclick = ()=>{ playTrack(top); openFullPlayer(); };
+  // Vrai nombre d'écoutes du morceau, jamais un compteur "temps réel" inventé — juste le
+  // vrai total déjà connu, formaté comme partout ailleurs sur NUNI.
+  if(liveCountEl) liveCountEl.textContent = `${formatStreams(top.streams||0)} écoutes`;
+  if(shareBtn){
+    shareBtn.onclick = ()=>{
+      const url = window.location.origin + window.location.pathname;
+      const text = `Écoutez "${top.t}" de ${top.a} sur NUNI 🎵`;
+      if(navigator.share){ navigator.share({ title: top.t + ' — ' + top.a, text, url }).catch(()=>{}); }
+      else { navigator.clipboard.writeText(`${text} ${url}`).then(()=> toast('Lien copié !')); }
+    };
+  }
   // Halo de couleur dynamique — la teinte du Hero suit la pochette affichée, en réutilisant
   // le même système d'extraction que le lecteur plein écran (voir NuniPalette).
   if(top.cover && typeof NuniPalette !== 'undefined'){
