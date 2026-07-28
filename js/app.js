@@ -943,6 +943,14 @@ async function loadLabelDashboardStatus(){
         if(view && view.style.display !== 'none') loadLabelDashboardStatus();
       }, 20000);
     }
+    // ---- Tant que le compte Label n'est pas validé, rien d'autre à explorer sur NUNI n'a
+    // vraiment de sens pour lui — seul le Dashboard (son statut) reste accessible. Une fois
+    // validé, la navigation normale revient automatiquement (voir applyAccountType). ----
+    document.querySelectorAll('.app-nav-link').forEach(el=>{
+      if(el.id !== 'nav-dashboard-link'){
+        el.style.display = label.verification_status === 'validated' ? '' : 'none';
+      }
+    });
     const phase2 = document.getElementById('label-dash-phase2');
     const changePlanCard = document.getElementById('label-change-plan-card');
     if(changePlanCard){
