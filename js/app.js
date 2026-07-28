@@ -3875,6 +3875,15 @@ function trackCard(tr){
   card.querySelector('.art').onclick = (e)=>{ e.stopPropagation(); openArtistPage(tr.a, tr.artistId); };
   card.querySelector('.track-card-menu-btn').onclick = (e)=>{ e.stopPropagation(); openTrackCardMenu(tr, e.currentTarget); };
   if(currentTrack && playing && trackKeyOf(currentTrack) === trackKeyOf(tr)) card.classList.add('is-now-playing');
+  // ---- Accessibilité clavier — avant, cette carte n'était activable qu'à la souris (les
+  // gestionnaires de clic vivaient sur des <div> internes, jamais focusables). Toute la
+  // carte devient un vrai arrêt de tabulation, activable au clavier comme à la souris.
+  card.tabIndex = 0;
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', `${tr.t} — ${tr.a}`);
+  card.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); handleTrackCardClick(tr); }
+  });
   return card;
 }
 /* Petit popover léger (zone d'appui 44px min, conforme aux recommandations mobiles) — ancré

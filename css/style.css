@@ -114,7 +114,7 @@ img{max-width:100%; display:block;}
 ::-webkit-scrollbar-track{background:transparent;}
 
 /* focus visibility */
-a:focus-visible, button:focus-visible, input:focus-visible{
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible{
   outline:2px solid var(--accent);
   outline-offset:3px;
   border-radius:6px;
@@ -250,6 +250,7 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .impact-counter .dot{ width:7px; height:7px; border-radius:50%; background:#7FC79A; flex-shrink:0; animation:dotPulse 1.6s ease-in-out infinite; }
 .impact-counter .data{ font-size:14px; font-weight:600; color:var(--accent); }
 @keyframes dotPulse{ 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.4; transform:scale(.7); } }
+@media(prefers-reduced-motion: reduce){ .phb-dot, .radio-badge .dot{ animation:none; } }
 
 .home-footer{
   position:static; padding:22px 36px 8px; display:flex; justify-content:center;
@@ -973,6 +974,11 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .track-card.reveal-in{ opacity:0; animation: revealIn .55s var(--ease) forwards; }
 @keyframes revealIn{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:translateY(0);} }
 .track-card:hover .cover{ transform:translateY(-6px) scale(1.02) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); }
+/* Focus clavier — même traitement visuel que le survol (halo signature + lift), pour que la
+   navigation au clavier ressente la même qualité que la souris, pas un simple contour générique. */
+.track-card:focus-visible{ outline:none; }
+.track-card:focus-visible::before{ opacity:.45; }
+.track-card:focus-visible .cover{ transform:translateY(-6px) scale(1.02); box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 0 2px var(--accent); }
 /* ---- Signature NUNI : un halo lumineux qui respire derrière la pochette au survol —
    reconnaissable même sans logo, comme demandé. Un seul pseudo-élément par carte, actif
    uniquement au survol (jamais en continu sur des dizaines de cartes à la fois). ---- */
