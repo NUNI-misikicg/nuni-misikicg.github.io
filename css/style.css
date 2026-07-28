@@ -625,6 +625,50 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 @media(prefers-reduced-motion: reduce){ .radio-banner-eq span{ animation:none; transform:scaleY(.7); } }
 @media(max-width:640px){ .radio-banner-eq{ display:none; } }
 
+/* ============================================================
+   AFRIQUE EN DIRECT — globe abstrait (pas une carte géographique
+   précise, assumé comme tel) + vrai classement pays/villes basé sur
+   les vraies écoutes enregistrées (table plays, croisée avec le
+   pays/ville renseigné par l'auditeur à l'inscription).
+============================================================ */
+.afrolive-section{ margin-bottom:58px; }
+.afrolive-card{
+  display:grid; grid-template-columns:220px 1fr; gap:36px; align-items:center;
+  background:var(--bg-card); border:1px solid var(--border); border-radius:24px; padding:32px;
+}
+.afrolive-globe-wrap{ display:flex; flex-direction:column; align-items:center; gap:14px; }
+.afrolive-globe{ position:relative; width:150px; height:150px; }
+.ag-ring{ position:absolute; inset:0; border-radius:50%; border:1px solid rgba(212,175,106,.25); }
+.ag-ring-1{ animation:agSpin 22s linear infinite; }
+.ag-ring-2{ inset:14px; border-color:rgba(30,82,56,.35); animation:agSpin 16s linear infinite reverse; }
+.ag-ring-3{ inset:28px; border-color:rgba(184,74,57,.3); animation:agSpin 28s linear infinite; }
+@keyframes agSpin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+.ag-core{
+  position:absolute; inset:38px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--or-2), var(--or) 55%, #8a5a1e 100%);
+  box-shadow:0 0 30px -4px rgba(212,175,106,.55), inset -8px -8px 16px rgba(0,0,0,.35);
+}
+.ag-dot{
+  position:absolute; top:50%; left:50%; width:6px; height:6px; border-radius:50%; background:var(--or-2);
+  box-shadow:0 0 8px var(--or-2);
+  transform:rotate(var(--a)) translateX(var(--r)) rotate(calc(var(--a) * -1));
+  animation:agOrbit 12s linear infinite; animation-delay:var(--d);
+}
+@keyframes agOrbit{ from{ transform:rotate(var(--a)) translateX(var(--r)) rotate(calc(var(--a) * -1)); } to{ transform:rotate(calc(var(--a) + 360deg)) translateX(var(--r)) rotate(calc((var(--a) + 360deg) * -1)); } }
+@media(prefers-reduced-motion: reduce){ .ag-ring-1, .ag-ring-2, .ag-ring-3, .ag-dot{ animation:none; } }
+.afrolive-stat{ font-size:12px; color:var(--text-faint); text-align:center; line-height:1.5; }
+.afrolive-stat b{ color:var(--text); font-family:var(--font-data); font-weight:700; }
+.afrolive-lists{ display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+.afrolive-list-title{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); margin-bottom:12px; }
+.afrolive-row{ display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.afrolive-row:last-child{ border-bottom:none; }
+.afrolive-row .plays{ color:var(--text-faint); font-family:var(--font-data); font-size:12px; }
+@media(max-width:760px){
+  .afrolive-card{ grid-template-columns:1fr; }
+  .afrolive-globe-wrap{ margin:0 auto; }
+}
+
+
 .release-row{ display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 .artist-suggest-row{ display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 .badges-row{ display:flex; gap:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }

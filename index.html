@@ -15,11 +15,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727b6">
-<link rel="stylesheet" href="css/corners.css?v=20260727b6">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727b6">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727b6">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727b6">
+<link rel="stylesheet" href="css/style.css?v=20260727b7">
+<link rel="stylesheet" href="css/corners.css?v=20260727b7">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727b7">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727b7">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727b7">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -748,6 +748,37 @@
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="openTuner('radio')"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="3.5"/><path d="M3 14.5h.01M20.99 14.5H21M6.3 8.3 3.5 5.5m14.2 2.8 2.8-2.8M2 21h20"/></svg> Ouvrir le tuner</button>
         <button class="btn btn-ghost" onclick="openTuner('dj')"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> NUNI DJ</button>
+      </div>
+    </div>
+
+    <!-- ============ AFRIQUE EN DIRECT — globe abstrait + vraies écoutes par pays/ville ============ -->
+    <div class="afrolive-section" id="afrolive-section" style="display:none;">
+      <div class="shelf-head"><h3 class="serif">🌍 Afrique en direct</h3></div>
+      <div class="afrolive-card">
+        <div class="afrolive-globe-wrap">
+          <div class="afrolive-globe">
+            <div class="ag-ring ag-ring-1"></div>
+            <div class="ag-ring ag-ring-2"></div>
+            <div class="ag-ring ag-ring-3"></div>
+            <div class="ag-core"></div>
+            <div class="ag-dot" style="--a:20deg; --r:78px; --d:0s;"></div>
+            <div class="ag-dot" style="--a:95deg; --r:64px; --d:.4s;"></div>
+            <div class="ag-dot" style="--a:160deg; --r:82px; --d:.9s;"></div>
+            <div class="ag-dot" style="--a:230deg; --r:60px; --d:1.3s;"></div>
+            <div class="ag-dot" style="--a:290deg; --r:74px; --d:1.7s;"></div>
+          </div>
+          <div class="afrolive-stat"><b id="afrolive-total-plays">—</b> écoutes réelles enregistrées, <b id="afrolive-total-countries">—</b> pays</div>
+        </div>
+        <div class="afrolive-lists">
+          <div>
+            <div class="afrolive-list-title">Top pays</div>
+            <div id="afrolive-countries"></div>
+          </div>
+          <div>
+            <div class="afrolive-list-title">Top villes</div>
+            <div id="afrolive-cities"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1835,8 +1866,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727b6"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727b7"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727b6"></script>
+<script src="js/app.js?v=20260727b7"></script>
 </body>
 </html>

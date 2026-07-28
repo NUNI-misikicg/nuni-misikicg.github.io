@@ -4235,6 +4235,29 @@ async function loadRealTracks(){
 // du morceau le plus streamé du moment — la musique devient la vedette, pas le logo. Repli
 // silencieux sur l'image statique tant qu'aucun morceau réel n'a encore assez d'écoutes.
 let heroRotateTimer = null, heroRotateIndex = 0, heroRotatePool = [];
+/* ---------- "Afrique en direct" — vraies écoutes par pays/ville, plateforme entière ---------- */
+async function loadAfroliveStats(){
+  const section = document.getElementById('afrolive-section');
+  if(!section) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/stats/geo');
+    if(!res.ok) return;
+    const data = await res.json();
+    if(!data.topCountries.length && !data.topCities.length) return; // pas encore assez de vraies données, section masquée plutôt qu'un cadre vide
+    const fmt = n => Number(n||0).toLocaleString('fr-FR');
+    document.getElementById('afrolive-total-plays').textContent = fmt(data.totalPlays);
+    document.getElementById('afrolive-total-countries').textContent = fmt(data.totalCountries);
+    document.getElementById('afrolive-countries').innerHTML = data.topCountries.length
+      ? data.topCountries.map(c=> `<div class="afrolive-row"><span>${c.country}</span><span class="plays">${fmt(c.plays)}</span></div>`).join('')
+      : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
+    document.getElementById('afrolive-cities').innerHTML = data.topCities.length
+      ? data.topCities.map(c=> `<div class="afrolive-row"><span>${c.city}</span><span class="plays">${fmt(c.plays)}</span></div>`).join('')
+      : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
+    section.style.display = 'block';
+  }catch(e){ /* pas grave si le serveur est momentanément indisponible — la section reste simplement masquée */ }
+}
+loadAfroliveStats();
+
 function renderHomeHero(){
   const hero = document.getElementById('premium-hero-accueil');
   const titleEl = document.getElementById('premium-hero-title');
