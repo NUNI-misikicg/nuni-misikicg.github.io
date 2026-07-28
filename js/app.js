@@ -400,6 +400,7 @@ function startAccountStatusWatcher(){
   clearInterval(accountStatusCheckTimer);
   accountStatusCheckTimer = setInterval(async ()=>{
     if(!realAuthToken) return;
+    if(!navigator.onLine) return; // pas de réseau du tout : inutile de tenter, on réessaiera au prochain cycle
     try{
       const res = await fetch(NUNI_API_BASE + '/api/me', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
       if(res.status === 401 || res.status === 403){
@@ -1649,6 +1650,15 @@ function showDiscoveryGraceModal(){
   if(discoveryGraceModalShown) return;
   discoveryGraceModalShown = true;
   document.getElementById('ai-modal-overlay').classList.add('show');
+}
+// Bouton "Terminer maintenant (démo)" du bandeau Pass Découverte — permet de passer
+// directement au choix d'un vrai Pass sans attendre la fin des 24h d'essai. Le bouton
+// existait déjà dans le HTML mais n'appelait aucune fonction réelle (ReferenceError).
+function endDiscovery(){
+  clearInterval(discoveryTimer);
+  const banner = document.getElementById('discovery-banner');
+  if(banner) banner.style.display = 'none';
+  goTo('plans');
 }
 function closeAiModal(){
   document.getElementById('ai-modal-overlay').classList.remove('show');
@@ -4175,6 +4185,7 @@ loadRealTracks();
 function loadUpcomingReleases(){
   const row = document.getElementById('release-row');
   if(!row) return;
+  if(!navigator.onLine) return; // pas de réseau du tout : inutile de tenter, on réessaiera au prochain cycle
   fetch(NUNI_API_BASE + '/api/releases/upcoming').then(r=>r.json()).then(data=>{
     const list = data.releases || [];
     row.innerHTML = '';
@@ -7083,7 +7094,13 @@ let talentMyVoteArtistId = null;
 // Reprend exactement les mêmes vraies données que le classement complet NUNI Talent
 // (/api/talent/top100 — vrais streams + vrais votes de la semaine, jamais inventés).
 // Jusqu'à 30 artistes, cartes verticales avec la vraie photo de profil en fond.
+let loadHomeTalentRowInFlight = false;
 async function loadHomeTalentRow(){
+  if(loadHomeTalentRowInFlight) return;
+  loadHomeTalentRowInFlight = true;
+  try{ await loadHomeTalentRowInner(); } finally { loadHomeTalentRowInFlight = false; }
+}
+async function loadHomeTalentRowInner(){
   const wrap = document.getElementById('shelf-home-talent');
   const row = document.getElementById('home-talent-row');
   if(!wrap || !row) return;
@@ -7703,7 +7720,17 @@ function badgeIconSvg(key){
   const inner = BADGE_ICONS[key] || BADGE_ICONS.star;
   return `<svg class="nuni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
 }
+let loadProgressInFlight = false;
 async function loadProgress(){
+  if(loadProgressInFlight) return; // un appel est déjà en cours — jamais en lancer un second par-dessus
+  loadProgressInFlight = true;
+  try{
+    await loadProgressInner();
+  } finally {
+    loadProgressInFlight = false;
+  }
+}
+async function loadProgressInner(){
   const badgesRow = document.getElementById('badges-row');
   const levelWrap = document.getElementById('level-progress-wrap');
   if(!badgesRow && !levelWrap) return;
@@ -7786,7 +7813,13 @@ function celebrateLevelUp(level, name){
    Étape 5 de la gamification. Top 5 affiché sur l'accueil, avec médaille pour le podium.
    Le propre rang de la personne connectée est affiché en dessous si elle n'est pas dans
    le top (pas besoin d'être connecté pour voir le classement, juste pour voir son rang). */
+let loadLeaderboardInFlight = false;
 async function loadLeaderboard(){
+  if(loadLeaderboardInFlight) return;
+  loadLeaderboardInFlight = true;
+  try{ await loadLeaderboardInner(); } finally { loadLeaderboardInFlight = false; }
+}
+async function loadLeaderboardInner(){
   const wrap = document.getElementById('shelf-leaderboard');
   const list = document.getElementById('leaderboard-list');
   const myRankEl = document.getElementById('leaderboard-my-rank');
@@ -9141,6 +9174,7 @@ function timeAgoFr(dateStr){
 const notifIcons = { follower:'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>', new_release:'<svg class="nuni-ic filled nuni-ic-gold" viewBox="0 0 24 24"><circle cx="7.5" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/><path d="M10 18V5l9.5-2v13"/></svg>', follower_milestone:'<svg class="nuni-ic filled nuni-ic-gold" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3M9 20h6M10 20v-2.5h4V20"/></svg>', absence_reminder:'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></svg>', opportunites_reminder:'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M3 10v4a1 1 0 0 0 1 1h2.5l5 3.5v-13L6.5 9H4a1 1 0 0 0-1 1z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19.5 6a9 9 0 0 1 0 12"/></svg>' };
 async function loadNotifications(){
   if(!realAuthToken) return;
+  if(!navigator.onLine) return; // pas de réseau du tout : inutile de tenter, on réessaiera au prochain cycle
   try{
     const res = await fetch(NUNI_API_BASE + '/api/notifications', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
     if(!res.ok) return;
