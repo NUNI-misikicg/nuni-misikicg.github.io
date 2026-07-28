@@ -8985,7 +8985,15 @@ function applyAccountType(){
   const dashboardLink = document.getElementById('nav-dashboard-link');
   if(dashboardLink) dashboardLink.style.display = (isArtist || isLabel) ? '' : 'none';
   const chipLabel = document.querySelector('.user-chip span');
-  if(chipLabel) chipLabel.textContent = currentUser ? (currentUser.first_name + ' ' + currentUser.last_name.charAt(0) + '.') : (isArtist ? 'Bibi M.' : 'Auditeur');
+  if(chipLabel){
+    if(!currentUser){
+      chipLabel.textContent = isArtist ? 'Bibi M.' : 'Auditeur';
+    } else if(isArtist && currentUser.artist_name){
+      chipLabel.textContent = currentUser.artist_name; // un artiste doit se reconnaître par son nom de scène, pas prénom+initiale
+    } else {
+      chipLabel.textContent = currentUser.first_name + ' ' + currentUser.last_name.charAt(0) + '.';
+    }
+  }
   if(currentUser && currentUser.avatar_url){ applyAvatarEverywhere(currentUser.avatar_url); }
   const artistMenuItem = document.getElementById('profile-menu-artist-space');
   if(artistMenuItem) artistMenuItem.style.display = isArtist ? '' : 'none';
