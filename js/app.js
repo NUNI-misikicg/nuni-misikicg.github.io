@@ -2277,6 +2277,7 @@ function enterApp(view){
     b.classList.toggle('is-active', b.dataset.tab === view);
   });
   window.scrollTo({top:0, behavior:'smooth'});
+  setTimeout(initScrollReveal, 60); // laisse le contenu de la vue s'installer avant de repérer les nouvelles sections
 }
 
 /* ============ AIDE / SUPPORT ============
@@ -9088,6 +9089,35 @@ document.addEventListener('click', (e)=>{
 applyAccountType();
 refreshLabelPlanOptionsFromServer();
 sessionRestorePromise = restoreSession();
+
+/* ============================================================
+   PHASE 4 DA — le scroll raconte une histoire : chaque section (shelf)
+   apparaît en douceur en entrant dans le cadre, une seule fois. Un seul
+   IntersectionObserver partagé pour toute la page, jamais un par
+   section — reste léger même avec des dizaines de sections au fil de
+   la navigation. Rappelé à chaque changement de vue (voir enterApp)
+   pour repérer les nouvelles sections qui viennent d'apparaître.
+============================================================ */
+let scrollRevealObserver = null;
+function initScrollReveal(){
+  if(!scrollRevealObserver){
+    if(typeof IntersectionObserver === 'undefined') return; // navigateur très ancien : pas grave, tout reste simplement visible
+    scrollRevealObserver = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          entry.target.classList.add('in-view');
+          scrollRevealObserver.unobserve(entry.target); // une seule révélation, jamais de va-et-vient au re-scroll
+        }
+      });
+    }, { threshold:0.12, rootMargin:'0px 0px -60px 0px' });
+  }
+  document.querySelectorAll('.shelf:not([data-scroll-observed])').forEach(el=>{
+    el.dataset.scrollObserved = '1';
+    el.classList.add('scroll-chapter');
+    scrollRevealObserver.observe(el);
+  });
+}
+initScrollReveal();
 
 /* ============ REPRISE APRÈS RETOUR EN ARRIÈRE-PLAN (ex: WhatsApp) ============
    Avant : rien ne se passait quand on revenait sur l'onglet NUNI après être parti sur
