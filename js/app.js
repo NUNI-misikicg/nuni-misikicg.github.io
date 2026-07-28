@@ -2608,6 +2608,8 @@ function openArtistPage(name, artistId){
     fillShelf('shelf-artist', artistTracks);
     fillShelf('shelf-artist-trending', [...artistTracks].sort((a,b)=>(b.likes||0)-(a.likes||0)));
     fillShelf('shelf-artist-albums', artistTracks);
+    renderArtistLatestRelease(artistTracks);
+    renderArtistTopTracksList(artistTracks);
   } else {
     // Avant : un artiste sans aucun morceau publié affichait ici 4 morceaux d'AUTRES artistes
     // (repli sur tracks.slice(0,4), le début du catalogue global) — trompeur, comme si ces
@@ -2617,6 +2619,8 @@ function openArtistPage(name, artistId){
       const row = document.getElementById(id);
       if(row) row.innerHTML = emptyMsg;
     });
+    document.getElementById('artist-latest-release-section').style.display = 'none';
+    document.getElementById('artist-top-tracks-section').style.display = 'none';
   }
   // Avant : un bouton supprimer séparé (cercle gris) était ajouté à côté du menu ⋮ sur
   // chaque pochette de sa propre discographie — doublon avec la vraie option "Supprimer ce
@@ -4040,6 +4044,72 @@ function dedupeAlbums(list){
   });
   return order.map(key => seen.get(key));
 }
+/* ---------- Page artiste — "Dernière version" en vedette (façon Apple Music) ----------
+   Repère la sortie la plus récente (album ou single) parmi les vrais morceaux de l'artiste,
+   et l'affiche dans une grande carte plutôt que noyée dans la grille de discographie. */
+function renderArtistLatestRelease(artistTracks){
+  const section = document.getElementById('artist-latest-release-section');
+  const box = document.getElementById('artist-latest-release-card');
+  if(!section || !box) return;
+  const deduped = dedupeAlbums([...artistTracks].sort((a,b)=> (b.releaseTs||0) - (a.releaseTs||0)));
+  const latest = deduped[0];
+  if(!latest){ section.style.display = 'none'; return; }
+  const albumTrackCount = latest.releaseType && latest.releaseType !== 'Single'
+    ? artistTracks.filter(t=> t.a === latest.a && t.album === latest.album).length
+    : 1;
+  const coverStyle = latest.cover ? `background-image:url(${latest.cover});` : '';
+  box.innerHTML = `
+    <div class="artist-latest-card">
+      <div class="artist-latest-cover ${latest.cover ? '' : (latest.p||'')}" style="${coverStyle}">
+        <div class="play-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+      </div>
+      <div class="artist-latest-info">
+        <div class="date">${latest.release}</div>
+        <div class="title">${latest.releaseType && latest.releaseType !== 'Single' ? latest.album : latest.t}</div>
+        <div class="meta">${latest.releaseType || 'Single'}${albumTrackCount>1 ? ' · ' + albumTrackCount + ' chansons' : ''}</div>
+      </div>
+    </div>`;
+  box.querySelector('.artist-latest-card').onclick = ()=>{
+    if(latest.releaseType && latest.releaseType !== 'Single') openAlbumView(latest);
+    else { playTrack(latest); openFullPlayer(); }
+  };
+  section.style.display = 'block';
+}
+
+/* ---------- Page artiste — "Meilleurs titres" en liste compacte (façon Apple Music) ----------
+   Contrairement à la Discographie (une carte par ALBUM), cette liste montre les morceaux
+   individuels les plus streamés, tous types confondus — une autre façon de parcourir les
+   mêmes vraies données, pas un doublon inventé. */
+function renderArtistTopTracksList(artistTracks){
+  const section = document.getElementById('artist-top-tracks-section');
+  const box = document.getElementById('artist-top-tracks-list');
+  if(!section || !box) return;
+  if(!artistTracks.length){ section.style.display = 'none'; return; }
+  const top = [...artistTracks].sort((a,b)=> parseStreamsCount(b.streams) - parseStreamsCount(a.streams)).slice(0, 6);
+  box.innerHTML = top.map((t,i)=>{
+    const coverStyle = t.cover ? `background-image:url(${t.cover});` : '';
+    return `
+    <div class="artist-top-tracks-row" data-idx="${i}">
+      <div class="rank">${i+1}</div>
+      <div class="thumb ${t.cover ? '' : (t.p||'')}" style="${coverStyle}"></div>
+      <div class="info">
+        <div class="t">${t.t}${t.releaseType && t.releaseType !== 'Single' ? '' : ''}</div>
+        <div class="s">${t.album && t.album !== t.t ? t.album + ' · ' : ''}${t.year||''}</div>
+      </div>
+      <div class="plays">${t.streams} écoutes</div>
+      <button class="btn-icon row-menu-btn" aria-label="Options" onclick="event.stopPropagation(); openTrackCardMenu(window.__artistTopTracksCache[${i}], this);"><svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.artist-top-tracks-row').forEach(row=>{
+    row.onclick = (e)=>{
+      if(e.target.closest('.row-menu-btn')) return;
+      playTrack(top[Number(row.dataset.idx)]); openFullPlayer();
+    };
+  });
+  window.__artistTopTracksCache = top; // référencé par les onclick des boutons ⋮ ci-dessus
+  section.style.display = 'block';
+}
+
 function fillShelf(id, list){
   const row = document.getElementById(id);
   dedupeAlbums(list).forEach((tr,i) => {
@@ -4149,6 +4219,7 @@ async function loadRealTracks(){
       year: new Date(r.created_at).getFullYear(),
       streams: String(r.streams || 0),
       release: (r.release_date ? new Date(r.release_date) : new Date(r.created_at)).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}),
+      releaseTs: (r.release_date ? new Date(r.release_date) : new Date(r.created_at)).getTime(),
       verified: !!r.is_verified, likes: r.likes || 0,
       cover: r.cover_url || null, audioUrl: r.audio_url || null, isReal: true,
       releaseType: r.release_type || 'Single',
