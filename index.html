@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727x">
-<link rel="stylesheet" href="css/corners.css?v=20260727x">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727x">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727x">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727x">
+<link rel="stylesheet" href="css/style.css?v=20260727y">
+<link rel="stylesheet" href="css/corners.css?v=20260727y">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727y">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727y">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727y">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -629,7 +629,7 @@
       <!-- Onglet "Clips" retiré — les clips restent consultables depuis le profil d'un
            artiste ou via la recherche (façon Apple Music), plus de page de navigation dédiée. -->
       <!-- Onglet "Opportunités" retiré temporairement — fonctionnement/rôle pas encore décidé, focus sur le streaming -->
-      <a class="app-nav-link" href="top.html"><svg class="nuni-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9.5 10.2l4 4L21 6"/><path d="M15 6h6v6"/></svg>Top</a>
+      <!-- Onglet "Top" retiré — déplacé dans la recherche (Parcourir), comme Concerts et NUNI Événements. -->
       <button class="app-nav-link nav-consumer-only" data-app-link="library" onclick="enterApp('library')"><svg class="nuni-nav-ic" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="4" height="14" rx="1.5"/><rect x="10" y="2" width="4" height="20" rx="1.5"/><rect x="17" y="8" width="4" height="11" rx="1.5"/></svg>Bibliothèque</button>
       <button class="app-nav-link nav-artist-only" data-app-link="artist" onclick="enterApp('artist')">Artiste</button>
       <button class="app-nav-link nav-artist-only" id="nav-dashboard-link" data-app-link="dashboard" onclick="enterApp('dashboard')">Dashboard</button>
@@ -1737,10 +1737,7 @@
   </button>
   <!-- Onglet "Clips" retiré — consultables depuis le profil artiste ou la recherche -->
   <!-- Onglet "Opportunités" retiré temporairement — fonctionnement/rôle pas encore décidé, focus sur le streaming -->
-  <a class="tab-btn" href="top.html">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9.5 10.2l4 4L21 6"/><path d="M15 6h6v6"/></svg>
-    <span>Top</span>
-  </a>
+  <!-- Onglet "Top" retiré — déplacé dans la recherche (Parcourir) -->
   <button class="tab-btn tab-consumer-only" data-tab="library" onclick="tabNav('library')">
     <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="4" height="14" rx="1.5"/><rect x="10" y="2" width="4" height="20" rx="1.5"/><rect x="17" y="8" width="4" height="11" rx="1.5"/></svg>
     <span>Bibliothèque</span>
@@ -1792,8 +1789,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727x"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727y"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727x"></script>
+<script src="js/app.js?v=20260727y"></script>
 </body>
 </html>

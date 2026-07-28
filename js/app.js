@@ -8564,11 +8564,13 @@ function renderSearchViewBrowse(){
     <div class="asv-genre-grid">
       <div class="asv-genre-tile" style="background:#6E45A8;" data-concerts="1">🎤 Concerts</div>
       <div class="asv-genre-tile" style="background:#B3512E;" data-nuni-events="1">🎉 NUNI Événements</div>
+      <div class="asv-genre-tile" style="background:#1976D2;" data-top="1">📈 Top</div>
       ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
     </div>
     ${renderRecentSearchesRow()}`;
   box.querySelector('[data-concerts]').onclick = ()=> enterApp('concerts');
   box.querySelector('[data-nuni-events]').onclick = ()=> enterApp('nuniEvents');
+  box.querySelector('[data-top]').onclick = ()=> window.location.href = 'top.html';
   box.querySelectorAll('.asv-genre-tile[data-genre]').forEach(tile=>{
     tile.onclick = ()=>{
       const g = tile.dataset.genre;
