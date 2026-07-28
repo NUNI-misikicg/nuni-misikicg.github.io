@@ -324,6 +324,8 @@ function stopAllPlayback(){
     // proprement en même temps plutôt que de le laisser tourner dans le vide.
     try{ nuniAnalysisAudio.pause(); }catch(e){ /* pas bloquant */ }
     document.documentElement.classList.remove('is-playing');
+    const ambient = document.getElementById('nuni-aura-ambient');
+    if(ambient) ambient.classList.remove('is-active');
     const icon = document.getElementById('play-icon');
     if(icon) icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
     const fpIcon = document.getElementById('fp-play-icon');
@@ -4278,6 +4280,24 @@ function spawnHeroParticle(){
 }
 setInterval(spawnHeroParticle, 2200);
 
+/* ============================================================
+   MUSIC AURA — signature NUNI. Le morceau en cours de lecture diffuse
+   sa couleur dominante (réutilise NuniPalette, déjà utilisé par le
+   Hero et le lecteur plein écran — pas de doublon de logique) vers le
+   fond ambiant de toute l'app et le mini-lecteur. Jamais bloquant :
+   si l'extraction échoue ou qu'il n'y a pas de pochette, l'aura reste
+   simplement éteinte plutôt que d'inventer une couleur.
+============================================================ */
+function applyMusicAura(tr){
+  const ambient = document.getElementById('nuni-aura-ambient');
+  if(!ambient) return;
+  if(!tr || !tr.cover || typeof NuniPalette === 'undefined'){ ambient.classList.remove('is-active'); return; }
+  NuniPalette.extract(tr.cover).then(palette=>{
+    document.documentElement.style.setProperty('--nuni-aura-color', palette.accent);
+    ambient.classList.add('is-active');
+  }).catch(()=>{ ambient.classList.remove('is-active'); });
+}
+
 function applyHeroTrack(top, hero, titleEl, subEl, playBtn){
   if(top.cover) hero.style.backgroundImage = `url(${top.cover})`;
   if(titleEl) titleEl.innerHTML = `<em>${top.t}</em>`;
@@ -4727,6 +4747,7 @@ function togglePlay(){
   if(playing) document.getElementById('player-bar').style.display = 'flex';
   document.documentElement.classList.toggle('is-playing', playing);
   updateNowPlayingCards();
+  applyMusicAura(tr);
   if('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
   const iconPath = playing
     ? '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>'
