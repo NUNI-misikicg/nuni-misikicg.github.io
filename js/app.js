@@ -2275,13 +2275,19 @@ function enterApp(view){
   document.querySelectorAll('.tab-btn').forEach(b=>{
     b.style.display = searchActive ? (b.dataset.tab === 'catalog' ? '' : 'none') : '';
   });
-  if(!searchActive) applyAccountType(); // restaure les onglets nav-artist-only/nav-consumer-only masqués ci-dessus, selon le vrai type de compte
   document.querySelectorAll('.app-nav-link').forEach(l=>{
     l.classList.toggle('is-active', l.dataset.appLink === view);
   });
   document.querySelectorAll('.tab-btn').forEach(b=>{
     b.classList.toggle('is-active', b.dataset.tab === view);
   });
+  // IMPORTANT : applyAccountType() lit l'onglet actif (document.querySelector('.app-nav-link.is-active'))
+  // pour décider s'il faut rediriger vers le catalogue (compte consumer/label égaré sur une
+  // vue réservée aux artistes) — elle doit donc être appelée APRÈS la mise à jour ci-dessus,
+  // jamais avant. Avant ce correctif, elle lisait encore l'ancien onglet actif (celui de la
+  // vue précédente), ce qui pouvait redéclencher enterApp('catalog') → applyAccountType() →
+  // enterApp('catalog') → ... indéfiniment, avec des centaines d'appels réseau en cascade.
+  if(!searchActive) applyAccountType(); // restaure les onglets nav-artist-only/nav-consumer-only masqués ci-dessus, selon le vrai type de compte
   window.scrollTo({top:0, behavior:'smooth'});
   setTimeout(initScrollReveal, 60); // laisse le contenu de la vue s'installer avant de repérer les nouvelles sections
 }
@@ -8970,7 +8976,17 @@ function runSearchView(q){
 /* ============ SÉPARATION INTERFACE CONSOMMATEUR / ARTISTE ============ */
 let accountType = 'artist'; // 'artist' ou 'consumer' — démo : on part en vue Artiste (Bibi Mwana)
 let demoOverride = false; // true = le bouton démo a été utilisé manuellement, on ignore le vrai compte
+let applyAccountTypeRunning = false; // garde-fou anti-boucle : voir l'appel à enterApp() plus bas dans cette fonction
 function applyAccountType(){
+  if(applyAccountTypeRunning) return; // déjà en cours d'exécution plus haut dans la pile — ne jamais s'imbriquer
+  applyAccountTypeRunning = true;
+  try{
+    applyAccountTypeInner();
+  } finally {
+    applyAccountTypeRunning = false;
+  }
+}
+function applyAccountTypeInner(){
   if(!demoOverride && currentUser){ accountType = currentUser.account_type; }
   const isArtist = accountType === 'artist';
   const isLabel = accountType === 'label';
