@@ -657,12 +657,36 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 /* Halo de couleur dynamique — sa teinte change selon la pochette en cours (voir
-   applyHeroTrack dans app.js, qui pose --nuni-hero-glow via NuniPalette.extract). */
+   applyHeroTrack dans app.js, qui pose --nuni-hero-glow via NuniPalette.extract).
+   Agrandi et intensifié pour vraiment border derrière le titre, pas juste un coin discret. */
 .premium-hero-glow{
-  position:absolute; inset:-15%; z-index:0; pointer-events:none;
-  background:radial-gradient(circle at 28% 78%, var(--nuni-hero-glow, rgba(212,175,106,.4)) 0%, transparent 62%);
-  filter:blur(70px); opacity:.75; transition:background 1.1s ease;
+  position:absolute; inset:-25%; z-index:0; pointer-events:none;
+  background:radial-gradient(circle at 22% 68%, var(--nuni-hero-glow, rgba(212,175,106,.4)) 0%, transparent 58%);
+  filter:blur(90px); opacity:.85; transition:background 1.1s ease;
 }
+/* Ondes sonores qui se propagent lentement depuis le bouton Play — 3 anneaux décalés,
+   comme des ondes de fréquence qui se diffusent dans la scène. */
+.premium-hero-waves{ position:absolute; left:52px; bottom:58px; width:1px; height:1px; z-index:0; pointer-events:none; }
+.premium-hero-waves span{
+  position:absolute; left:0; top:0; width:80px; height:80px; margin:-40px 0 0 -40px;
+  border-radius:50%; border:1px solid var(--nuni-hero-glow, rgba(212,175,106,.5));
+  opacity:0; animation:heroWaveRipple 4.5s ease-out infinite;
+}
+.premium-hero-waves span:nth-child(2){ animation-delay:1.5s; }
+.premium-hero-waves span:nth-child(3){ animation-delay:3s; }
+@keyframes heroWaveRipple{ 0%{ transform:scale(.4); opacity:.5; } 100%{ transform:scale(3.2); opacity:0; } }
+/* Lignes de fréquence — une rangée très discrète en bas du Hero, comme un spectre audio
+   qui traverse toute la largeur, à peine perceptible. */
+.premium-hero-freqline{ position:absolute; left:0; right:0; bottom:0; height:46px; z-index:2; pointer-events:none; display:flex; align-items:flex-end; gap:2px; padding:0 8%; opacity:.18; }
+.premium-hero-freqline span{ flex:1; background:linear-gradient(0deg, var(--or-2,#E8C77E), transparent); animation:eqBar 2.2s ease-in-out infinite; }
+.premium-hero-freqline span:nth-child(odd){ animation-delay:-.6s; }
+.premium-hero-freqline span:nth-child(3n){ animation-delay:-1.1s; }
+.premium-hero-freqline span:nth-child(4n){ animation-delay:-1.7s; }
+@media(prefers-reduced-motion: reduce){
+  .premium-hero-waves span{ animation:none; display:none; }
+  .premium-hero-freqline span{ animation:none; }
+}
+@media(max-width:900px){ .premium-hero-waves, .premium-hero-freqline{ display:none; } }
 .premium-hero-overlay{
   position:absolute; inset:0; z-index:1;
   background:linear-gradient(90deg, rgba(5,5,6,0.96) 0%, rgba(5,5,6,0.74) 40%, rgba(5,5,6,0.28) 78%),

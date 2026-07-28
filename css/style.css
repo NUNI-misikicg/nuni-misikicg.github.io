@@ -973,17 +973,52 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 }
 .stream-count-line .nuni-ic{ width:11px; height:11px; flex-shrink:0; }
 .cover .play-fab{
-  position:absolute; top:50%; left:50%; margin:-19px 0 0 -19px;
-  width:38px; height:38px; border-radius:50%; background:rgba(10,10,16,.55); backdrop-filter:blur(6px);
-  display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(6px) scale(.8);
-  transition:opacity .3s var(--ease), transform .35s var(--ease); border:1px solid rgba(255,255,255,.25);
+  position:absolute; top:50%; left:50%; margin:-22px 0 0 -22px;
+  width:44px; height:44px; border-radius:50%; background:rgba(10,10,16,.6); backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(10px) scale(.6);
+  transition:opacity .3s cubic-bezier(.34,1.56,.64,1), transform .45s cubic-bezier(.34,1.56,.64,1);
+  border:1px solid rgba(255,255,255,.28); box-shadow:0 8px 24px -6px rgba(0,0,0,.5);
   z-index:4; /* sous le menu ⋮ (z-index:5) — jamais l'un par-dessus l'autre de façon ambiguë */
 }
 .track-card:hover .play-fab{ opacity:1; transform:translateY(0) scale(1); }
 @media(hover:none){
-  .cover .play-fab{ opacity:.9; transform:translateY(0) scale(1); }
+  .cover .play-fab{ opacity:.9; transform:translateY(0) scale(1); width:38px; height:38px; margin:-19px 0 0 -19px; }
 }
-.cover .play-fab svg{ width:14px; height:14px; fill:#fff; }
+.cover .play-fab svg{ width:16px; height:16px; fill:#fff; }
+
+/* ============================================================
+   PHASE — pochettes "signature NUNI" : overlay façon Spotify au
+   survol. Scrim sombre + streams/likes qui remontent sur l'image,
+   titre qui se soulève, menu ⋮ qui glisse depuis le bord. Uniquement
+   sur les appareils qui ont un vrai survol (hover:hover) — sur
+   tactile, l'affichage classique sous la pochette reste utilisé,
+   puisqu'il n'y a pas de survol possible au doigt.
+============================================================ */
+@media(hover:hover){
+  .cover::after{
+    content:''; position:absolute; inset:0; z-index:2; pointer-events:none;
+    background:linear-gradient(0deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.35) 42%, transparent 68%);
+    opacity:0; transition:opacity .35s ease;
+  }
+  .track-card:hover .cover::after{ opacity:1; }
+  .track-card{ padding-bottom:2px; }
+  .track-card .stream-count-line, .track-card .likes{
+    position:absolute; left:14px; right:36px; z-index:3; margin:0;
+    opacity:0; transform:translateY(8px); transition:opacity .35s ease, transform .35s ease;
+    color:rgba(255,255,255,.88); text-shadow:0 1px 3px rgba(0,0,0,.6);
+  }
+  .track-card .stream-count-line{ top:126px; }
+  .track-card .likes{ top:148px; font-size:11px; }
+  .track-card:hover .stream-count-line{ opacity:1; transform:translateY(0); transition-delay:.05s; }
+  .track-card:hover .likes{ opacity:1; transform:translateY(0); transition-delay:.1s; }
+  .track-card .ttl{ transition:transform .3s ease, color .3s ease; }
+  .track-card:hover .ttl{ transform:translateY(-2px); color:var(--accent); }
+  .track-card .art{ transition:opacity .3s ease; }
+  .track-card-menu-btn{ opacity:0; transform:translateX(8px); transition:opacity .3s ease, transform .3s ease; }
+  .track-card:hover .track-card-menu-btn{ opacity:1; transform:translateX(0); }
+  #shelf-new .track-card:first-child .stream-count-line{ top:254px; }
+  #shelf-new .track-card:first-child .likes{ top:276px; }
+}
 
 /* generated cover palettes */
 .pal-1{ background:linear-gradient(150deg,#6E45A8,#141A38); }
