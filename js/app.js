@@ -4221,6 +4221,13 @@ function applyHeroTrack(top, hero, titleEl, subEl, playBtn){
   if(titleEl) titleEl.innerHTML = `<em>${top.t}</em>`;
   if(subEl) subEl.textContent = `${top.a} · parmi les morceaux les plus écoutés cette semaine`;
   if(playBtn) playBtn.onclick = ()=>{ playTrack(top); openFullPlayer(); };
+  // Halo de couleur dynamique — la teinte du Hero suit la pochette affichée, en réutilisant
+  // le même système d'extraction que le lecteur plein écran (voir NuniPalette).
+  if(top.cover && typeof NuniPalette !== 'undefined'){
+    NuniPalette.extract(top.cover).then(palette=>{
+      hero.style.setProperty('--nuni-hero-glow', palette.accent);
+    });
+  }
 }
 loadRealTracks();
 

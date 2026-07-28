@@ -16,11 +16,11 @@
 <link rel="preconnect" href="https://api.fontshare.com">
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=202607272">
-<link rel="stylesheet" href="css/corners.css?v=202607272">
-<link rel="stylesheet" href="css/nuni-premium.css?v=202607272">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=202607272">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=202607272">
+<link rel="stylesheet" href="css/style.css?v=202607273">
+<link rel="stylesheet" href="css/corners.css?v=202607273">
+<link rel="stylesheet" href="css/nuni-premium.css?v=202607273">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=202607273">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=202607273">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -716,6 +716,8 @@
     </div>
 
     <div class="premium-hero" id="premium-hero-accueil" style="background-image:url('assets/hero/hero-accueil.jpg');">
+      <div class="premium-hero-grain"></div>
+      <div class="premium-hero-glow" id="premium-hero-glow"></div>
       <div class="premium-hero-overlay"></div>
       <div class="premium-hero-content">
         <span class="premium-hero-badge" id="premium-hero-badge"><span class="phb-dot"></span>Le plus écouté cette semaine</span>
@@ -728,7 +730,8 @@
           <span onclick="filterCatalogByGenre('Gospel'); document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname') && t.querySelector('.gname').textContent==='Gospel'));">Gospel</span>
         </div>
         <div class="premium-hero-actions">
-          <button class="btn btn-primary" id="premium-hero-play-btn" onclick="const top=getTopStreamedTracks(1)[0]; if(top){ playTrack(top); openFullPlayer(); } else { toast('Pas encore assez d\'écoutes pour établir un Top.'); }">Écouter maintenant</button>
+          <button class="nuni-cine-play-btn" id="premium-hero-play-btn" aria-label="Écouter maintenant" onclick="const top=getTopStreamedTracks(1)[0]; if(top){ playTrack(top); openFullPlayer(); } else { toast('Pas encore assez d\'écoutes pour établir un Top.'); }"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+          <div class="nuni-cine-play-label">Écouter maintenant<small>Morceau le plus streamé</small></div>
           <button class="btn btn-ghost" onclick="filterCatalogByGenre('Top Congo'); document.querySelectorAll('.genre-tile').forEach((t,i)=>t.classList.toggle('is-active', t.querySelector('.gname') && t.querySelector('.gname').textContent==='Top Congo'));"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 21V10M11 21V4M18 21v-7"/><path d="M2 21h20"/></svg> Top Congo</button>
         </div>
       </div>
@@ -1822,8 +1825,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=202607272"></script>
+<script src="js/nuni-dj-avatar.js?v=202607273"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=202607272"></script>
+<script src="js/app.js?v=202607273"></script>
 </body>
 </html>
