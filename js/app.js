@@ -4014,15 +4014,28 @@ async function confirmDeleteTrack(tr){
   }catch(e){ toast("Impossible de contacter le serveur NUNI."); }
 }
 function dedupeAlbums(list){
-  const seen = new Set();
-  return list.filter(tr=>{
+  const seen = new Map(); // clé album → morceau actuellement retenu pour la représenter
+  const order = [];
+  list.forEach(tr=>{
     if(tr.releaseType && tr.releaseType !== 'Single'){
       const key = tr.a + '::' + tr.album;
-      if(seen.has(key)) return false;
-      seen.add(key);
+      const current = seen.get(key);
+      if(!current){
+        seen.set(key, tr);
+        order.push(key);
+      } else if(!current.cover && tr.cover){
+        // Le morceau déjà retenu n'a pas de vraie pochette, mais celui-ci en a une —
+        // avant : le tout premier morceau rencontré représentait l'album même sans
+        // couverture, ce qui affichait un aplat de couleur générique au lieu de la vraie
+        // pochette dès qu'un autre morceau du même album en avait bien une.
+        seen.set(key, tr);
+      }
+    } else {
+      seen.set('single::' + tr.t + '::' + tr.a, tr);
+      order.push('single::' + tr.t + '::' + tr.a);
     }
-    return true;
   });
+  return order.map(key => seen.get(key));
 }
 function fillShelf(id, list){
   const row = document.getElementById(id);
@@ -8657,15 +8670,20 @@ function runSearchView(q){
   // Albums/EP — un morceau par album unique (artiste + titre d'album), pour retrouver un
   // projet entier plutôt que juste ses morceaux un par un. Les Singles ne comptent pas comme
   // "album" ici (ils apparaissent déjà dans la section Morceaux).
-  const albumSeen = new Set();
-  const albumMatches = tracks.filter(t=>{
-    if(!t.album || t.releaseType === 'Single') return false;
-    const key = t.a + '::' + t.album;
-    if(albumSeen.has(key)) return false;
+  const albumGroups = new Map(); // clé album → tous les morceaux correspondants de cet album
+  tracks.forEach(t=>{
+    if(!t.album || t.releaseType === 'Single') return;
     const matches = (t.album||'').toLowerCase().includes(query) || (t.a||'').toLowerCase().includes(query);
-    if(matches) albumSeen.add(key);
-    return matches;
-  }).slice(0, 6);
+    if(!matches) return;
+    const key = t.a + '::' + t.album;
+    if(!albumGroups.has(key)) albumGroups.set(key, []);
+    albumGroups.get(key).push(t);
+  });
+  // Représente chaque album par un de ses morceaux qui a réellement une couverture, plutôt
+  // que simplement le premier trouvé (qui pouvait très bien ne pas en avoir).
+  const albumMatches = [...albumGroups.values()]
+    .map(groupTracks => groupTracks.find(t=>t.cover) || groupTracks[0])
+    .slice(0, 6);
   const trackMatches = tracks.filter(t =>
     (t.t||'').toLowerCase().includes(query) || (t.a||'').toLowerCase().includes(query) || (t.album||'').toLowerCase().includes(query)
   ).slice(0, 10);
