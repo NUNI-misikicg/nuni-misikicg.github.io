@@ -376,12 +376,21 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .asv-recent-chip:hover{ border-color:var(--accent); background:rgba(212,175,106,0.08); }
 .asv-genre-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:14px; }
 .asv-genre-tile{
-  position:relative; height:88px; border-radius:12px; overflow:hidden; cursor:pointer;
-  display:flex; align-items:flex-end; padding:12px; font-weight:700; font-size:15px; color:#fff;
-  text-shadow:0 1px 4px rgba(0,0,0,0.35); transition:transform .15s ease;
+  position:relative; height:96px; border-radius:16px; overflow:hidden; cursor:pointer;
+  display:flex; align-items:flex-end; padding:14px; font-weight:700; font-size:15px; color:#fff;
+  text-shadow:0 1px 4px rgba(0,0,0,0.35);
+  box-shadow:0 10px 26px -14px rgba(0,0,0,0.6);
+  transition:transform .3s var(--ease,cubic-bezier(.2,.8,.2,1)), box-shadow .3s var(--ease,cubic-bezier(.2,.8,.2,1));
 }
-.asv-genre-tile:hover{ transform:translateY(-2px); }
+.asv-genre-tile:hover{ transform:translateY(-4px) scale(1.015); box-shadow:0 18px 34px -12px rgba(0,0,0,0.65); }
 .asv-genre-tile::after{ content:''; position:absolute; top:-10px; right:-10px; width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,0.18); transform:rotate(20deg); }
+/* Reflet diagonal au survol, même langage visuel que les pochettes premium ailleurs dans l'app. */
+.asv-genre-tile::before{
+  content:''; position:absolute; inset:-40% -60%; z-index:2; pointer-events:none;
+  background:linear-gradient(115deg, transparent 42%, rgba(255,255,255,0.2) 49%, rgba(255,255,255,0.05) 55%, transparent 62%);
+  transform:translateX(-120%); transition:transform .7s cubic-bezier(.2,.7,.2,1);
+}
+.asv-genre-tile:hover::before{ transform:translateX(20%); }
 .asv-genre-tile.is-coming-soon{ opacity:0.88; }
 .asv-soon-badge{ position:absolute; top:10px; right:10px; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; background:rgba(0,0,0,0.35); padding:3px 8px; border-radius:20px; text-shadow:none; }
 
@@ -1103,7 +1112,12 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .stat-block .num{ font-family:var(--font-data); font-size:26px; font-weight:600; }
 /* ---- Dashboard Label — vue d'ensemble (Phase 2) ---- */
 .dash-stats-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:14px; }
-.dash-stat-card{ background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:18px; }
+.dash-stat-card{
+  background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:18px;
+  box-shadow:0 8px 22px -16px rgba(0,0,0,0.5);
+  transition:transform .3s var(--ease,cubic-bezier(.2,.8,.2,1)), box-shadow .3s var(--ease,cubic-bezier(.2,.8,.2,1)), border-color .3s ease;
+}
+.dash-stat-card:hover{ transform:translateY(-3px); box-shadow:0 14px 30px -14px rgba(0,0,0,0.6); border-color:rgba(212,175,106,0.3); }
 .dash-stat-card .num{ font-family:var(--font-data); font-size:24px; font-weight:700; color:var(--text); }
 .dash-stat-card .lbl{ font-size:12px; color:var(--text-faint); margin-top:4px; }
 .label-artist-row{ display:flex; align-items:center; gap:12px; padding:12px; border-radius:12px; background:var(--bg-card); border:1px solid var(--border); }
@@ -1127,7 +1141,12 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 /* ============ DASHBOARD ============ */
 .dash-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:34px; }
 @media(max-width:900px){ .dash-grid{ grid-template-columns:1fr 1fr; } }
-.kpi-card{ background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--radius-m); padding:22px; }
+.kpi-card{
+  background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--radius-m); padding:22px;
+  box-shadow:0 8px 22px -16px rgba(0,0,0,0.5);
+  transition:transform .3s var(--ease,cubic-bezier(.2,.8,.2,1)), box-shadow .3s var(--ease,cubic-bezier(.2,.8,.2,1)), border-color .3s ease;
+}
+.kpi-card:hover{ transform:translateY(-3px); box-shadow:0 14px 30px -14px rgba(0,0,0,0.6); border-color:rgba(212,175,106,0.3); }
 .kpi-card .lbl{ font-size:12.5px; color:var(--text-faint); margin-bottom:10px; }
 .kpi-card .val{ font-family:var(--font-data); font-size:25px; font-weight:600; }
 .kpi-card .trend{ font-size:12px; margin-top:8px; color:#7FC79A; }

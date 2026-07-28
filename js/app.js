@@ -9119,6 +9119,30 @@ function initScrollReveal(){
 }
 initScrollReveal();
 
+/* ============================================================
+   PARALLAX du Hero — la pochette en fond bouge plus lentement que le
+   scroll, comme un décor qui reste derrière le premier plan. Calcul
+   limité à une fois par frame d'affichage (requestAnimationFrame), et
+   totalement ignoré si le Hero n'est même pas visible à l'écran —
+   aucun coût quand on est ailleurs dans l'app.
+============================================================ */
+if(!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+  let heroParallaxRaf = null;
+  document.addEventListener('scroll', ()=>{
+    if(heroParallaxRaf) return;
+    heroParallaxRaf = requestAnimationFrame(()=>{
+      heroParallaxRaf = null;
+      const hero = document.getElementById('premium-hero-accueil');
+      if(!hero || hero.offsetParent === null) return; // masqué (autre vue affichée) : rien à faire
+      const rect = hero.getBoundingClientRect();
+      if(rect.bottom < 0 || rect.top > window.innerHeight) return; // hors du cadre visible : pas la peine de calculer
+      const progress = (window.innerHeight - rect.top) / (window.innerHeight + rect.height); // 0 en entrant, 1 en sortant
+      const shift = (progress - 0.5) * 34; // léger déplacement vertical, jamais brutal
+      hero.style.backgroundPosition = `center ${50 + shift}%`;
+    });
+  }, { passive:true });
+}
+
 /* ============ REPRISE APRÈS RETOUR EN ARRIÈRE-PLAN (ex: WhatsApp) ============
    Avant : rien ne se passait quand on revenait sur l'onglet NUNI après être parti sur
    WhatsApp valider un paiement — sur mobile, le navigateur suspend/gèle parfois l'onglet en
