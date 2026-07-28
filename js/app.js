@@ -764,6 +764,7 @@ async function submitRealRegistration(){
 // Cloudinary avec ses propres identifiants (voir uploadIfDataUri dans server.js), exactement
 // comme pour les pochettes de morceaux.
 let pendingLabelFiles = { logo: null, idDoc: null, labelDoc: null };
+let pendingLabelWhatsAppMessage = null; // non-null uniquement juste après une inscription Label, jusqu'à la fermeture du modal WhatsApp
 function openLabelRegister(){
   pendingLabelFiles = { logo: null, idDoc: null, labelDoc: null };
   document.getElementById('lr-feedback').innerHTML = '';
@@ -867,12 +868,17 @@ async function submitLabelRegistration(){
     currentUser = data.user;
     saveSession(data.token, data.user, true);
     feedback.style.color = '#7FC79A';
- feedback.textContent = ' Demande envoyée ! Votre compte Label est en attente de vérification par l\'équipe NUNI (sous 24h).';
+ feedback.textContent = ' Demande envoyée ! Finalisons ça sur WhatsApp.';
     btn.disabled = false;
+    // ---- Même flux que les autres Pass NUNI : on passe d'abord par WhatsApp (paiement du
+    // palier choisi), puis le Dashboard s'ouvre — il affichera "en attente de vérification"
+    // et se synchronisera tout seul dès que l'admin approuve (voir le polling automatique
+    // dans loadLabelDashboardStatus). ----
+    pendingLabelWhatsAppMessage = `Bonjour NUNI, je viens d'inscrire mon Label "${document.getElementById('lr-label-name').value.trim()}" sur NUNI, palier ${data.labelPlanName} (${Number(data.labelPlanPriceFcfa).toLocaleString('fr-FR')} FCFA). Pouvez-vous m'aider à finaliser mon paiement ?`;
     setTimeout(()=>{
       closeLabelRegister();
-      enterApp('dashboard'); // affichera l'écran "en attente" — voir applyAccountType/renderLabelDashboard (Phase 2)
-    }, 1200);
+      document.getElementById('whatsapp-modal-overlay').classList.add('show');
+    }, 800);
   }catch(e){
     feedback.style.color = 'var(--rose-braise)';
  feedback.textContent = ' Impossible de contacter le serveur NUNI. Vérifiez votre connexion internet.';
@@ -1390,6 +1396,16 @@ function exportLabelPaymentsXLSX(){
 }
 
 function confirmPlanViaWhatsApp(){
+  // ---- Cas Label : message dédié déjà préparé à l'inscription, pas de code d'accès à
+  // saisir ensuite (le compte est validé par l'admin, pas par un code) — direction le
+  // Dashboard, qui affiche "en attente" et se synchronise tout seul une fois approuvé. ----
+  if(pendingLabelWhatsAppMessage){
+    openWhatsApp(`https://wa.me/242068951600?text=${encodeURIComponent(pendingLabelWhatsAppMessage)}`);
+    pendingLabelWhatsAppMessage = null;
+    document.getElementById('whatsapp-modal-overlay').classList.remove('show');
+    enterApp('dashboard');
+    return;
+  }
   const type = pendingPlanType;
   const planLabel = type === 'artist' ? 'Pass Artiste' : 'Pass Consommateur';
   const idNote = realUserId ? ` (mon identifiant NUNI : ${realUserId})` : '';
@@ -1406,6 +1422,10 @@ function confirmPlanViaWhatsApp(){
 }
 function closeWhatsAppModal(){
   document.getElementById('whatsapp-modal-overlay').classList.remove('show');
+  if(pendingLabelWhatsAppMessage){
+    pendingLabelWhatsAppMessage = null;
+    enterApp('dashboard');
+  }
 }
 
 function openRedeemModal(){
