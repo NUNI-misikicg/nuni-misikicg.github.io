@@ -9022,16 +9022,13 @@ function applyAccountTypeInner(){
   // seul le type de compte réel doit déterminer l'accès. Masqué dès qu'un vrai compte est
   // connecté — ne reste utile que pendant la démo, avant inscription.
   if(switchBtn) switchBtn.style.display = currentUser ? 'none' : '';
-  // si l'écran courant n'existe pas côté consommateur, on revient au catalogue
+  // si l'écran courant n'existe pas côté consommateur, on revient au catalogue — mais
+  // uniquement Dashboard/admin, jamais 'artist' : visiter la page d'un AUTRE artiste (via
+  // openArtistPage) utilise cette même vue 'artist', et c'est une navigation normale et
+  // publique pour n'importe quel type de compte, pas un accès à protéger.
   if(!isArtist && !isLabel){
     const activeLink = document.querySelector('.app-nav-link.is-active');
-    if(activeLink && ['artist','dashboard','admin'].includes(activeLink.dataset.appLink)) enterApp('catalog');
-  }
-  if(isLabel){
-    // Un compte Label n'a pas de page artiste publique — s'il traînait sur cette vue
-    // (bascule de compte, lien direct...), retour au catalogue plutôt qu'un écran vide.
-    const activeLink = document.querySelector('.app-nav-link.is-active');
-    if(activeLink && activeLink.dataset.appLink === 'artist') enterApp('catalog');
+    if(activeLink && ['dashboard','admin'].includes(activeLink.dataset.appLink)) enterApp('catalog');
   }
 }
 function switchAccountType(){
