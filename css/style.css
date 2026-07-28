@@ -12,21 +12,21 @@
   --violet:#6E45A8;
   --violet-2:#8E63C9;
   --violet-soft:#A98AD6;
-  --or:#D4AF6A;
-  --or-2:#E8C77E;
+  --or:#E5B25D;
+  --or-2:#F0C578;
   --or-soft:#F2DDA8;
   --rose-braise:#C9667A;
-  --vert-nuni:#1E8449;
+  --vert-nuni:#1E5238;
   --jaune-nuni:#F0AC2E;
-  --rouge-nuni:#C0392B;
-  --cuivre:#B8734A;
+  --rouge-nuni:#B84A39;
+  --cuivre:#D96B43;
 
   --grad-envol: linear-gradient(135deg, var(--violet) 0%, var(--or) 100%);
   --grad-nuit: linear-gradient(160deg, var(--bleu-nuit) 0%, var(--noir) 100%);
 
-  --font-display:'General Sans', 'Inter', sans-serif;
-  --font-accent:'General Sans', sans-serif;
-  --font-body:'General Sans', 'Inter', sans-serif;
+  --font-display:'Syne', 'General Sans', sans-serif;
+  --font-accent:'Syne', sans-serif;
+  --font-body:'Plus Jakarta Sans', 'Inter', sans-serif;
   --font-data:'Space Grotesk', sans-serif;
 
   --radius-s:10px;
