@@ -4832,6 +4832,7 @@ function playTrack(tr){
   }
   updateProgress();
   syncFullPlayer();
+  applyMusicAura(tr);
   playing = false;
   togglePlay();
 }
@@ -4842,7 +4843,6 @@ function togglePlay(){
   if(playing) document.getElementById('player-bar').style.display = 'flex';
   document.documentElement.classList.toggle('is-playing', playing);
   updateNowPlayingCards();
-  applyMusicAura(tr);
   if('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
   const iconPath = playing
     ? '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>'
