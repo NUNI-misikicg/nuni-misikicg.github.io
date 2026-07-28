@@ -46,68 +46,25 @@ positionMimiWidget(); // premier calcul immédiat (le DOM est déjà prêt à ce
 });
 
 /* ============ ÉCRAN DE CHARGEMENT (SPLASH) ============
-   Séquence différente si en ligne ou hors ligne (comme demandé). Durée volontairement
-   courte et fixe : elle sert à donner une impression de qualité et à masquer la
-   préparation réelle de l'app, pas à attendre une vraie réponse serveur précise. */
-let splashNoteTimer = null;
-function spawnSplashNote(){
-  const layer = document.getElementById('splash-notes');
-  if(!layer) return;
-  const notes = ['♪','♫','♩'];
-  const n = document.createElement('span');
-  n.className = 'splash-note';
-  n.textContent = notes[Math.floor(Math.random()*notes.length)];
-  n.style.setProperty('--nx', (Math.random()*70-35) + 'px');
-  n.style.setProperty('--nr', (Math.random()*40-20) + 'deg');
-  n.style.left = (35 + Math.random()*30) + '%';
-  layer.appendChild(n);
-  setTimeout(()=> n.remove(), 2700);
-}
+   Logo figé, aucune animation — juste une courte pause premium (façon Spotify/Apple
+   Music) le temps que la restauration de session se termine, plafonnée pour ne jamais
+   bloquer l'utilisateur si le réseau est lent. */
 let sessionRestorePromise = null; // rempli plus bas, dès que restoreSession() démarre — lu par le splash ci-dessous
 function runSplashSequence(){
   const el = document.getElementById('splash-screen');
-  const status = document.getElementById('splash-status');
-  const icon = document.getElementById('splash-status-icon');
-  const bar = document.getElementById('splash-bar-fill');
-  if(!el || !status || !bar) return;
-  const online = navigator.onLine;
-  const steps = online
-    ? [ { t:'Connexion à NUNI…', p:30, ic:'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M9.5 14.5 14.5 9.5"/><path d="M11 6.5 13 4.5a3.5 3.5 0 0 1 5 5l-2 2M13 17.5l-2 2a3.5 3.5 0 0 1-5-5l2-2"/></svg>' }, { t:'Chargement de votre bibliothèque…', p:68, ic:'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="13" height="17" rx="2"/><path d="M9 4.5V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5M8.5 11h7M8.5 15h7"/></svg>' }, { t:'Synchronisation…', p:96, ic:'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M4.5 15a8 8 0 0 0 14.5 3M19.5 9A8 8 0 0 0 5 6"/></svg>' } ]
-    : [ { t:'Mode hors ligne', p:45, ic:'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>' }, { t:'Chargement de votre bibliothèque locale…', p:92, ic:'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="13" height="17" rx="2"/><path d="M9 4.5V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5M8.5 11h7M8.5 15h7"/></svg>' } ];
-  let i = 0;
-  splashNoteTimer = setInterval(spawnSplashNote, 650);
-  const advance = ()=>{
-    if(i >= steps.length){
-      bar.style.width = '100%';
-      // Attend que la vérification de session (reconnexion automatique) soit terminée avant de révéler
-      // quoi que ce soit derrière l'écran de chargement — évite le "flash" de l'écran d'accueil avant de
-      // retrouver directement son compte. Plafonné à 1,2s supplémentaires max, pour ne jamais bloquer
-      // l'utilisateur si le réseau est lent.
-      const waitFor = sessionRestorePromise
-        ? Promise.race([sessionRestorePromise, new Promise(r=> setTimeout(r, 1200))])
-        : Promise.resolve();
-      waitFor.then(()=>{
-        setTimeout(()=>{
-          el.classList.add('fade-out');
-          clearInterval(splashNoteTimer);
-          setTimeout(()=> el.remove(), 650);
-        }, 260);
-      });
-      return;
-    }
-    status.style.opacity = 0;
-    if(icon) icon.style.opacity = 0;
+  if(!el) return;
+  // Attend que la vérification de session (reconnexion automatique) soit terminée avant de
+  // révéler quoi que ce soit derrière l'écran de démarrage — évite le "flash" de l'écran
+  // d'accueil avant de retrouver directement son compte. Plafonné à 1,2s max.
+  const waitFor = sessionRestorePromise
+    ? Promise.race([sessionRestorePromise, new Promise(r=> setTimeout(r, 1200))])
+    : new Promise(r=> setTimeout(r, 700)); // pause premium minimale même hors ligne, comme un vrai écran de lancement
+  waitFor.then(()=>{
     setTimeout(()=>{
-      status.textContent = steps[i].t;
-      if(icon) icon.innerHTML = steps[i].ic;
-      bar.style.width = steps[i].p + '%';
-      status.style.opacity = 1;
-      if(icon) icon.style.opacity = 1;
-      i++;
-      setTimeout(advance, 480);
-    }, 180);
-  };
-  advance();
+      el.classList.add('fade-out');
+      setTimeout(()=> el.remove(), 650);
+    }, 260);
+  });
 }
 runSplashSequence();
 window.addEventListener('offline', ()=> toast('Connexion perdue — mode hors ligne, contenu limité à ce qui est déjà chargé.'));
