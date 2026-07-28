@@ -334,6 +334,7 @@ async function restoreSession(){
     loadFeaturedArtists();
     realUserId = stored.userId;
     currentUser = data.user;
+    demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
     applyAccountType();
     if(currentUser.account_type === 'label'){
       enterApp('dashboard');
@@ -420,6 +421,7 @@ function startAccountStatusWatcher(){
         const wasActive = currentUser && currentUser.subscription_status === 'active';
         const nowActive = data.user && data.user.subscription_status === 'active';
         currentUser = data.user;
+        demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
         saveSession(realAuthToken, currentUser, true);
         applyAccountType();
         if(!wasActive && nowActive){
@@ -592,6 +594,7 @@ async function submitLogin(){
     syncLikedTracksFromServer();
     realUserId = data.user.id;
     currentUser = data.user;
+    demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
     const rememberBox = document.getElementById('login-remember');
     saveSession(data.token, data.user, !rememberBox || rememberBox.checked);
 
@@ -717,6 +720,7 @@ async function submitRealRegistration(){
     syncLikedTracksFromServer();
     realUserId = data.user.id;
     currentUser = data.user;
+    demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
     saveSession(data.token, data.user, true); // toujours mémorisé après une inscription fraîche
 
     if(pendingIsDiscovery){
@@ -866,6 +870,7 @@ async function submitLabelRegistration(){
     realAuthToken = data.token;
     realUserId = data.user.id;
     currentUser = data.user;
+    demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
     saveSession(data.token, data.user, true);
     feedback.style.color = '#7FC79A';
  feedback.textContent = ' Demande envoyée ! Finalisons ça sur WhatsApp.';
@@ -1523,6 +1528,7 @@ async function submitRedeem(){
  feedback.textContent = ' ' + data.message;
  toast('Accès débloqué — bienvenue sur NUNI en intégralité ️');
     currentUser = data.user;
+    demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
     applyAccountType();
     setTimeout(()=>{
       closeRedeemModal();
