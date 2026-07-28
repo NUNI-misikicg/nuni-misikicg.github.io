@@ -2232,6 +2232,8 @@ function enterApp(view){
       loadDashboardConcerts();
       loadMyLabelInvites();
       loadMyLabelTeamInvites();
+      artistGallerySlotFiles = [null, null, null, null, null];
+      renderArtistGallerySlots();
     }
   }
   if(view === 'search'){
@@ -2544,7 +2546,7 @@ function openArtistPage(name, artistId){
           if(data.bio && !(isOwnArtistPage && currentUser.bio)){
             document.getElementById('artist-page-bio').textContent = data.bio;
           }
-          artistPublicInfoCache[currentArtistPageRealId] = { avatar_url: data.avatar_url || null, bio: data.bio || null };
+          artistPublicInfoCache[currentArtistPageRealId] = { avatar_url: data.avatar_url || null, bio: data.bio || null, about_gallery_urls: data.about_gallery_urls || [] };
         }).catch(()=>{});
     } else {
       statFollowersEl.textContent = '—';
@@ -6200,6 +6202,105 @@ async function openTicketInfoModal(concertId){
 function closeTicketInfoModal(){
   document.getElementById('ticket-info-overlay').classList.remove('show');
 }
+
+/* ============ "À PROPOS" COMPLET — carrousel photo + bio intégrale (façon Spotify) ============ */
+let apabImages = [];
+let apabIndex = 0;
+function openArtistAboutModal(){
+  const isOwn = currentArtistPageRealId && currentUser && currentUser.id === currentArtistPageRealId;
+  let gallery = [];
+  if(isOwn){
+    gallery = (currentUser.about_gallery_urls || '').split(',').filter(Boolean);
+  } else if(currentArtistPageRealId && artistPublicInfoCache[currentArtistPageRealId]){
+    gallery = artistPublicInfoCache[currentArtistPageRealId].about_gallery_urls || [];
+  }
+  // Repli honnête : si l'artiste n'a pas encore ajouté de galerie, on montre au moins sa
+  // vraie photo de profil plutôt qu'un cadre vide.
+  const heroPhoto = document.getElementById('artist-page-avatar');
+  const fallback = heroPhoto ? heroPhoto.style.backgroundImage.replace(/^url\(["']?/,'').replace(/["']?\)$/,'') : '';
+  apabImages = gallery.length ? gallery : (fallback ? [fallback] : []);
+  apabIndex = 0;
+  document.getElementById('apab-monthly-listeners').textContent = document.getElementById('artist-stat-monthly-listeners').textContent;
+  document.getElementById('apab-bio').textContent = document.getElementById('artist-page-bio').textContent;
+  document.getElementById('apab-stat-streams').textContent = document.getElementById('artist-stat-streams').textContent;
+  document.getElementById('apab-stat-followers').textContent = document.getElementById('artist-stat-followers').textContent;
+  document.getElementById('apab-stat-supports').textContent = document.getElementById('artist-stat-supports').textContent;
+  apabRenderImage();
+  document.getElementById('apab-overlay').classList.add('show');
+}
+function closeArtistAboutModal(){
+  document.getElementById('apab-overlay').classList.remove('show');
+}
+function apabRenderImage(){
+  const img = document.getElementById('apab-carousel-img');
+  const dots = document.getElementById('apab-dots');
+  const arrowLeft = document.querySelector('.apab-arrow.left');
+  const arrowRight = document.querySelector('.apab-arrow.right');
+  const multi = apabImages.length > 1;
+  if(arrowLeft) arrowLeft.style.display = multi ? '' : 'none';
+  if(arrowRight) arrowRight.style.display = multi ? '' : 'none';
+  img.style.backgroundImage = apabImages[apabIndex] ? `url(${apabImages[apabIndex]})` : '';
+  if(!apabImages[apabIndex]) img.style.background = 'var(--grad-envol)';
+  dots.innerHTML = multi ? apabImages.map((_,i)=> `<span class="${i===apabIndex?'is-active':''}"></span>`).join('') : '';
+}
+function apabPrevImage(){
+  if(!apabImages.length) return;
+  apabIndex = (apabIndex - 1 + apabImages.length) % apabImages.length;
+  apabRenderImage();
+}
+function apabNextImage(){
+  if(!apabImages.length) return;
+  apabIndex = (apabIndex + 1) % apabImages.length;
+  apabRenderImage();
+}
+
+/* ---------- Dashboard artiste — gestion de la galerie "À propos" (5 emplacements) ---------- */
+let artistGallerySlotFiles = [null, null, null, null, null]; // data-URI (nouvelle) ou URL existante (inchangée) ou null (vide)
+function renderArtistGallerySlots(){
+  const wrap = document.getElementById('artist-gallery-slots');
+  if(!wrap) return;
+  const existing = (currentUser && currentUser.about_gallery_urls) ? currentUser.about_gallery_urls.split(',').filter(Boolean) : [];
+  for(let i=0;i<5;i++){ if(artistGallerySlotFiles[i] === undefined) artistGallerySlotFiles[i] = existing[i] || null; }
+  wrap.innerHTML = '';
+  for(let i=0;i<5;i++){
+    const slot = document.createElement('div');
+    const url = artistGallerySlotFiles[i];
+    slot.style.cssText = `position:relative; aspect-ratio:1; border-radius:10px; background:${url ? `url(${url})` : 'var(--bg-card)'}; background-size:cover; background-position:center; border:1px dashed var(--border-strong); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:11px;`;
+    slot.innerHTML = url ? `<button style="position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,0.6); border:none; color:#fff; cursor:pointer;" onclick="event.stopPropagation(); artistGallerySlotFiles[${i}]=null; renderArtistGallerySlots();">✕</button>` : '+ Photo';
+    slot.onclick = ()=>{
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.onchange = (e)=>{
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = ()=>{ artistGallerySlotFiles[i] = reader.result; renderArtistGallerySlots(); };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    };
+    wrap.appendChild(slot);
+  }
+}
+async function saveArtistGallery(){
+  const msg = document.getElementById('artist-gallery-msg');
+  msg.style.color = 'var(--text-dim)'; msg.textContent = 'Enregistrement…';
+  try{
+    const images = artistGallerySlotFiles.filter(Boolean);
+    const res = await fetch(NUNI_API_BASE + '/api/artist/about-gallery', {
+      method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ images }),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
+    currentUser.about_gallery_urls = data.gallery.join(',');
+    saveSession(realAuthToken, currentUser, true);
+    artistGallerySlotFiles = [...data.gallery, null, null, null, null].slice(0, 5);
+    renderArtistGallerySlots();
+    msg.style.color = '#7FC79A'; msg.textContent = 'Galerie enregistrée.';
+  }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+
 let allConcertsCache = [];
 let currentConcertsFilter = 'all';
 async function loadConcertsPage(){
