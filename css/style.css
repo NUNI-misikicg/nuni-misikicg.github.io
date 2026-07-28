@@ -951,21 +951,28 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
    — jamais criard, jamais distrayant du contenu.
 ============================================================ */
 .track-card.is-now-playing::before{
-  opacity:.55; animation:auraBreathe 3.4s ease-in-out infinite;
+  opacity:.55; animation:auraBreathe var(--nuni-aura-pulse-speed, 3.4s) ease-in-out infinite;
 }
-@keyframes auraBreathe{ 0%,100%{ opacity:.4; transform:scale(1); } 50%{ opacity:.65; transform:scale(1.08); } }
+@keyframes auraBreathe{ 0%,100%{ opacity:.4; transform:scale(1); } 50%{ opacity:calc(.65 + var(--nuni-aura-live-boost, 0)); transform:scale(calc(1.08 + var(--nuni-aura-live-boost, 0)*0.6)); } }
 .track-card.is-now-playing .cover{ box-shadow:0 10px 26px -12px rgba(0,0,0,0.55), 0 0 22px -4px var(--nuni-signature-glow, var(--or)); }
 @media(prefers-reduced-motion: reduce){ .track-card.is-now-playing::before{ animation:none; opacity:.5; } }
 
-/* Reflet très doux sur le fond général de l'app pendant une lecture — un unique calque fixe,
-   sous tout le contenu, quasi imperceptible sauf en y prêtant attention. */
+/* Reflet très doux sur le fond général de l'app — un unique calque fixe, sous tout le
+   contenu, quasi imperceptible sauf en y prêtant attention. Deux paliers d'intensité :
+   "au repos" (rien ne joue, juste la sortie mise en avant du Hero — voir applyHeroTrack)
+   et "en lecture" (plus présent, voir NuniAura.applyTrack dans app.js). Le flou et la
+   vitesse de respiration varient selon le profil émotionnel du genre en cours. */
 #nuni-aura-ambient{
   position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0;
   background:radial-gradient(60% 50% at 15% 90%, var(--nuni-aura-color, transparent) 0%, transparent 65%);
-  filter:blur(120px); transition:opacity 1.4s ease, background 1.4s ease;
+  filter:blur(var(--nuni-aura-blur, 120px));
+  transition:opacity 1.1s ease, background 1.1s ease, filter 1.1s ease;
+  animation:auraAmbientBreathe var(--nuni-aura-pulse-speed, 5s) ease-in-out infinite;
 }
-#nuni-aura-ambient.is-active{ opacity:.16; }
-@media(prefers-reduced-motion: reduce){ #nuni-aura-ambient{ transition:opacity .3s ease; } }
+#nuni-aura-ambient.is-resting{ opacity:.07; }
+#nuni-aura-ambient.is-active{ opacity:calc(.16 + var(--nuni-aura-live-boost, 0)*0.4); }
+@keyframes auraAmbientBreathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.04); } }
+@media(prefers-reduced-motion: reduce){ #nuni-aura-ambient{ transition:opacity .3s ease; animation:none; } }
 .track-card:hover .cover.pal-1{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(110,69,168,0.55); }
 .track-card:hover .cover.pal-2{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(212,175,106,0.55); }
 .track-card:hover .cover.pal-3{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(201,102,122,0.55); }
@@ -1434,7 +1441,9 @@ html.is-playing .player-track-info .t{ font-weight:700; }
 .play-pause{
   width:36px; height:36px; border-radius:50%; background:var(--text); color:var(--bg); display:flex; align-items:center; justify-content:center;
   position:relative;
+  box-shadow:0 0 16px -2px var(--nuni-aura-color, transparent); transition:box-shadow 1.1s ease;
 }
+.fp-play{ box-shadow:0 0 26px -2px var(--nuni-aura-color, transparent); transition:box-shadow 1.1s ease; }
 .play-pause svg{ width:14px; height:14px; }
 .play-pause.is-buffering svg, .fp-play.is-buffering svg{ opacity:.35; }
 .play-pause.is-buffering::after, .fp-play.is-buffering::after{

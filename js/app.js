@@ -324,8 +324,7 @@ function stopAllPlayback(){
     // proprement en même temps plutôt que de le laisser tourner dans le vide.
     try{ nuniAnalysisAudio.pause(); }catch(e){ /* pas bloquant */ }
     document.documentElement.classList.remove('is-playing');
-    const ambient = document.getElementById('nuni-aura-ambient');
-    if(ambient) ambient.classList.remove('is-active');
+    if(typeof NuniAura !== 'undefined') NuniAura.stop();
     const icon = document.getElementById('play-icon');
     if(icon) icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
     const fpIcon = document.getElementById('fp-play-icon');
@@ -4281,22 +4280,117 @@ function spawnHeroParticle(){
 setInterval(spawnHeroParticle, 2200);
 
 /* ============================================================
-   MUSIC AURA — signature NUNI. Le morceau en cours de lecture diffuse
-   sa couleur dominante (réutilise NuniPalette, déjà utilisé par le
-   Hero et le lecteur plein écran — pas de doublon de logique) vers le
-   fond ambiant de toute l'app et le mini-lecteur. Jamais bloquant :
-   si l'extraction échoue ou qu'il n'y a pas de pochette, l'aura reste
-   simplement éteinte plutôt que d'inventer une couleur.
+   NUNI AURA ENGINE V2 — signature NUNI, structurée pour être réutilisée
+   plus tard par les clips, albums, playlists et profils artistes.
+
+   ├── Color Extraction    → NuniPalette.extract (déjà utilisé par le Hero/lecteur, pas de doublon)
+   ├── Emotional Profiles   → NuniAura.PROFILES (vitesse/flou/intensité selon le genre)
+   ├── Transition System    → NuniAura.applyTrack (fondu-sortie puis fondu-entrée, jamais un
+   │                          changement instantané — "une vague", comme demandé)
+   ├── Audio Reaction       → NuniAura.startLiveLoop (RÉELLE, pas simulée : réutilise
+   │                          nuniAnalyser/nuniFreqData, déjà branché pour la sphère audio
+   │                          des tuiles de genre — mêmes vraies données de fréquence,
+   │                          aucun second graphe audio créé)
+   ├── Background Influence → #nuni-aura-ambient
+   ├── Player Reflection    → .play-pause / .fp-play (voir style.css)
+   └── Cover Glow           → .track-card.is-now-playing (voir style.css)
 ============================================================ */
-function applyMusicAura(tr){
-  const ambient = document.getElementById('nuni-aura-ambient');
-  if(!ambient) return;
-  if(!tr || !tr.cover || typeof NuniPalette === 'undefined'){ ambient.classList.remove('is-active'); return; }
-  NuniPalette.extract(tr.cover).then(palette=>{
-    document.documentElement.style.setProperty('--nuni-aura-color', palette.accent);
-    ambient.classList.add('is-active');
-  }).catch(()=>{ ambient.classList.remove('is-active'); });
-}
+const NuniAura = {
+  // Vitesse de pulsation + flou selon l'ambiance du genre — pas juste une couleur qui
+  // change, une vraie sensation différente. Les genres absents utilisent PROFILES.default.
+  PROFILES: {
+    'Rap':       { pulse:'2.1s', blur:'100px' },
+    'Afro':      { pulse:'2.4s', blur:'105px' },
+    'Amapiano':  { pulse:'2.1s', blur:'100px' },
+    'RnB':       { pulse:'5.2s', blur:'145px' },
+    'Soul':      { pulse:'5.4s', blur:'150px' },
+    'Gospel':    { pulse:'5.6s', blur:'150px' },
+    'Trap':      { pulse:'3.6s', blur:'85px'  },
+    'Drill':     { pulse:'3.4s', blur:'80px'  },
+    default:     { pulse:'3.4s', blur:'120px' },
+  },
+  _liveRAF: null,
+  _restingApplied: false,
+
+  profileFor(genre){ return this.PROFILES[genre] || this.PROFILES.default; },
+
+  setColorVars(colorHsl, genre){
+    const root = document.documentElement.style;
+    root.setProperty('--nuni-aura-color', colorHsl);
+    const profile = this.profileFor(genre);
+    root.setProperty('--nuni-aura-pulse-speed', profile.pulse);
+    root.setProperty('--nuni-aura-blur', profile.blur);
+  },
+
+  // ---- Lecture réelle d'un morceau : transition "en vague" plutôt qu'un changement net.
+  // L'ancienne aura s'efface, un court instant de calme, puis la nouvelle arrive.
+  applyTrack(tr){
+    const ambient = document.getElementById('nuni-aura-ambient');
+    if(!ambient) return;
+    ambient.classList.remove('is-resting');
+    if(!tr || !tr.cover || typeof NuniPalette === 'undefined'){ this.stop(); return; }
+    const wasActive = ambient.classList.contains('is-active');
+    ambient.classList.remove('is-active'); // fondu-sortie de l'ancienne couleur
+    NuniPalette.extract(tr.cover).then(palette=>{
+      const reveal = ()=>{
+        this.setColorVars(palette.accent, tr.genre);
+        ambient.classList.add('is-active'); // la nouvelle arrive comme une vague
+      };
+      wasActive ? setTimeout(reveal, 320) : reveal(); // instant de calme seulement s'il y avait déjà une aura à effacer
+      this.startLiveLoop();
+    }).catch(()=> this.stop());
+  },
+
+  // ---- Aucune lecture en cours : juste la sortie mise en avant du Hero, à peine perceptible
+  // — la plateforme semble "déjà allumée" même avant d'appuyer sur Play.
+  applyRestingHero(coverUrl){
+    const ambient = document.getElementById('nuni-aura-ambient');
+    if(!ambient || this._restingApplied || !coverUrl || typeof NuniPalette === 'undefined') return;
+    NuniPalette.extract(coverUrl).then(palette=>{
+      if(ambient.classList.contains('is-active')) return; // une vraie lecture a démarré entre-temps, ne pas écraser
+      this.setColorVars(palette.accent, null);
+      ambient.classList.add('is-resting');
+      this._restingApplied = true;
+    }).catch(()=>{});
+  },
+
+  stop(){
+    const ambient = document.getElementById('nuni-aura-ambient');
+    if(ambient) ambient.classList.remove('is-active');
+    this.stopLiveLoop();
+  },
+
+  // ---- Réactivité audio RÉELLE (pas un visualiseur qui "danse" — une respiration organique
+  // dont l'amplitude suit les vraies basses). Réutilise l'analyseur déjà actif pour la sphère
+  // des tuiles de genre : mêmes données, aucune connexion audio supplémentaire créée. Si
+  // l'analyseur n'est pas disponible (navigateur non supporté, échec silencieux déjà géré
+  // ailleurs), l'aura garde simplement sa respiration de base sans le boost — jamais d'erreur
+  // visible, jamais d'impact sur la vraie lecture du son.
+  startLiveLoop(){
+    if(this._liveRAF) return; // déjà en cours
+    const tick = ()=>{
+      this._liveRAF = requestAnimationFrame(tick);
+      if(!playing || !usingRealAudio || !nuniAnalyser || !nuniFreqData){
+        document.documentElement.style.setProperty('--nuni-aura-live-boost', '0');
+        return;
+      }
+      nuniAnalyser.getByteFrequencyData(nuniFreqData);
+      const bassEnd = Math.floor(nuniFreqData.length * 0.15);
+      let bSum = 0;
+      for(let i=0;i<bassEnd;i++) bSum += nuniFreqData[i];
+      const bass = (bSum/bassEnd)/255; // 0 (silence) à 1 (basse pleine puissance)
+      // Boost doux et plafonné — "augmente légèrement", jamais un clignotement agressif.
+      document.documentElement.style.setProperty('--nuni-aura-live-boost', (bass*0.22).toFixed(3));
+    };
+    tick();
+  },
+  stopLiveLoop(){
+    if(this._liveRAF){ cancelAnimationFrame(this._liveRAF); this._liveRAF = null; }
+    document.documentElement.style.setProperty('--nuni-aura-live-boost', '0');
+  },
+};
+// Conservé pour compatibilité : l'ancien nom d'appel (playTrack l'utilise) délègue au moteur.
+function applyMusicAura(tr){ NuniAura.applyTrack(tr); }
 
 function applyHeroTrack(top, hero, titleEl, subEl, playBtn){
   if(top.cover) hero.style.backgroundImage = `url(${top.cover})`;
@@ -4310,6 +4404,7 @@ function applyHeroTrack(top, hero, titleEl, subEl, playBtn){
       hero.style.setProperty('--nuni-hero-glow', palette.accent);
     });
   }
+  if(top.cover && typeof NuniAura !== 'undefined') NuniAura.applyRestingHero(top.cover);
 }
 loadRealTracks();
 
