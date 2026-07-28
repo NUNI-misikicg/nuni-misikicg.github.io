@@ -869,9 +869,9 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .chip.is-active{ background:var(--grad-envol); color:#0A0A10; border-color:transparent; font-weight:600; }
 .chip:hover:not(.is-active){ border-color:var(--accent); color:var(--text); }
 
-.shelf{ margin-bottom:44px; }
-.shelf-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:18px; }
-.shelf-head h3{ font-family:var(--font-display); font-size:21px; font-weight:600; letter-spacing:-0.01em; }
+.shelf{ margin-bottom:58px; }
+.shelf-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:22px; }
+.shelf-head h3{ font-family:var(--font-display); font-size:28px; font-weight:700; letter-spacing:-0.02em; }
 .shelf-head a{ font-size:12.5px; color:var(--text-faint); }
 .shelf-row{ display:flex; gap:18px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 
@@ -944,6 +944,22 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   position:absolute; inset:0;
   background-image:repeating-linear-gradient(115deg, rgba(255,255,255,.09) 0 2px, transparent 2px 14px);
   mix-blend-mode:overlay;
+}
+
+/* ============================================================
+   PHASE 3 DA — mise en page magazine : la première sortie de la
+   section "Nouveautés" devient une pièce éditoriale, pas une carte
+   identique aux autres. Pur CSS (nth-child), fillShelf() n'a besoin
+   d'aucune modification — la même liste de cartes générée normalement
+   est simplement mise en valeur différemment ici.
+============================================================ */
+#shelf-new .track-card:first-child{ width:300px; }
+#shelf-new .track-card:first-child .cover{ width:300px; height:300px; }
+#shelf-new .track-card:first-child .ttl{ font-size:19px; font-weight:700; margin-top:16px; }
+#shelf-new .track-card:first-child .art{ font-size:13.5px; }
+@media(max-width:640px){
+  #shelf-new .track-card:first-child{ width:220px; }
+  #shelf-new .track-card:first-child .cover{ width:220px; height:220px; }
 }
 
 /* ============ ARTIST PAGE — style Spotify ============
@@ -1881,7 +1897,7 @@ html.is-playing .fp-title{ font-weight:800; }
 .privacy-toggle.is-on .track{ background:var(--accent); border-color:transparent; }
 .privacy-toggle.is-on .knob{ left:18px; background:#0A0A10; }
 .revenue-figure .val.is-hidden{ filter:blur(7px); user-select:none; }
-.page-head h1{ font-family:var(--font-display); font-size:clamp(26px,3.5vw,36px); font-weight:600; }
+.page-head h1{ font-family:var(--font-display); font-size:clamp(30px,4.2vw,44px); font-weight:700; letter-spacing:-0.02em; }
 .greeting-anim{ opacity:0; animation: greetingIn .7s var(--ease) forwards; }
 @keyframes greetingIn{ from{ opacity:0; transform:translateY(12px);} to{ opacity:1; transform:translateY(0);} }
 .page-head p{ color:var(--text-dim); font-size:14px; margin-top:6px; }
