@@ -6908,13 +6908,38 @@ function openArtistAboutModal(){
   const fallback = heroPhoto ? heroPhoto.style.backgroundImage.replace(/^url\(["']?/,'').replace(/["']?\)$/,'') : '';
   apabImages = gallery.length ? gallery : (fallback ? [fallback] : []);
   apabIndex = 0;
+  document.getElementById('apab-name').textContent = document.getElementById('artist-page-name').textContent;
   document.getElementById('apab-monthly-listeners').textContent = document.getElementById('artist-stat-monthly-listeners').textContent;
   document.getElementById('apab-bio').textContent = document.getElementById('artist-page-bio').textContent;
   document.getElementById('apab-stat-streams').textContent = document.getElementById('artist-stat-streams').textContent;
   document.getElementById('apab-stat-followers').textContent = document.getElementById('artist-stat-followers').textContent;
-  document.getElementById('apab-stat-supports').textContent = document.getElementById('artist-stat-supports').textContent;
+  // Le bouton Suivre du modal reflète le vrai état du vrai bouton de la page (voir
+  // apabProxyFollow ci-dessous) — pas de logique de suivi dupliquée.
+  const realFollowBtn = document.getElementById('follow-btn');
+  const modalFollowBtn = document.getElementById('apab-follow-btn');
+  if(realFollowBtn && modalFollowBtn){
+    modalFollowBtn.style.display = isOwn ? 'none' : '';
+    modalFollowBtn.classList.toggle('is-following', realFollowBtn.classList.contains('is-following'));
+    modalFollowBtn.innerHTML = realFollowBtn.classList.contains('is-following')
+      ? 'Suivi <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>'
+      : 'Suivre <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>';
+  }
   apabRenderImage();
   document.getElementById('apab-overlay').classList.add('show');
+}
+function apabProxyFollow(){
+  const realFollowBtn = document.getElementById('follow-btn');
+  if(realFollowBtn) realFollowBtn.click();
+  // Redonne au bouton du modal le même texte/état juste après, le temps que toggleFollow() se termine.
+  setTimeout(()=>{
+    const modalFollowBtn = document.getElementById('apab-follow-btn');
+    if(realFollowBtn && modalFollowBtn){
+      modalFollowBtn.classList.toggle('is-following', realFollowBtn.classList.contains('is-following'));
+      modalFollowBtn.innerHTML = realFollowBtn.classList.contains('is-following')
+        ? 'Suivi <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>'
+        : 'Suivre <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>';
+    }
+  }, 400);
 }
 function closeArtistAboutModal(){
   document.getElementById('apab-overlay').classList.remove('show');

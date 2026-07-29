@@ -1471,14 +1471,29 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .apab-dots{ position:absolute; bottom:14px; left:0; right:0; display:flex; justify-content:center; gap:6px; }
 .apab-dots span{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.4); transition:background .15s ease; }
 .apab-dots span.is-active{ background:#fff; }
-.apab-content{ padding:28px 26px 34px; }
-.apab-listeners{ font-size:15px; font-weight:700; color:var(--text); margin-bottom:14px; }
-.apab-listeners .num{ font-size:24px; font-weight:800; color:var(--accent); margin-right:4px; }
-.apab-bio{ color:var(--text-dim); line-height:1.7; font-size:14.5px; white-space:pre-line; }
-.apab-stats-row{ display:flex; gap:30px; flex-wrap:wrap; margin-top:22px; padding-top:18px; border-top:1px solid var(--border); }
+.apab-content{ padding:24px 26px 30px; }
+.apab-name-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.apab-name{ font-family:var(--font-display); font-size:22px; font-weight:800; color:var(--text); }
+.apab-verified{ width:20px; height:20px; padding:3px; border-radius:50%; background:#2FB350; color:#fff; flex-shrink:0; }
+.apab-bio{ color:var(--text-dim); line-height:1.6; font-size:14px; white-space:pre-line; margin-bottom:20px; }
+.apab-bottom-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.apab-stats-inline{ display:flex; gap:16px; }
+.apab-stat-pill{ display:flex; align-items:center; gap:6px; font-size:13.5px; color:var(--text-dim); font-family:var(--font-data); }
+.apab-stat-pill svg{ width:16px; height:16px; flex-shrink:0; color:var(--text-faint); }
+.apab-follow-btn{
+  display:inline-flex; align-items:center; gap:6px; padding:10px 20px; border-radius:999px; border:none; cursor:pointer;
+  background:var(--text); color:var(--bg); font-weight:700; font-size:13.5px; transition:transform .15s ease, background .2s ease, color .2s ease;
+}
+.apab-follow-btn svg{ width:15px; height:15px; }
+.apab-follow-btn:hover{ transform:scale(1.03); }
+.apab-follow-btn.is-following{ background:var(--bg-card); color:var(--text-dim); border:1px solid var(--border-strong); }
+.apab-listeners{ font-size:12.5px; color:var(--text-faint); margin-top:18px; padding-top:16px; border-top:1px solid var(--border); }
+.apab-listeners .num{ font-size:16px; font-weight:800; color:var(--accent); margin-right:4px; }
 @media(max-width:640px){
   .apab-carousel{ height:min(40vh, 320px); }
-  .apab-content{ padding:22px 18px 28px; }
+  .apab-content{ padding:20px 18px 26px; }
+  .apab-bottom-row{ flex-direction:column; align-items:flex-start; }
+  .apab-follow-btn{ width:100%; justify-content:center; }
 }
 
 /* ============ ARTIST PAGE — legacy (conservé pour compatibilité JS, non affiché) ============ */
