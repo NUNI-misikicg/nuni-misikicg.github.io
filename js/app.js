@@ -8741,18 +8741,23 @@ function mapPlaylistTrack(r){
 }
 function playlistCard(p){
   const card = document.createElement('div');
-  card.className = 'track-card';
-  const coverInner = p.cover_url
-    ? `<div class="cover" style="background-image:url(${p.cover_url}); background-size:cover; background-position:center;">`
-    : `<div class="cover pal-1"><div class="cover-glyph pal-pattern"></div>`;
+  card.className = 'poster-card';
+  const coverStyle = p.cover_url ? `background-image:url(${p.cover_url});` : '';
+  const coverClass = p.cover_url ? '' : 'pal-1';
   card.innerHTML = `
-    ${coverInner}
-      <div class="play-fab"><svg viewBox="0 0 24 24" class="play-fab-icon"><path d="M8 5v14l11-7z"/></svg></div>
-    </div>
-    <div class="ttl">${p.title}</div>
-    <div class="art">NUNI</div>
-    <div class="likes"><svg class="nuni-ic filled nuni-ic-gold" viewBox="0 0 24 24"><circle cx="7.5" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/><path d="M10 18V5l9.5-2v13"/></svg> <span>${p.track_count}</span> titre${p.track_count>1?'s':''}</div>`;
-  card.onclick = ()=> openPlaylistPage(p.id);
+    <div class="poster-cover ${coverClass}" style="${coverStyle}">
+      <div class="poster-glow"></div>
+      <div class="poster-grain"></div>
+      <div class="poster-scrim"></div>
+      <button class="poster-play-fab" aria-label="Écouter"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+      <div class="poster-content">
+        <span class="poster-badge">NUNI</span>
+        <div class="poster-title">${p.title}</div>
+        <div class="poster-meta">${p.track_count} titre${p.track_count>1?'s':''}</div>
+      </div>
+    </div>`;
+  card.querySelector('.poster-cover').onclick = ()=> openPlaylistPage(p.id);
+  card.querySelector('.poster-play-fab').onclick = (e)=>{ e.stopPropagation(); openPlaylistPage(p.id); };
   return card;
 }
 async function loadPlaylistsShelf(){
@@ -8978,7 +8983,7 @@ function ensurePlaylistsPageStyles(){
     .apl-wrap{max-width:1080px; margin:0 auto; padding:60px 24px 80px;}
     .apl-title{color:#fff; font-size:26px; font-weight:800; margin-bottom:6px;}
     .apl-sub{color:#8a8a94; font-size:13px; margin-bottom:28px;}
-    .apl-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:20px;}
+    .apl-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:22px; justify-items:center;}
     .apl-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0; grid-column:1/-1;}
   `;
   document.head.appendChild(style);

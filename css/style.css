@@ -631,6 +631,48 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
    les vraies écoutes enregistrées (table plays, croisée avec le
    pays/ville renseigné par l'auditeur à l'inscription).
 ============================================================ */
+/* ============================================================
+   PLAYLISTS — vraies affiches de festival plutôt que des cartes
+   génériques : grand format portrait, titre en overlay avec dégradé,
+   grain photographique léger, lueur colorée. Classe dédiée
+   (.poster-card), n'affecte jamais .track-card ailleurs sur le site.
+============================================================ */
+.poster-row{ gap:22px; padding-bottom:14px; }
+.poster-card{ width:220px; flex-shrink:0; cursor:pointer; }
+.poster-cover{
+  position:relative; width:220px; height:300px; border-radius:18px; overflow:hidden;
+  background-size:cover; background-position:center; display:flex; align-items:flex-end;
+  box-shadow:0 20px 44px -16px rgba(0,0,0,0.6);
+  transition:transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s cubic-bezier(.2,.8,.2,1);
+}
+.poster-card:hover .poster-cover{ transform:translateY(-6px) scale(1.015); box-shadow:0 28px 54px -14px rgba(0,0,0,0.65); }
+/* Même grain photographique que le Hero — cohérence de la signature visuelle NUNI. */
+.poster-grain{
+  position:absolute; inset:0; z-index:1; opacity:.06; mix-blend-mode:overlay; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.poster-scrim{ position:absolute; inset:0; z-index:1; background:linear-gradient(0deg, rgba(0,0,0,.88) 0%, rgba(0,0,0,.25) 55%, transparent 78%); }
+.poster-glow{
+  position:absolute; inset:-20%; z-index:0; pointer-events:none; opacity:0;
+  background:radial-gradient(circle at 30% 85%, var(--nuni-signature-glow, var(--or)) 0%, transparent 60%);
+  filter:blur(30px); transition:opacity .4s ease;
+}
+.poster-card:hover .poster-glow{ opacity:.55; }
+.poster-content{ position:relative; z-index:2; padding:20px; width:100%; }
+.poster-badge{ display:inline-block; font-size:9.5px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; color:var(--or-2); background:rgba(212,175,106,.16); border:1px solid rgba(212,175,106,.3); padding:4px 10px; border-radius:20px; margin-bottom:10px; }
+.poster-title{ font-family:var(--font-display); font-size:22px; font-weight:800; color:#fff; line-height:1.08; letter-spacing:-0.3px; text-shadow:0 2px 10px rgba(0,0,0,.5); margin-bottom:6px; }
+.poster-meta{ font-size:11.5px; color:rgba(255,255,255,.72); }
+.poster-play-fab{
+  position:absolute; top:16px; right:16px; z-index:2; width:38px; height:38px; border-radius:50%;
+  background:rgba(0,0,0,.45); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.22);
+  display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(-8px);
+  transition:opacity .3s ease, transform .3s ease;
+}
+.poster-card:hover .poster-play-fab{ opacity:1; transform:translateY(0); }
+.poster-play-fab svg{ width:15px; height:15px; fill:#fff; }
+@media(prefers-reduced-motion: reduce){ .poster-card:hover .poster-cover{ transform:none; } }
+@media(max-width:640px){ .poster-card, .poster-cover{ width:170px; } .poster-cover{ height:230px; } .poster-title{ font-size:18px; } }
+
 .afrolive-section{ margin-bottom:58px; }
 .afrolive-section .shelf-head a{ font-size:12.5px; color:var(--accent); font-weight:600; }
 .afrolive-card{
