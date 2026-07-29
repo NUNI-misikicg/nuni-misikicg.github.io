@@ -1106,21 +1106,6 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   transform:scaleX(0); transform-origin:left; opacity:0; transition:transform .4s var(--ease), opacity .35s ease;
 }
 
-/* ---- Mode clair : le texte/icônes des tuiles de genre restent en blanc fixe (voir plus
-   haut), donc le fond DOIT rester sombre et coloré même en thème clair — sinon blanc sur
-   fond pâle devient illisible. On remplace var(--bg-card) (pâle en mode clair) par la
-   propre couleur foncée de chaque genre (--gc2), déjà définie pour chaque tuile en JS. ---- */
-html[data-theme="light"] .genre-tile{
-  background:
-    radial-gradient(140% 120% at 15% 12%, color-mix(in srgb, var(--gc1,#6E45A8) 55%, transparent) 0%, transparent 60%),
-    linear-gradient(155deg, rgba(255,255,255,.08) 0%, transparent 40%),
-    color-mix(in srgb, var(--gc2,#141A38) 88%, black 12%);
-  border-color: rgba(255,255,255,.10);
-}
-html[data-theme="light"] .genre-tile:hover{
-  border-color: color-mix(in srgb, var(--gc1,#6E45A8) 55%, transparent);
-}
-
 /* Survol desktop uniquement — jamais de hover "collé" sur tactile */
 @media(hover:hover) and (pointer:fine){
   .genre-tile:hover{ transform:translateY(-4px) scale(1.03); box-shadow:0 18px 34px -14px rgba(0,0,0,.6); border-color:rgba(255,255,255,.24); }
@@ -1680,6 +1665,8 @@ html.is-playing .app-footer-wordmark{ animation:footerWordmarkPulse 1.1s ease-in
 .rt-btn:hover{ border-color:var(--accent); color:var(--text); }
 .rt-btn.is-active{ background:var(--grad-envol); color:#0A0A10; border-color:transparent; font-weight:600; }
 .cover-pick-row{ display:flex; gap:18px; align-items:center; margin-bottom:22px; padding:16px; background:var(--bg-card); border:1px solid var(--border); border-radius:14px; }
+.cover-pick-row > div:last-child{ min-width:0; flex:1; }
+.cover-pick-row .btn{ white-space:normal; text-align:left; line-height:1.3; }
 .cover-pick-preview{
   width:74px; height:74px; border-radius:14px; background:var(--bg-elev); border:1px dashed var(--border-strong);
   display:flex; align-items:center; justify-content:center; color:var(--text-faint); flex-shrink:0; background-size:cover; background-position:center;
@@ -2540,6 +2527,12 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
      l'ancien override mobile qui le réduisait à 96px a été retiré, il le casserait. */
   .mobile-tabbar{ display:flex; }
   .bird-hero{ width:64px; height:64px; margin-bottom:14px; box-shadow:0 8px 20px -8px rgba(14,61,44,.5); }
+  /* Avant : .home-wrap centrait tout verticalement (justify-content:center) sans jamais
+     tenir compte de la hauteur réelle de .home-topbar (position:absolute, logo + zone de
+     sécurité iOS) — sur les écrans courts, le grand logo remontait sous la barre du haut et
+     se superposait au petit logo. On bascule l'alignement en haut et on fixe une vraie
+     marge qui réserve l'espace du topbar, quelle que soit la hauteur de l'écran. */
+  .home-wrap{ justify-content:flex-start; padding-top:calc(92px + env(safe-area-inset-top,0)); }
   .player-bar{ bottom:64px; padding-bottom:0; }
   .demo-nav{ bottom:calc(170px + env(safe-area-inset-bottom,0)); }
   .demo-nav.no-player{ bottom:calc(20px + env(safe-area-inset-bottom,0)); }
