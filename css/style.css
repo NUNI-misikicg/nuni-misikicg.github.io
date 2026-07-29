@@ -24,9 +24,9 @@
   --grad-envol: linear-gradient(135deg, var(--violet) 0%, var(--or) 100%);
   --grad-nuit: linear-gradient(160deg, var(--bleu-nuit) 0%, var(--noir) 100%);
 
-  --font-display:'Syne', 'General Sans', sans-serif;
-  --font-accent:'Syne', sans-serif;
-  --font-body:'Plus Jakarta Sans', 'Inter', sans-serif;
+  --font-display:'Inter', 'General Sans', sans-serif;
+  --font-accent:'Inter', sans-serif;
+  --font-body:'Inter', sans-serif;
   --font-data:'Space Grotesk', sans-serif;
 
   --radius-s:10px;
@@ -1151,7 +1151,7 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   .scroll-chapter{ opacity:1; transform:none; transition:none; }
 }
 .shelf-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:22px; }
-.shelf-head h3{ font-family:var(--font-display); font-size:28px; font-weight:700; letter-spacing:-0.02em; }
+.shelf-head h3{ font-family:var(--font-display); font-size:28px; font-weight:800; letter-spacing:-0.03em; }
 .shelf-head a{ font-size:12.5px; color:var(--text-faint); }
 .shelf-row{ display:flex; gap:18px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 
@@ -2356,7 +2356,7 @@ html.is-playing .fp-title{ font-weight:800; }
 .privacy-toggle.is-on .track{ background:var(--accent); border-color:transparent; }
 .privacy-toggle.is-on .knob{ left:18px; background:#0A0A10; }
 .revenue-figure .val.is-hidden{ filter:blur(7px); user-select:none; }
-.page-head h1{ font-family:var(--font-display); font-size:clamp(30px,4.2vw,44px); font-weight:700; letter-spacing:-0.02em; }
+.page-head h1{ font-family:var(--font-display); font-size:clamp(30px,4.2vw,44px); font-weight:800; letter-spacing:-0.03em; }
 .greeting-anim{ opacity:0; animation: greetingIn .7s var(--ease) forwards; }
 @keyframes greetingIn{ from{ opacity:0; transform:translateY(12px);} to{ opacity:1; transform:translateY(0);} }
 .page-head p{ color:var(--text-dim); font-size:14px; margin-top:6px; }

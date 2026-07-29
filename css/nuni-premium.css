@@ -671,7 +671,7 @@ html.is-playing .full-player .fp-halo{ opacity: .5; }
 }
 .phb-dot{ width:6px; height:6px; border-radius:50%; background:var(--or-2, #E8C77E); box-shadow:0 0 8px var(--or-2, #E8C77E); animation:dotPulse 1.6s ease-in-out infinite; }
 .premium-hero-title{
-  font-family:var(--font-display); color:var(--text); font-size:clamp(32px, 4vw, 48px); font-weight:800; line-height:1.05; letter-spacing:-0.5px;
+  font-family:var(--font-display); color:var(--text); font-size:clamp(32px, 4vw, 48px); font-weight:900; line-height:1.03; letter-spacing:-0.03em;
 }
 .premium-hero-title em{ font-style:normal; background:var(--grad-envol); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .premium-hero-sub{ color:var(--text-dim); font-size:15px; max-width:480px; line-height:1.5; }
