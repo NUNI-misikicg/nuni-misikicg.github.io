@@ -3478,7 +3478,7 @@ function ensureAlbumViewStyles(){
 
     /* ---- Zone haute : fond teinté par la pochette, qui s'assombrit vers le noir plein,
        comme la page album de Spotify (dégradé issu de la couleur dominante de la pochette) ---- */
-    .av-hero{position:relative; padding:64px 20px 20px; display:flex; flex-direction:column; align-items:center; overflow:hidden;}
+    .av-hero{position:relative; padding:calc(64px + env(safe-area-inset-top,0)) 20px 20px; display:flex; flex-direction:column; align-items:center; overflow:hidden;}
     .av-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(60px) saturate(1.4) brightness(0.55); transform:scale(1.3);}
     .av-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0.25) 0%, #0A0A0A 88%);}
     .av-cover{position:relative; width:min(58vw, 240px); height:min(58vw, 240px); border-radius:6px; background-size:cover; background-position:center; box-shadow:0 18px 46px rgba(0,0,0,0.65); flex-shrink:0;}
@@ -3788,34 +3788,10 @@ function openAlbumView(tr){
   // les morceaux d'un même album partagent la même mention, saisie une fois par l'artiste).
   const albumCredits = albumTracks.find(t => t.credits)?.credits || null;
   loadRealAlbumDuration(albumTracks, tr.release, albumCredits);
-  renderAlbumLeSuggestion(overlay, tr, albumTracks);
   renderSimilarTracksRow(overlay, tr, albumTracks);
 
   requestAnimationFrame(()=> overlay.classList.add('show'));
   attachSwipeDownToClose(overlay, closeOverlay);
-}
-/* Vraie suggestion "Le P" pour un album — basée sur le vrai genre du morceau ouvert. */
-function renderAlbumLeSuggestion(overlay, tr, albumTracks){
-  const card = document.createElement('div');
-  card.className = 'plv-lep-card';
-  card.innerHTML = `
-    <div class="plv-lep-avatar"><img src="assets/mimi-avatar.png" alt="Le P"></div>
-    <div class="plv-lep-body">
-      <div class="plv-lep-name">Le P</div>
-      <div class="plv-lep-msg">Mbote ! « ${tr.album} »${tr.genre ? ` a une belle ambiance ${tr.genre}` : ''} — je peux te trouver d'autres artistes dans le même esprit, si tu veux.</div>
-      <button class="plv-lep-btn">Me suggérer des artistes</button>
-    </div>`;
-  overlay.querySelector('.av-list').insertAdjacentElement('afterend', card);
-  card.querySelector('.plv-lep-btn').onclick = ()=>{
-    toast('Clic détecté — ouverture de Le P…'); // indicateur temporaire, à retirer une fois le bug confirmé/résolu
-    const widget = document.getElementById('mimi-widget');
-    if(!widget.classList.contains('open')){ widget.classList.add('open'); mimiFace('happy'); setTimeout(()=>mimiFace('idle'), 900); }
-    const input = document.getElementById('mimi-input');
-    if(input){
-      input.value = tr.genre ? `Recommande-moi des artistes ${tr.genre}` : 'Recommande-moi des artistes à découvrir';
-      setTimeout(()=> mimiSend(), 300);
-    }
-  };
 }
 /* Vrai rail "Sons similaires" — vrais autres morceaux du même genre réel, cet album exclu.
    Jamais une recommandation inventée : uniquement de vrais morceaux déjà publiés sur NUNI. */
@@ -9223,7 +9199,7 @@ function ensurePlaylistViewStyles(){
     .plv-lep-btn{background:rgba(212,175,106,0.15); border:1px solid rgba(212,175,106,0.4); color:#F3E6C8; font-size:12px; font-weight:600; padding:7px 14px; border-radius:20px; cursor:pointer;}
     .plv-lep-btn:hover{background:rgba(212,175,106,0.25);}
     /* Rail "D'autres playlists NUNI" façon Netflix */
-    .plv-similar{max-width:1080px; margin:10px auto 60px; padding:0 24px;}
+    .plv-similar{max-width:1080px; margin:10px auto calc(120px + env(safe-area-inset-bottom,0)); padding:0 24px;}
     .plv-similar-title{color:#fff; font-size:16px; font-weight:700; margin-bottom:14px;}
     .plv-similar-row{display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:6px;}
     .plv-similar-card{flex-shrink:0; width:140px; cursor:pointer;}

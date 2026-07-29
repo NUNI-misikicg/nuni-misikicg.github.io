@@ -2076,15 +2076,25 @@ html.is-playing .fp-title{ font-weight:800; }
 
 /* ============ DEMO NAV (écrans) ============ */
 .mobile-tabbar{
-  display:none; position:fixed; left:0; right:0; bottom:0; z-index:32; height:64px; box-sizing:content-box;
-  background:var(--bg-elev); border-top:1px solid var(--border); align-items:center; justify-content:space-around;
-  padding-bottom:env(safe-area-inset-bottom,0);
+  display:none; position:fixed; left:12px; right:12px; bottom:calc(10px + env(safe-area-inset-bottom,0)); z-index:32; height:64px; box-sizing:border-box;
+  background:color-mix(in srgb, var(--bg-elev) 55%, transparent);
+  backdrop-filter:blur(28px) saturate(1.8); -webkit-backdrop-filter:blur(28px) saturate(1.8);
+  border:1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border-radius:26px;
+  box-shadow:0 12px 36px -12px rgba(0,0,0,.5), inset 0 1px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  align-items:center; justify-content:space-around;
   overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
 }
+/* Reflet doux en haut de la barre — la touche "verre liquide" qui capte la lumière plutôt
+   qu'un simple fond flouté plat. */
+.mobile-tabbar::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--text) 6%, transparent) 0%, transparent 40%);
+}
 .mobile-tabbar::-webkit-scrollbar{ display:none; }
-.tab-btn{ display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--text-faint); font-size:10px; padding:6px 10px; border-radius:10px; transition:color .3s; flex-shrink:0; }
+.tab-btn{ display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--text-faint); font-size:10px; padding:6px 10px; border-radius:14px; transition:color .3s, background .3s; flex-shrink:0; position:relative; z-index:1; }
 .tab-btn svg{ width:20px; height:20px; }
-.tab-btn.is-active{ color:var(--accent); }
+.tab-btn.is-active{ color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent); }
 @media(max-width:680px){
   .tab-btn{ padding:5px 8px; font-size:9.5px; }
   .tab-btn svg{ width:19px; height:19px; }
@@ -2551,7 +2561,7 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
   .fp-artist-stat-card{ display:none; }
   .fp-progress, .fp-controls, .fp-subcontrols, .fp-actions-row{ max-width:340px; margin-left:0; margin-right:0; }
   .fp-section{ margin-top:20px; }
-  .home-wrap{ padding-top:calc(104px + env(safe-area-inset-top,0)); padding-bottom:20px; }
+  .home-wrap{ padding-top:calc(104px + env(safe-area-inset-top,0)); padding-bottom:calc(52px + 88px + env(safe-area-inset-bottom,0) + 24px); }
   .bird-hero{ width:96px; height:96px; margin-bottom:10px; }
   .home-title{ font-size:clamp(26px,5vw,40px); }
   .home-actions{ margin-top:20px; }
