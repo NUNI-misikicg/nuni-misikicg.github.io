@@ -1424,24 +1424,12 @@ let redeemRequestId = 0; // protège contre un essai précédent qui répondrait
 // période d'inactivité — un premier essai peut échouer pile pendant ce réveil. Plutôt que
 // d'afficher tout de suite une erreur, on retente automatiquement une fois après un délai.
 async function fetchWithRetry(url, options, onRetrying){
-  // Avant : un seul essai supplémentaire après 4s. Le plan gratuit Render peut mettre
-  // jusqu'à 50s à se réveiller après une période d'inactivité — un deuxième essai après
-  // seulement 4s tombait donc encore sur un serveur pas tout à fait prêt, et l'erreur
-  // finale s'affichait alors que le serveur était sur le point de répondre. Maintenant :
-  // on réessaie toutes les 4s pendant ~55s avant d'abandonner pour de bon — couvre le pire
-  // cas du réveil, sur n'importe quel appareil ou réseau.
-  const MAX_WAIT_MS = 55000;
-  const start = Date.now();
-  let attempt = 0;
-  while(true){
-    try{
-      return await fetch(url, options);
-    }catch(e){
-      attempt++;
-      if(Date.now() - start > MAX_WAIT_MS) throw e; // temps écoulé : l'erreur remonte normalement
-      if(onRetrying) onRetrying(attempt);
-      await new Promise(r=> setTimeout(r, 4000));
-    }
+  try{
+    return await fetch(url, options);
+  }catch(e){
+    if(onRetrying) onRetrying();
+    await new Promise(r=> setTimeout(r, 4000));
+    return await fetch(url, options); // 2e essai — si celui-ci échoue aussi, l'erreur remonte normalement
   }
 }
 
@@ -2233,6 +2221,11 @@ function enterApp(view){
       el.style.display = 'none';
     }
   });
+  // Le Dashboard est plein de champs de formulaire qui commencent tout près du bord gauche
+  // sur mobile — la bulle Mimi (fixe, bas-gauche) finissait par recouvrir leurs libellés
+  // (ex: "Titre du projet"). Cette classe permet au CSS de la décaler pendant qu'on est sur
+  // cet écran précis, sans la faire disparaître ni casser son comportement ailleurs.
+  document.body.classList.toggle('view-is-dashboard', view === 'dashboard');
   // ---- Pendant que la recherche plein écran (ou les pages Concerts/Événements qui en
   // découlent) est active, les autres onglets disparaissent de la navigation (desktop +
   // mobile) — ne reste que "Accueil", comme demandé (même principe que l'onglet Recherche
