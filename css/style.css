@@ -687,6 +687,34 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 @media(prefers-reduced-motion: reduce){ .poster-card:hover .poster-cover{ transform:none; } }
 @media(max-width:640px){ .poster-card, .poster-cover{ width:170px; } .poster-cover{ height:230px; } .poster-title{ font-size:18px; } }
 
+/* ============================================================
+   RÉCAP PERSONNEL — "Ton mois en musique". Vrais artistes/morceaux
+   classés par vrai nombre d'écoutes réelles (pas de minutes, cette
+   donnée n'existe pas encore côté NUNI — voir server.js).
+============================================================ */
+.recap-months{ display:flex; gap:18px; margin-bottom:18px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+.recap-month-btn{ background:none; border:none; color:var(--text-faint); font-size:14px; font-weight:600; cursor:pointer; padding:4px 0; position:relative; }
+.recap-month-btn.is-active{ color:var(--text); }
+.recap-month-btn.is-active::after{ content:''; position:absolute; left:0; right:0; bottom:-11px; height:2px; background:var(--accent); }
+.recap-headline{ font-family:var(--font-display); font-size:26px; font-weight:800; letter-spacing:-0.02em; margin-bottom:24px; line-height:1.2; }
+.recap-headline b{ color:var(--accent); }
+.recap-section-title{ font-size:13px; font-weight:700; color:var(--text-dim); margin-bottom:14px; display:flex; align-items:center; gap:6px; }
+.recap-artists-row{ display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:28px; }
+.recap-artist-card{ position:relative; aspect-ratio:1; border-radius:16px; overflow:hidden; background-size:cover; background-position:center; background:var(--grad-envol); cursor:pointer; }
+.recap-artist-rank{ position:absolute; top:10px; left:12px; font-family:var(--font-display); font-size:30px; font-weight:900; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.6); z-index:1; }
+.recap-artist-scrim{ position:absolute; inset:0; background:linear-gradient(0deg, rgba(0,0,0,.85) 0%, transparent 55%); }
+.recap-artist-info{ position:absolute; left:12px; right:12px; bottom:10px; z-index:1; }
+.recap-artist-name{ color:#fff; font-weight:700; font-size:14px; text-shadow:0 1px 4px rgba(0,0,0,.5); }
+.recap-artist-plays{ color:rgba(255,255,255,.75); font-size:11px; margin-top:2px; }
+.recap-track-row{ display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); }
+.recap-track-row:last-child{ border-bottom:none; }
+.recap-track-cover{ width:44px; height:44px; border-radius:8px; flex-shrink:0; background-size:cover; background-position:center; background:var(--grad-envol); }
+.recap-track-info{ flex:1; min-width:0; }
+.recap-track-title{ font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.recap-track-artist{ font-size:11.5px; color:var(--text-faint); }
+.recap-track-plays{ font-size:12px; color:var(--text-faint); font-family:var(--font-data); flex-shrink:0; }
+@media(max-width:520px){ .recap-artists-row{ grid-template-columns:repeat(3, 1fr); gap:8px; } .recap-artist-rank{ font-size:22px; } }
+
 .afrolive-section{ margin-bottom:58px; }
 .globe3d-wrap{ position:relative; width:100%; height:340px; border-radius:18px; overflow:hidden; background:radial-gradient(circle at 50% 40%, #14100a 0%, #08070a 75%); margin-bottom:20px; touch-action:none; }
 .globe3d-wrap canvas{ display:block; width:100%; height:100%; cursor:grab; }

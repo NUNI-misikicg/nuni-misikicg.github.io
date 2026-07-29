@@ -15,11 +15,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727c8">
-<link rel="stylesheet" href="css/corners.css?v=20260727c8">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727c8">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727c8">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727c8">
+<link rel="stylesheet" href="css/style.css?v=20260727c9">
+<link rel="stylesheet" href="css/corners.css?v=20260727c9">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727c9">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727c9">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727c9">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -679,6 +679,7 @@
           <button class="profile-menu-item nav-artist-only" onclick="enterApp('artist'); closeProfileMenu();"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg> <span>Mon profil</span></button>
           <button class="profile-menu-item" onclick="openProfileInfo('playlists'); closeProfileMenu();"><svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> <span>Mes favoris</span></button>
           <button class="profile-menu-item" onclick="openProfileInfo('history'); closeProfileMenu();"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg> <span>Historique</span></button>
+          <button class="profile-menu-item" onclick="openRecapModal(); closeProfileMenu();"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 21V10M11 21V4M18 21v-7"/><path d="M2 21h20"/></svg> <span>Mon mois en musique</span></button>
           <button class="profile-menu-item" onclick="openProfileInfo('downloads'); closeProfileMenu();">⬇️ <span>Téléchargements</span></button>
           <button class="profile-menu-item" id="profile-menu-artist-space" onclick="enterApp('dashboard'); closeProfileMenu();"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3.5M9 21h6"/></svg> <span>Mon espace artiste</span></button>
           <button class="profile-menu-item" id="account-switch-btn" onclick="switchAccountType();"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> Passer en vue Consommateur</button>
@@ -783,6 +784,18 @@
     </div>
 
     <!-- ============ "VOIR LE MONDE" — vue plein écran, mêmes vraies données en détail ============ -->
+    <!-- ============ RÉCAP PERSONNEL — vrais artistes/morceaux du mois, par vraies écoutes ============ -->
+    <div class="ai-modal-overlay" id="recap-modal-overlay" onclick="if(event.target===this) closeRecapModal()">
+      <div class="ai-modal" style="max-width:640px; text-align:left;">
+        <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeRecapModal()" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <div class="recap-months" id="recap-months"></div>
+        <p class="recap-headline" id="recap-headline">Chargement…</p>
+        <div id="recap-body"></div>
+      </div>
+    </div>
+
     <div class="ai-modal-overlay" id="world-modal-overlay" onclick="if(event.target===this) closeWorldModal()">
       <div class="ai-modal" style="max-width:760px; text-align:left;">
         <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeWorldModal()" aria-label="Fermer">
@@ -1913,8 +1926,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727c8"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727c9"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727c8"></script>
+<script src="js/app.js?v=20260727c9"></script>
 </body>
 </html>

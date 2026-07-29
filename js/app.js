@@ -4364,6 +4364,96 @@ async function loadAfroliveStats(isRefresh){
 loadAfroliveStats();
 setInterval(()=> loadAfroliveStats(true), 45000); // rafraîchissement réel toutes les 45s — pas un vrai push, mais un vrai recalcul à chaque fois
 
+/* ============================================================
+   RÉCAP PERSONNEL — "Ton mois en musique". Vrais artistes/morceaux
+   classés par vrai nombre d'écoutes réelles ce mois-ci. Pas de
+   minutes affichées : cette donnée n'existe pas dans NUNI aujourd'hui
+   (ni les morceaux ni les écoutes n'ont de durée enregistrée) — plutôt
+   qu'inventer un chiffre, on montre le vrai nombre d'écoutes.
+============================================================ */
+let recapData = null;
+async function openRecapModal(){
+  if(!realAuthToken){ toast('Connectez-vous pour voir votre récap personnel.'); return; }
+  document.getElementById('recap-modal-overlay').classList.add('show');
+  document.getElementById('recap-headline').textContent = 'Chargement…';
+  document.getElementById('recap-months').innerHTML = '';
+  document.getElementById('recap-body').innerHTML = '';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/recap', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    recapData = await res.json();
+    if(!recapData.months.length){
+      document.getElementById('recap-headline').textContent = "Rien à montrer pour l'instant — écoutez quelques morceaux et revenez ici !";
+      return;
+    }
+    renderRecapMonths();
+    renderRecapBody(recapData.targetMonth);
+  }catch(e){
+    document.getElementById('recap-headline').textContent = 'Impossible de charger votre récap pour le moment.';
+  }
+}
+function closeRecapModal(){
+  document.getElementById('recap-modal-overlay').classList.remove('show');
+}
+function renderRecapMonths(){
+  const wrap = document.getElementById('recap-months');
+  const monthNames = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  wrap.innerHTML = recapData.months.slice().reverse().map(m=>{
+    const d = new Date(m);
+    const label = monthNames[d.getMonth()];
+    const isActive = m === recapData.targetMonth;
+    return `<button class="recap-month-btn${isActive?' is-active':''}" data-month="${m}">${label}</button>`;
+  }).join('');
+  wrap.querySelectorAll('.recap-month-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const month = btn.dataset.month;
+      const res = await fetch(NUNI_API_BASE + '/api/me/recap?month=' + encodeURIComponent(month), { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+      recapData = await res.json();
+      wrap.querySelectorAll('.recap-month-btn').forEach(b=> b.classList.toggle('is-active', b.dataset.month === month));
+      renderRecapBody(month);
+    };
+  });
+}
+function renderRecapBody(month){
+  const monthNames = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const d = new Date(month);
+  const headline = document.getElementById('recap-headline');
+  headline.innerHTML = `Vous avez écouté <b>${recapData.totalPlays}</b> fois de la musique en ${monthNames[d.getMonth()]}.`;
+  const body = document.getElementById('recap-body');
+  let html = '';
+  if(recapData.topArtists.length){
+    html += `<div class="recap-section-title">🏆 Vos artistes du mois</div><div class="recap-artists-row">`;
+    html += recapData.topArtists.map((a,i)=>{
+      const photo = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
+      return `<div class="recap-artist-card" style="${photo}" data-artist-id="${a.id}" data-artist-name="${(a.artist_name||'').replace(/"/g,'&quot;')}">
+        <div class="recap-artist-scrim"></div>
+        <div class="recap-artist-rank">${i+1}</div>
+        <div class="recap-artist-info">
+          <div class="recap-artist-name">${a.artist_name||''}</div>
+          <div class="recap-artist-plays">${a.plays} écoute${a.plays>1?'s':''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    html += `</div>`;
+  }
+  if(recapData.topTracks.length){
+    html += `<div class="recap-section-title">🎵 Vos morceaux du mois</div><div>`;
+    html += recapData.topTracks.map(t=>{
+      const cover = t.cover_url ? `background-image:url(${t.cover_url});` : '';
+      return `<div class="recap-track-row">
+        <div class="recap-track-cover" style="${cover}"></div>
+        <div class="recap-track-info"><div class="recap-track-title">${t.title}</div><div class="recap-track-artist">${t.artist_name||''}</div></div>
+        <div class="recap-track-plays">${t.plays} écoute${t.plays>1?'s':''}</div>
+      </div>`;
+    }).join('');
+    html += `</div>`;
+  }
+  if(!html) html = '<p style="font-size:12.5px; color:var(--text-faint);">Rien pour ce mois-ci.</p>';
+  body.innerHTML = html;
+  body.querySelectorAll('.recap-artist-card').forEach(card=>{
+    card.onclick = ()=>{ closeRecapModal(); openArtistPage(card.dataset.artistName, Number(card.dataset.artistId)); };
+  });
+}
+
 function openWorldModal(){
   if(lastAfroliveData) renderAfroliveInto('world-modal', lastAfroliveData);
   document.getElementById('world-modal-overlay').classList.add('show');
