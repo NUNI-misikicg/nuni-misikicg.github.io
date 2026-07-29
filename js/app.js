@@ -8869,26 +8869,88 @@ function ensureTop100Styles(){
   const style = document.createElement('style');
   style.id = 'top100-styles';
   style.textContent = `
-    #top100-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #top100-overlay{
+      position:fixed; inset:0; z-index:9999; overflow-y:auto; opacity:0; transition:opacity .3s ease;
+      background:
+        radial-gradient(1100px 560px at 50% -8%, var(--t100-glow, rgba(142,99,201,.32)) 0%, transparent 62%),
+        linear-gradient(180deg, var(--t100-dark, #14101c) 0%, #0A0A10 40%, #0A0A10 100%);
+    }
     #top100-overlay.show{opacity:1;}
-    .t100-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .t100-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px);}
     .t100-close:hover{background:rgba(255,255,255,0.16);}
-    .t100-wrap{max-width:720px; margin:0 auto; padding:60px 24px 80px;}
-    .t100-title{color:#fff; font-size:26px; font-weight:800; margin-bottom:6px;}
-    .t100-sub{color:#8a8a94; font-size:13px; margin-bottom:28px;}
-    .t100-row{display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.04); margin-bottom:8px;}
-    .t100-rank{width:32px; text-align:center; font-weight:700; color:#8a8a94; font-family:var(--font-data, monospace); flex-shrink:0;}
-    .t100-av{width:42px; height:42px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:14px; flex-shrink:0; background-size:cover; background-position:center; cursor:pointer;}
+    .t100-wrap{max-width:760px; margin:0 auto; padding:64px 22px 90px;}
+    .t100-eyebrow{font-family:var(--font-data,monospace); text-transform:uppercase; letter-spacing:3px; font-size:11px; color:var(--accent,#D4AF6A); margin-bottom:10px;}
+    .t100-title{color:#fff; font-family:var(--font-display,inherit); font-weight:700; font-size:clamp(26px,4vw,36px); margin-bottom:8px;}
+    .t100-sub{color:#a7a3b0; font-size:13px; margin-bottom:40px; max-width:480px; line-height:1.55;}
+
+    .t100-podium{display:flex; align-items:flex-end; justify-content:center; gap:12px; margin-bottom:52px;}
+    .t100-pcard{position:relative; border-radius:18px; overflow:hidden; cursor:pointer; background:#181820; flex-shrink:0; transition:transform .25s ease, box-shadow .25s ease;}
+    .t100-pcard:hover{transform:translateY(-5px);}
+    .t100-pcard.rank-1{width:172px; height:228px; order:2; z-index:2; box-shadow:0 22px 50px -14px rgba(0,0,0,.65);}
+    .t100-pcard.rank-2{width:136px; height:188px; order:1; margin-bottom:8px;}
+    .t100-pcard.rank-3{width:136px; height:188px; order:3; margin-bottom:8px;}
+    .t100-pimg{position:absolute; inset:0; background-size:cover; background-position:center;}
+    .t100-pinit{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-display,inherit); font-weight:700; font-size:32px; color:#0A0A10; background:var(--grad-envol);}
+    .t100-pnum{position:absolute; top:8px; left:11px; font-family:var(--font-display,inherit); font-weight:800; font-size:clamp(28px,6vw,42px); color:rgba(255,255,255,.94); text-shadow:0 3px 16px rgba(0,0,0,.6); line-height:1;}
+    .t100-pcard.rank-1 .t100-pnum{font-size:clamp(38px,7vw,54px);}
+    .t100-pscrim{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0) 42%, rgba(0,0,0,.88) 100%);}
+    .t100-pinfo{position:absolute; left:10px; right:10px; bottom:10px;}
+    .t100-pname{color:#fff; font-weight:700; font-size:13.5px; display:flex; align-items:center; gap:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .t100-pmeta{color:rgba(255,255,255,.65); font-size:11px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .t100-pfollow{margin-top:9px; width:100%; background:rgba(255,255,255,.12); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.2); color:#fff; font-weight:700; font-size:11px; padding:6px 0; border-radius:999px; cursor:pointer;}
+    .t100-pfollow.is-following{background:var(--grad-envol); color:#241708; border-color:transparent;}
+
+    .t100-list-label{font-family:var(--font-data,monospace); text-transform:uppercase; letter-spacing:2.5px; font-size:11px; color:#6E6B78; margin-bottom:14px; padding:0 4px;}
+    .t100-row{display:flex; align-items:center; gap:14px; padding:11px 14px; border-radius:14px; background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.05); margin-bottom:7px; transition:background .2s ease, transform .2s ease;}
+    .t100-row:hover{background:rgba(255,255,255,0.075); transform:translateX(2px);}
+    .t100-rank{width:28px; text-align:center; font-weight:700; color:#6E6B78; font-family:var(--font-data,monospace); flex-shrink:0; font-size:13px;}
+    .t100-av{width:44px; height:44px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:14px; flex-shrink:0; background-size:cover; background-position:center; cursor:pointer;}
     .t100-info{flex:1; min-width:0; cursor:pointer;}
-    .t100-name{color:#fff; font-weight:700; font-size:14px;}
-    .t100-meta{color:#8a8a94; font-size:12px;}
-    .t100-followers{color:var(--accent,#D4AF6A); font-weight:700; font-size:13px; white-space:nowrap;}
-    .t100-follow-btn{background:var(--grad-envol); border:none; color:#241708; font-weight:700; font-size:12px; padding:7px 14px; border-radius:999px; cursor:pointer; white-space:nowrap;}
+    .t100-name{color:#fff; font-weight:700; font-size:14px; display:flex; align-items:center; gap:4px;}
+    .t100-meta{color:#8a8a94; font-size:12px; margin-top:1px;}
+    .t100-followers{color:var(--accent,#D4AF6A); font-weight:700; font-size:12.5px; white-space:nowrap; font-family:var(--font-data,monospace);}
+    .t100-follow-btn{background:var(--grad-envol); border:none; color:#241708; font-weight:700; font-size:12px; padding:7px 14px; border-radius:999px; cursor:pointer; white-space:nowrap; flex-shrink:0;}
     .t100-follow-btn.is-following{background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.25);}
     .t100-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0;}
+    .t100-skel{height:56px; border-radius:14px; background:linear-gradient(90deg, rgba(255,255,255,.03) 0%, rgba(255,255,255,.08) 50%, rgba(255,255,255,.03) 100%); background-size:200% 100%; animation:t100shimmer 1.4s ease infinite; margin-bottom:7px;}
+    @keyframes t100shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+
+    @media (max-width:520px){
+      .t100-pcard.rank-1{width:138px; height:186px;}
+      .t100-pcard.rank-2, .t100-pcard.rank-3{width:110px; height:150px;}
+      .t100-pnum{font-size:26px;}
+      .t100-pcard.rank-1 .t100-pnum{font-size:34px;}
+    }
   `;
   document.head.appendChild(style);
 }
+
+// Branche l'état "suivi" + le clic sur n'importe quel bouton Suivre du Top 100
+// (réutilisé à l'identique pour le podium et pour la liste — même logique, un seul endroit à corriger).
+function wireT100FollowButton(followBtn, artistId){
+  if(realAuthToken){
+    fetch(NUNI_API_BASE + '/api/follow/' + artistId + '/status', { headers:{ 'Authorization':'Bearer ' + realAuthToken } })
+      .then(r=>r.json()).then(d=>{ followBtn.textContent = d.following ? 'Suivi ' : 'Suivre'; followBtn.classList.toggle('is-following', d.following); })
+      .catch(()=>{});
+  }
+  followBtn.onclick = async (e)=>{
+    e.stopPropagation();
+    if(!realAuthToken){ toast('Connectez-vous pour suivre un artiste.'); return; }
+    followBtn.disabled = true;
+    try{
+      const res2 = await fetch(NUNI_API_BASE + '/api/follow', {
+        method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+        body: JSON.stringify({ artistId })
+      });
+      const data2 = await res2.json();
+      followBtn.disabled = false;
+      if(!res2.ok){ toast(' ' + (data2.error || 'Erreur.')); return; }
+      followBtn.textContent = data2.following ? 'Suivi ' : 'Suivre';
+      followBtn.classList.toggle('is-following', data2.following);
+    }catch(e2){ followBtn.disabled = false; toast(' Impossible de contacter le serveur NUNI.'); }
+  };
+}
+
 async function openTop100ArtistsPage(){
   ensureTop100Styles();
   let overlay = document.getElementById('top100-overlay');
@@ -8902,9 +8964,15 @@ async function openTop100ArtistsPage(){
   overlay.innerHTML = `
     <button class="t100-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     <div class="t100-wrap">
-      <div class="t100-title">Top 100 artistes NUNI</div>
+      <div class="t100-eyebrow">Classement NUNI</div>
+      <div class="t100-title">Top 100 artistes</div>
       <div class="t100-sub">Classement réel par nombre d'abonnés — uniquement les comptes avec un Pass Artiste actif.</div>
-      <div id="t100-list">Chargement…</div>
+      <div id="t100-podium"></div>
+      <div id="t100-list-label" class="t100-list-label" style="display:none;">Classement complet</div>
+      <div id="t100-list">
+        <div class="t100-skel"></div><div class="t100-skel"></div><div class="t100-skel"></div>
+        <div class="t100-skel"></div><div class="t100-skel"></div>
+      </div>
     </div>`;
   overlay.querySelector('.t100-close').onclick = closeOverlay;
   requestAnimationFrame(()=> overlay.classList.add('show'));
@@ -8913,57 +8981,91 @@ async function openTop100ArtistsPage(){
   try{
     const res = await fetch(NUNI_API_BASE + '/api/artists/top100');
     const data = await res.json();
+    const podium = document.getElementById('t100-podium');
+    const listLabel = document.getElementById('t100-list-label');
     const list = document.getElementById('t100-list');
-    if(!list) return; // overlay fermé entre-temps
+    if(!list || !podium) return; // overlay fermé entre-temps
     const artists = data.artists || [];
     if(!artists.length){
+      podium.innerHTML = '';
       list.innerHTML = `<div class="t100-empty">Aucun artiste avec un Pass actif pour le moment.</div>`;
       return;
     }
-    list.innerHTML = '';
-    artists.forEach(a=>{
+
+    // Ambiance de fond : vraie couleur dominante de la pochette/photo de l'artiste #1
+    // (même système NuniPalette que le lecteur — jamais une couleur inventée au hasard).
+    const leader = artists[0];
+    if(leader && leader.avatar_url && typeof NuniPalette !== 'undefined'){
+      NuniPalette.extract(leader.avatar_url).then(pal=>{
+        overlay.style.setProperty('--t100-dark', pal.dark);
+        overlay.style.setProperty('--t100-glow', pal.dominant.replace('hsl','hsla').replace(')', ', .3)'));
+      });
+    }
+
+    const top3 = artists.slice(0, 3);
+    const rest = artists.slice(3);
+
+    const renderIdentity = (a)=>{
       const name = a.artist_name || a.first_name;
       const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      const avatarStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
-      const row = document.createElement('div');
-      row.className = 't100-row';
-      row.innerHTML = `
-        <div class="t100-rank">#${a.rnk}</div>
-        <div class="t100-av" style="${avatarStyle}">${a.avatar_url ? '' : initials}</div>
-        <div class="t100-info">
-          <div class="t100-name">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
-          <div class="t100-meta">${a.top_genre || 'Artiste NUNI'}</div>
-        </div>
-        <div class="t100-followers">${(a.follower_count||0).toLocaleString('fr-FR')} abonnés</div>
-        <button class="t100-follow-btn">Suivre</button>`;
-      const goToArtist = ()=>{ closeOverlay(); openArtistPage(name, a.id); };
-      row.querySelector('.t100-av').onclick = goToArtist;
-      row.querySelector('.t100-info').onclick = goToArtist;
-      const followBtn = row.querySelector('.t100-follow-btn');
-      if(realAuthToken){
-        fetch(NUNI_API_BASE + '/api/follow/' + a.id + '/status', { headers:{ 'Authorization':'Bearer ' + realAuthToken } })
- .then(r=>r.json()).then(d=>{ followBtn.textContent = d.following ? 'Suivi ' : 'Suivre'; followBtn.classList.toggle('is-following', d.following); })
-          .catch(()=>{});
-      }
-      followBtn.onclick = async ()=>{
-        if(!realAuthToken){ toast('Connectez-vous pour suivre un artiste.'); return; }
-        followBtn.disabled = true;
-        try{
-          const res2 = await fetch(NUNI_API_BASE + '/api/follow', {
-            method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
-            body: JSON.stringify({ artistId: a.id })
-          });
-          const data2 = await res2.json();
-          followBtn.disabled = false;
- if(!res2.ok){ toast(' ' + (data2.error || 'Erreur.')); return; }
- followBtn.textContent = data2.following ? 'Suivi ' : 'Suivre';
-          followBtn.classList.toggle('is-following', data2.following);
- }catch(e){ followBtn.disabled = false; toast(' Impossible de contacter le serveur NUNI.'); }
-      };
-      list.appendChild(row);
-    });
+      return { name, initials };
+    };
+
+    // ----- Podium : les 3 premiers, façon affiche -----
+    if(top3.length){
+      podium.className = 't100-podium';
+      // Ordre visuel : #2, #1 (au centre, plus grand), #3 — le CSS `order` gère le placement réel
+      top3.forEach(a=>{
+        const { name, initials } = renderIdentity(a);
+        const card = document.createElement('div');
+        card.className = `t100-pcard rank-${a.rnk}`;
+        card.innerHTML = `
+          ${a.avatar_url ? `<div class="t100-pimg" style="background-image:url(${a.avatar_url});"></div>` : `<div class="t100-pinit">${initials}</div>`}
+          <div class="t100-pnum">${a.rnk}</div>
+          <div class="t100-pscrim"></div>
+          <div class="t100-pinfo">
+            <div class="t100-pname">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:12px;height:12px;flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+            <div class="t100-pmeta">${a.top_genre || 'Artiste NUNI'} · ${(a.follower_count||0).toLocaleString('fr-FR')} abonnés</div>
+            <button class="t100-pfollow">Suivre</button>
+          </div>`;
+        const goToArtist = ()=>{ closeOverlay(); openArtistPage(name, a.id); };
+        card.onclick = (e)=>{ if(!e.target.closest('.t100-pfollow')) goToArtist(); };
+        wireT100FollowButton(card.querySelector('.t100-pfollow'), a.id);
+        podium.appendChild(card);
+      });
+    }
+
+    // ----- Liste : rangs 4 et suivants -----
+    list.innerHTML = '';
+    if(!rest.length){
+      listLabel.style.display = 'none';
+    }else{
+      listLabel.style.display = 'block';
+      rest.forEach(a=>{
+        const { name, initials } = renderIdentity(a);
+        const avatarStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
+        const row = document.createElement('div');
+        row.className = 't100-row';
+        row.innerHTML = `
+          <div class="t100-rank">#${a.rnk}</div>
+          <div class="t100-av" style="${avatarStyle}">${a.avatar_url ? '' : initials}</div>
+          <div class="t100-info">
+            <div class="t100-name">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+            <div class="t100-meta">${a.top_genre || 'Artiste NUNI'}</div>
+          </div>
+          <div class="t100-followers">${(a.follower_count||0).toLocaleString('fr-FR')} abonnés</div>
+          <button class="t100-follow-btn">Suivre</button>`;
+        const goToArtist = ()=>{ closeOverlay(); openArtistPage(name, a.id); };
+        row.querySelector('.t100-av').onclick = goToArtist;
+        row.querySelector('.t100-info').onclick = goToArtist;
+        wireT100FollowButton(row.querySelector('.t100-follow-btn'), a.id);
+        list.appendChild(row);
+      });
+    }
   }catch(e){
+    const podium = document.getElementById('t100-podium');
     const list = document.getElementById('t100-list');
+    if(podium) podium.innerHTML = '';
     if(list) list.innerHTML = `<div class="t100-empty">Classement momentanément indisponible.</div>`;
   }
 }
