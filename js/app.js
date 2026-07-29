@@ -4236,7 +4236,63 @@ async function loadRealTracks(){
 // silencieux sur l'image statique tant qu'aucun morceau réel n'a encore assez d'écoutes.
 let heroRotateTimer = null, heroRotateIndex = 0, heroRotatePool = [];
 /* ---------- "Afrique en direct" — vraies écoutes par pays/ville, plateforme entière ---------- */
-async function loadAfroliveStats(){
+/* ---------- "Afrique en direct" — drapeaux, régions et tendances réelles ---------- */
+// Table de correspondance pays → code ISO (pour générer un vrai drapeau emoji, sans charger
+// aucune image) — centrée sur les pays les plus probables pour l'audience de NUNI. Un pays
+// non reconnu affiche simplement 🌍 plutôt qu'un drapeau incorrect.
+const COUNTRY_ISO = {
+  'congo':'CG','republique du congo':'CG','rdc':'CD','republique democratique du congo':'CD','rd congo':'CD',
+  'gabon':'GA','cameroun':'CM','tchad':'TD','centrafrique':'CF','guinee equatoriale':'GQ',
+  'senegal':'SN','cote d\'ivoire':'CI','ivoire':'CI','mali':'ML','burkina faso':'BF','guinee':'GN',
+  'benin':'BJ','togo':'TG','niger':'NE','nigeria':'NG','ghana':'GH','sierra leone':'SL','liberia':'LR',
+  'kenya':'KE','tanzanie':'TZ','ouganda':'UG','ethiopie':'ET','rwanda':'RW','burundi':'BI',
+  'afrique du sud':'ZA','zimbabwe':'ZW','zambie':'ZM','namibie':'NA','angola':'AO','mozambique':'MZ',
+  'maroc':'MA','algerie':'DZ','tunisie':'TN','egypte':'EG','libye':'LY',
+  'france':'FR','belgique':'BE','allemagne':'DE','royaume-uni':'GB','angleterre':'GB','suisse':'CH',
+  'italie':'IT','espagne':'ES','portugal':'PT','pays-bas':'NL','suede':'SE','norvege':'NO',
+  'etats-unis':'US','usa':'US','canada':'CA','mexique':'MX','bresil':'BR',
+  'jamaique':'JM','haiti':'HT','cuba':'CU',
+  'chine':'CN','inde':'IN','japon':'JP','coree du sud':'KR','emirats arabes unis':'AE',
+  'australie':'AU','nouvelle-zelande':'NZ',
+};
+function normalizeCountryKeyFront(name){
+  return (name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+function countryFlag(name){
+  const iso = COUNTRY_ISO[normalizeCountryKeyFront(name)];
+  if(!iso) return '🌍';
+  return String.fromCodePoint(...[...iso].map(c=> 127397 + c.charCodeAt(0)));
+}
+function trendBadge(trend){
+  if(!trend) return '';
+  if(trend.direction === 'new') return '<span class="afrolive-trend new">Nouveau</span>';
+  if(trend.direction === 'up') return `<span class="afrolive-trend up">▲ +${trend.pct}%</span>`;
+  if(trend.direction === 'down') return `<span class="afrolive-trend down">▼ ${trend.pct}%</span>`;
+  return '<span class="afrolive-trend flat">➡ Stable</span>';
+}
+let lastAfroliveData = null;
+function renderAfroliveInto(prefix, data){
+  const fmt = n => Number(n||0).toLocaleString('fr-FR');
+  const regionsEl = document.getElementById(prefix + '-regions');
+  const countriesEl = document.getElementById(prefix + '-countries');
+  const citiesEl = document.getElementById(prefix + '-cities');
+  if(regionsEl){
+    regionsEl.innerHTML = data.topRegions.length
+      ? data.topRegions.map(r=> `<div class="afrolive-row"><span class="ar-name">🗺️ ${r.region}</span><span class="plays">${fmt(r.plays)}</span></div>`).join('')
+      : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
+  }
+  if(countriesEl){
+    countriesEl.innerHTML = data.topCountries.length
+      ? data.topCountries.map(c=> `<div class="afrolive-row" data-key="${c.country}"><span class="ar-name">${countryFlag(c.country)} ${c.country}</span><span class="plays">${trendBadge(data.trends[c.country])} ${fmt(c.plays)}</span></div>`).join('')
+      : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
+  }
+  if(citiesEl){
+    citiesEl.innerHTML = data.topCities.length
+      ? data.topCities.map(c=> `<div class="afrolive-row" data-key="${c.city}"><span class="ar-name">${countryFlag(c.country)} ${c.city}</span><span class="plays">${fmt(c.plays)}</span></div>`).join('')
+      : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
+  }
+}
+async function loadAfroliveStats(isRefresh){
   const section = document.getElementById('afrolive-section');
   if(!section) return;
   try{
@@ -4247,16 +4303,36 @@ async function loadAfroliveStats(){
     const fmt = n => Number(n||0).toLocaleString('fr-FR');
     document.getElementById('afrolive-total-plays').textContent = fmt(data.totalPlays);
     document.getElementById('afrolive-total-countries').textContent = fmt(data.totalCountries);
-    document.getElementById('afrolive-countries').innerHTML = data.topCountries.length
-      ? data.topCountries.map(c=> `<div class="afrolive-row"><span>${c.country}</span><span class="plays">${fmt(c.plays)}</span></div>`).join('')
-      : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
-    document.getElementById('afrolive-cities').innerHTML = data.topCities.length
-      ? data.topCities.map(c=> `<div class="afrolive-row"><span>${c.city}</span><span class="plays">${fmt(c.plays)}</span></div>`).join('')
-      : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
+    renderAfroliveInto('afrolive', data);
+    // ---- Note d'honnêteté : ceci n'est PAS un vrai flux temps réel poussé par le serveur à
+    // chaque écoute individuelle (ça demanderait une infrastructure WebSocket que NUNI n'a
+    // pas). C'est un rafraîchissement périodique qui, lui, est bien réel — et une ligne dont
+    // le chiffre a changé reçoit une impulsion lumineuse pour donner la sensation de vie.
+    if(isRefresh && lastAfroliveData){
+      document.querySelectorAll('#afrolive-countries .afrolive-row, #afrolive-cities .afrolive-row').forEach(row=>{
+        const key = row.dataset.key;
+        const before = lastAfroliveData.topCountries.find(c=>c.country===key) || lastAfroliveData.topCities.find(c=>c.city===key);
+        const after = data.topCountries.find(c=>c.country===key) || data.topCities.find(c=>c.city===key);
+        if(before && after && before.plays !== after.plays){
+          row.classList.add('ar-pulse');
+          setTimeout(()=> row.classList.remove('ar-pulse'), 1100);
+        }
+      });
+    }
+    lastAfroliveData = data;
     section.style.display = 'block';
   }catch(e){ /* pas grave si le serveur est momentanément indisponible — la section reste simplement masquée */ }
 }
 loadAfroliveStats();
+setInterval(()=> loadAfroliveStats(true), 45000); // rafraîchissement réel toutes les 45s — pas un vrai push, mais un vrai recalcul à chaque fois
+
+function openWorldModal(){
+  if(lastAfroliveData) renderAfroliveInto('world-modal', lastAfroliveData);
+  document.getElementById('world-modal-overlay').classList.add('show');
+}
+function closeWorldModal(){
+  document.getElementById('world-modal-overlay').classList.remove('show');
+}
 
 function renderHomeHero(){
   const hero = document.getElementById('premium-hero-accueil');

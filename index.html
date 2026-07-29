@@ -15,11 +15,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727b7">
-<link rel="stylesheet" href="css/corners.css?v=20260727b7">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727b7">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727b7">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727b7">
+<link rel="stylesheet" href="css/style.css?v=20260727b8">
+<link rel="stylesheet" href="css/corners.css?v=20260727b8">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727b8">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727b8">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727b8">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -753,23 +753,32 @@
 
     <!-- ============ AFRIQUE EN DIRECT — globe abstrait + vraies écoutes par pays/ville ============ -->
     <div class="afrolive-section" id="afrolive-section" style="display:none;">
-      <div class="shelf-head"><h3 class="serif">🌍 Afrique en direct</h3></div>
+      <div class="shelf-head">
+        <h3 class="serif">🌍 Afrique en direct</h3>
+        <a style="cursor:pointer;" onclick="openWorldModal()">Voir le monde</a>
+      </div>
       <div class="afrolive-card">
         <div class="afrolive-globe-wrap">
-          <div class="afrolive-globe">
+          <div class="afrolive-globe" id="afrolive-globe">
+            <div class="ag-glow"></div>
             <div class="ag-ring ag-ring-1"></div>
             <div class="ag-ring ag-ring-2"></div>
             <div class="ag-ring ag-ring-3"></div>
-            <div class="ag-core"></div>
-            <div class="ag-dot" style="--a:20deg; --r:78px; --d:0s;"></div>
-            <div class="ag-dot" style="--a:95deg; --r:64px; --d:.4s;"></div>
-            <div class="ag-dot" style="--a:160deg; --r:82px; --d:.9s;"></div>
-            <div class="ag-dot" style="--a:230deg; --r:60px; --d:1.3s;"></div>
-            <div class="ag-dot" style="--a:290deg; --r:74px; --d:1.7s;"></div>
+            <div class="ag-core"><div class="ag-core-shine"></div></div>
+            <div class="ag-dot ag-dot-gold" style="--a:20deg; --r:80px; --d:0s;"></div>
+            <div class="ag-dot ag-dot-orange" style="--a:95deg; --r:66px; --d:.4s;"></div>
+            <div class="ag-dot ag-dot-red" style="--a:160deg; --r:84px; --d:.9s;"></div>
+            <div class="ag-dot ag-dot-turquoise" style="--a:230deg; --r:62px; --d:1.3s;"></div>
+            <div class="ag-dot ag-dot-gold" style="--a:290deg; --r:76px; --d:1.7s;"></div>
+            <div class="ag-dot ag-dot-orange" style="--a:340deg; --r:70px; --d:2.1s;"></div>
           </div>
           <div class="afrolive-stat"><b id="afrolive-total-plays">—</b> écoutes réelles enregistrées, <b id="afrolive-total-countries">—</b> pays</div>
         </div>
-        <div class="afrolive-lists">
+        <div class="afrolive-lists afrolive-lists-3">
+          <div>
+            <div class="afrolive-list-title">Top régions</div>
+            <div id="afrolive-regions"></div>
+          </div>
           <div>
             <div class="afrolive-list-title">Top pays</div>
             <div id="afrolive-countries"></div>
@@ -777,6 +786,32 @@
           <div>
             <div class="afrolive-list-title">Top villes</div>
             <div id="afrolive-cities"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ "VOIR LE MONDE" — vue plein écran, mêmes vraies données en détail ============ -->
+    <div class="ai-modal-overlay" id="world-modal-overlay" onclick="if(event.target===this) closeWorldModal()">
+      <div class="ai-modal" style="max-width:760px; text-align:left;">
+        <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeWorldModal()" aria-label="Fermer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <span class="ai-modal-eyebrow">🌍 NUNI dans le monde</span>
+        <h2 class="serif">La musique congolaise voyage</h2>
+        <p style="font-size:13px; color:var(--text-dim); margin-bottom:20px;">Basé sur les vraies écoutes enregistrées sur NUNI, par pays d'inscription des auditeurs.</p>
+        <div class="afrolive-lists afrolive-lists-3" style="max-height:60vh; overflow-y:auto;">
+          <div>
+            <div class="afrolive-list-title">Top 10 régions</div>
+            <div id="world-modal-regions"></div>
+          </div>
+          <div>
+            <div class="afrolive-list-title">Top 10 pays</div>
+            <div id="world-modal-countries"></div>
+          </div>
+          <div>
+            <div class="afrolive-list-title">Top 10 villes</div>
+            <div id="world-modal-cities"></div>
           </div>
         </div>
       </div>
@@ -1866,8 +1901,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727b7"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727b8"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727b7"></script>
+<script src="js/app.js?v=20260727b8"></script>
 </body>
 </html>
