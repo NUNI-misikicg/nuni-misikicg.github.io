@@ -3005,7 +3005,10 @@ function nuniResumeAudioContextIfNeeded(){
 function nuniSyncAnalysisAudio(src, currentTime){
   try{
     if(nuniAnalysisAudio.src !== src){ nuniAnalysisAudio.src = src; }
-    if(Math.abs(nuniAnalysisAudio.currentTime - currentTime) > 0.35){ nuniAnalysisAudio.currentTime = currentTime; }
+    // Seuil resserré (0,35s → 0,08s) : ce flux est muet, donc une resynchronisation fréquente
+    // ne s'entend jamais — seule la sphère en profite, en collant vraiment au son réel plutôt
+    // que de pouvoir traîner jusqu'à un tiers de seconde derrière.
+    if(Math.abs(nuniAnalysisAudio.currentTime - currentTime) > 0.08){ nuniAnalysisAudio.currentTime = currentTime; }
   }catch(e){ /* jamais bloquant */ }
 }
 function nuniAnalysisAudioPlayPause(shouldPlay){
@@ -3052,8 +3055,12 @@ function buildNuniAudioSphere(){
     rotY += 0.0035; // rotation lente permanente
 
     // Analyse audio réelle si un son est en cours de lecture — sinon, respiration seule.
+    // Resynchronisation à chaque image (jusqu'à 60x/seconde, via ce même frame()) plutôt que
+    // de dépendre uniquement du timeupdate du vrai lecteur (~4x/seconde) : la sphère reste
+    // collée au son réel image par image, sans décalage perceptible.
     let bass = 0, mid = 0, treble = 0, audioActive = false;
     if(playing && usingRealAudio && nuniAnalyser){
+      nuniSyncAnalysisAudio(realAudio.src, realAudio.currentTime);
       nuniAnalyser.getByteFrequencyData(nuniFreqData);
       const n = nuniFreqData.length;
       const bassEnd = Math.floor(n * 0.15), midEnd = Math.floor(n * 0.55);
