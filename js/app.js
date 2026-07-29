@@ -4279,14 +4279,6 @@ function countryFlag(name){
   if(!iso) return '🌍';
   return String.fromCodePoint(...[...iso].map(c=> 127397 + c.charCodeAt(0)));
 }
-function trendBadge(trend){
-  if(!trend) return '';
-  if(trend.direction === 'new') return '<span class="afrolive-trend new">Nouveau</span>';
-  if(trend.direction === 'low_sample') return '<span class="afrolive-trend low_sample">— pas assez de recul</span>';
-  if(trend.direction === 'up') return `<span class="afrolive-trend up">▲ +${trend.pct}%</span>`;
-  if(trend.direction === 'down') return `<span class="afrolive-trend down">▼ ${trend.pct}%</span>`;
-  return '<span class="afrolive-trend flat">➡ Stable</span>';
-}
 // Format compact K/M façon "892K", "2.48M" — juste une présentation différente du même vrai
 // nombre, jamais un chiffre recalculé ou arrondi de façon trompeuse.
 function formatK(n){
@@ -4301,19 +4293,24 @@ function renderAfroliveInto(prefix, data){
   const regionsEl = document.getElementById(prefix + '-regions');
   const countriesEl = document.getElementById(prefix + '-countries');
   const citiesEl = document.getElementById(prefix + '-cities');
+  // ---- Les badges de tendance (▲▼) ont été retirés de ces listes compactes : avec encore
+  // très peu de vraies écoutes, un pourcentage donnait une impression de précision
+  // statistique trompeuse (ex: -58% sur une poignée d'écoutes réelles). On garde uniquement
+  // le vrai chiffre, honnête et lisible. La tendance globale reste visible sur la carte
+  // "Écoutes totales" du globe, où le contexte (mois complet) la rend plus significative.
   if(regionsEl){
     regionsEl.innerHTML = data.topRegions.length
-      ? data.topRegions.map(r=> `<div class="afrolive-row"><span class="ar-name">🗺️ ${r.region}</span><span class="plays">${trendBadge(data.regionTrends && data.regionTrends[r.region])} ${fmt(r.plays)}</span></div>`).join('')
+      ? data.topRegions.map(r=> `<div class="afrolive-row"><span class="ar-name">🗺️ ${r.region}</span><span class="plays">${fmt(r.plays)}</span></div>`).join('')
       : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
   }
   if(countriesEl){
     countriesEl.innerHTML = data.topCountries.length
-      ? data.topCountries.map(c=> `<div class="afrolive-row" data-key="${c.country}"><span class="ar-name">${countryFlag(c.country)} ${c.country}</span><span class="plays">${trendBadge(data.trends[c.country])} ${fmt(c.plays)}</span></div>`).join('')
+      ? data.topCountries.map(c=> `<div class="afrolive-row" data-key="${c.country}"><span class="ar-name">${countryFlag(c.country)} ${c.country}</span><span class="plays">${fmt(c.plays)}</span></div>`).join('')
       : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
   }
   if(citiesEl){
     citiesEl.innerHTML = data.topCities.length
-      ? data.topCities.map(c=> `<div class="afrolive-row" data-key="${c.city}"><span class="ar-name">${countryFlag(c.country)} ${c.city}</span><span class="plays">${trendBadge(data.cityTrends && data.cityTrends[c.city])} ${fmt(c.plays)}</span></div>`).join('')
+      ? data.topCities.map(c=> `<div class="afrolive-row" data-key="${c.city}"><span class="ar-name">${countryFlag(c.country)} ${c.city}</span><span class="plays">${fmt(c.plays)}</span></div>`).join('')
       : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
   }
   // ---- Carte "Écoutes totales" du globe — vrai total, vraie tendance mensuelle. ----
