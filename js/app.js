@@ -4394,14 +4394,18 @@ function loadThreeJs(){
   });
   return window.__threeLoadingPromise;
 }
+let globe3dInitializing = false; // garde-fou anti double-clic rapide, avant même que globe3dState existe
 async function initGlobe3D(){
   const wrap = document.getElementById('globe3d-wrap');
   const loading = document.getElementById('globe3d-loading');
   if(!wrap || !lastAfroliveData) return;
   if(globe3dState){ globe3dState.paused = false; return; } // déjà initialisé — juste relancer l'animation
+  if(globe3dInitializing) return; // un chargement est déjà en cours (ex: double-clic rapide) — ne jamais en démarrer un second
+  globe3dInitializing = true;
   try{
     await loadThreeJs();
   }catch(e){
+    globe3dInitializing = false;
     if(loading) loading.textContent = 'Globe 3D indisponible pour le moment — voir les classements ci-dessous.';
     return;
   }
@@ -4488,6 +4492,7 @@ async function initGlobe3D(){
   canvas.addEventListener('pointerleave', ()=>{ tooltip.style.display = 'none'; });
 
   globe3dState = { paused:false };
+  globe3dInitializing = false;
   function animate(){
     requestAnimationFrame(animate);
     if(globe3dState.paused) return;
