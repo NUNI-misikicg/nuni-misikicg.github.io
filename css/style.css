@@ -2541,7 +2541,11 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
      se superposait au petit logo. On bascule l'alignement en haut et on fixe une vraie
      marge qui réserve l'espace du topbar, quelle que soit la hauteur de l'écran. */
   .home-wrap{ justify-content:flex-start; padding-top:calc(92px + env(safe-area-inset-top,0)); }
-  .player-bar{ bottom:64px; padding-bottom:0; }
+  /* Avant : bottom:64px fixe ignorait la zone de sécurité en bas (env(safe-area-inset-bottom))
+     que .mobile-tabbar réserve, elle. Sur un iPhone avec indicateur d'accueil, la tabbar
+     remonte de cette zone et la mini-barre de lecture (restée à 64px pile) se retrouvait à
+     cheval dessus. Elle s'aligne maintenant sur le même calcul que la tabbar. */
+  .player-bar{ bottom:calc(74px + env(safe-area-inset-bottom,0)); padding-bottom:0; }
   .demo-nav{ bottom:calc(170px + env(safe-area-inset-bottom,0)); }
   .demo-nav.no-player{ bottom:calc(20px + env(safe-area-inset-bottom,0)); }
   .radio-banner, .talent-banner{ flex-direction:column; align-items:flex-start; }
