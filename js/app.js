@@ -3307,18 +3307,22 @@ function filterCatalogByGenre(genreName){
         artistNames.forEach(name=>{
           const t = tracks.find(tr=>tr.a===name);
           const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-          const avatarStyle = t && t.artistAvatarUrl ? `background-image:url(${t.artistAvatarUrl}); background-size:cover; background-position:center;` : '';
+          const photoStyle = t && t.artistAvatarUrl ? `background-image:url(${t.artistAvatarUrl});` : '';
+          const artistId = t && t.artistId ? t.artistId : null;
           const card = document.createElement('div');
           card.className = 'artist-suggest-card';
           card.innerHTML = `
-            <div class="av" style="${avatarStyle}">${avatarStyle ? '' : initials}</div>
-            <div class="n">${name}${t && t.verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
-            <div class="g">${genreName}</div>
-            <button onclick="event.stopPropagation(); openArtistPage('${name.replace(/'/g,"\\'")}', ${t && t.artistId ? t.artistId : 'null'})">Voir le profil</button>`;
-          card.querySelector('.av').style.cursor = 'pointer';
-          card.querySelector('.n').style.cursor = 'pointer';
-          card.querySelector('.av').onclick = ()=> openArtistPage(name, t && t.artistId);
-          card.querySelector('.n').onclick = ()=> openArtistPage(name, t && t.artistId);
+            <div class="asc-photo" style="${photoStyle}">
+              ${photoStyle ? '' : `<div class="asc-initials">${initials}</div>`}
+              <div class="asc-scrim"></div>
+              <div class="asc-info">
+                <div class="n">${name}${t && t.verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+                <div class="g">${genreName}</div>
+                <button>Voir le profil</button>
+              </div>
+            </div>`;
+          card.querySelector('.asc-photo').onclick = (e)=>{ if(e.target.tagName !== 'BUTTON') openArtistPage(name, artistId); };
+          card.querySelector('button').onclick = (e)=>{ e.stopPropagation(); openArtistPage(name, artistId); };
           artistsRow.appendChild(card);
         });
       } else {
@@ -8769,18 +8773,20 @@ async function loadFeaturedArtists(){
     list.forEach(a=>{
       const name = a.artist_name || a.first_name;
       const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      const avatarStyle = a.avatar_url ? `background-image:url(${a.avatar_url}); background-size:cover; background-position:center;` : '';
+      const photoStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
       const card = document.createElement('div');
       card.className = 'artist-suggest-card';
       card.innerHTML = `
-        <div class="av" style="${avatarStyle}">${a.avatar_url ? '' : initials}</div>
-        <div class="n">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
-        <div class="g">${a.top_genre || 'Artiste NUNI'}</div>
-        <button>Suivre</button>`;
-      card.querySelector('.av').onclick = ()=> openArtistPage(name, a.id);
-      card.querySelector('.n').onclick = ()=> openArtistPage(name, a.id);
-      card.querySelector('.n').style.cursor = 'pointer';
-      card.querySelector('.av').style.cursor = 'pointer';
+        <div class="asc-photo" style="${photoStyle}">
+          ${a.avatar_url ? '' : `<div class="asc-initials">${initials}</div>`}
+          <div class="asc-scrim"></div>
+          <div class="asc-info">
+            <div class="n">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+            <div class="g">${a.top_genre || 'Artiste NUNI'}</div>
+            <button>Suivre</button>
+          </div>
+        </div>`;
+      card.querySelector('.asc-photo').onclick = (e)=>{ if(e.target.tagName !== 'BUTTON') openArtistPage(name, a.id); };
       const followBtn = card.querySelector('button');
       // Avant : ce bouton affichait toujours "Suivre" par défaut, même si le compte connecté
       // suivait déjà cet artiste — jamais vérifié contre la vraie base à l'ouverture (même
