@@ -4358,6 +4358,7 @@ let recapData = null;
 async function openRecapModal(){
   if(!realAuthToken){ toast('Connectez-vous pour voir votre récap personnel.'); return; }
   document.getElementById('recap-modal-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
   document.getElementById('recap-headline').textContent = 'Chargement…';
   document.getElementById('recap-months').innerHTML = '';
   document.getElementById('recap-body').innerHTML = '';
@@ -4376,6 +4377,7 @@ async function openRecapModal(){
 }
 function closeRecapModal(){
   document.getElementById('recap-modal-overlay').classList.remove('show');
+  document.body.style.overflow = '';
 }
 function renderRecapMonths(){
   const wrap = document.getElementById('recap-months');
@@ -4440,10 +4442,12 @@ function renderRecapBody(month){
 function openWorldModal(){
   if(lastAfroliveData) renderAfroliveInto('world-modal', lastAfroliveData);
   document.getElementById('world-modal-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
   initGlobe3D();
 }
 function closeWorldModal(){
   document.getElementById('world-modal-overlay').classList.remove('show');
+  document.body.style.overflow = '';
   if(globe3dState) globe3dState.paused = true; // pas la peine de continuer à faire tourner le globe hors écran
 }
 
@@ -6910,6 +6914,7 @@ function openArtistAboutModal(){
   }
   apabRenderImage();
   document.getElementById('apab-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
 }
 function apabProxyFollow(){
   const realFollowBtn = document.getElementById('follow-btn');
@@ -6927,6 +6932,7 @@ function apabProxyFollow(){
 }
 function closeArtistAboutModal(){
   document.getElementById('apab-overlay').classList.remove('show');
+  document.body.style.overflow = '';
 }
 function apabRenderImage(){
   const img = document.getElementById('apab-carousel-img');
@@ -9842,6 +9848,24 @@ sessionRestorePromise = restoreSession();
    la navigation. Rappelé à chaque changement de vue (voir enterApp)
    pour repérer les nouvelles sections qui viennent d'apparaître.
 ============================================================ */
+/* ============================================================
+   MASQUER LE LECTEUR SUR MOBILE PENDANT UNE INTERFACE PLEIN ÉCRAN —
+   comportement Spotify/Apple Music : le mini-lecteur ne reste jamais
+   visible par-dessus une page ouverte (Album, Playlist, À propos,
+   Voir le monde, Récap...). Toutes ces interfaces basculent déjà
+   document.body.style.overflow entre 'hidden' et '' à l'ouverture/
+   fermeture (pattern déjà utilisé partout) — un seul observateur ici
+   suffit, plutôt que de dupliquer la logique dans chaque fonction.
+   Ne change rien en desktop (voir la media query dans style.css).
+============================================================ */
+const playerBarVisibilityObserver = new MutationObserver(()=>{
+  const playerBar = document.getElementById('player-bar');
+  if(!playerBar) return;
+  const overlayOpen = document.body.style.overflow === 'hidden';
+  playerBar.classList.toggle('hide-for-overlay', overlayOpen);
+});
+playerBarVisibilityObserver.observe(document.body, { attributes:true, attributeFilter:['style'] });
+
 let scrollRevealObserver = null;
 function initScrollReveal(){
   if(!scrollRevealObserver){
