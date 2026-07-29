@@ -2407,6 +2407,43 @@ function setArtistHeroPhoto(url, initials){
     if(fg){ fg.style.backgroundImage = ''; fg.style.display = 'none'; }
   }
 }
+/* ---------- Page artiste — "Artistes qu'il suit" (vraie suggestion pour les auditeurs) ----------
+   Basé sur les vrais artistes que CET artiste suit lui-même (même mécanisme de suivi que
+   tout le monde) — jamais une recommandation générée, juste ses vrais goûts affichés. */
+async function loadArtistFollowsSection(artistId, artistName){
+  const section = document.getElementById('artist-follows-section');
+  const row = document.getElementById('artist-follows-row');
+  const title = document.getElementById('artist-follows-title');
+  if(!section || !row) return;
+  if(!artistId){ section.style.display = 'none'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/artist/' + artistId + '/follows');
+    const data = await res.json();
+    const list = data.artists || [];
+    if(!list.length){ section.style.display = 'none'; return; }
+    if(title) title.textContent = `Les artistes que ${artistName} suit`;
+    row.innerHTML = '';
+    list.forEach(a=>{
+      const name = a.artist_name || 'Artiste NUNI';
+      const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const photoStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
+      const card = document.createElement('div');
+      card.className = 'artist-suggest-card';
+      card.innerHTML = `
+        <div class="asc-photo" style="${photoStyle}">
+          ${a.avatar_url ? '' : `<div class="asc-initials">${initials}</div>`}
+          <div class="asc-scrim"></div>
+          <div class="asc-info">
+            <div class="n">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+            <div class="g">${a.top_genre || 'Artiste NUNI'}</div>
+          </div>
+        </div>`;
+      card.querySelector('.asc-photo').onclick = ()=> openArtistPage(name, a.id);
+      row.appendChild(card);
+    });
+    section.style.display = 'block';
+  }catch(e){ section.style.display = 'none'; } // pas grave si le serveur est momentanément indisponible
+}
 function openArtistPage(name, artistId){
   window.scrollTo(0, 0);
   // Avant : cette page était identifiée uniquement par le NOM affiché (chaîne de texte) —
@@ -2466,6 +2503,7 @@ function openArtistPage(name, artistId){
 
   currentArtistPageRealId = artistId;
   document.getElementById('artist-page-support-btn').setAttribute('onclick', `openSupportArtistModal(${currentArtistPageRealId || 'null'}, ${JSON.stringify(name)})`);
+  loadArtistFollowsSection(currentArtistPageRealId, name);
 
   // Sons en vedette — sélectionnés par l'artiste lui-même parmi ses morceaux déjà publiés.
   // Section entièrement masquée s'il n'a encore rien choisi (pas de rangée vide inutile).
