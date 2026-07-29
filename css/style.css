@@ -1092,6 +1092,43 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 #nuni-aura-ambient.is-active{ opacity:calc(.16 + var(--nuni-aura-live-boost, 0)*0.4); }
 @keyframes auraAmbientBreathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.04); } }
 @media(prefers-reduced-motion: reduce){ #nuni-aura-ambient{ transition:opacity .3s ease; animation:none; } }
+
+/* ============================================================
+   CURSEUR NUNI — un halo doux qui suit la souris, avec un léger
+   effet d'aimantation sur les éléments importants (Play, boutons
+   principaux). Volontairement PAS appliqué à chaque pochette — ça
+   deviendrait vite fatiguant plutôt qu'élégant. Seulement sur desktop
+   avec un vrai survol (jamais sur tactile), et le curseur natif du
+   navigateur reste actif en secours partout — celui-ci vient juste
+   se superposer, jamais le remplacer complètement.
+============================================================ */
+#nuni-cursor{
+  position:fixed; top:0; left:0; z-index:99998; pointer-events:none;
+  transform:translate(-50%,-50%); opacity:0; transition:opacity .25s ease;
+  will-change:transform;
+}
+#nuni-cursor.is-active{ opacity:1; }
+.nc-dot{
+  position:absolute; top:50%; left:50%; width:6px; height:6px; margin:-3px 0 0 -3px;
+  border-radius:50%; background:var(--nuni-aura-color, var(--or-2));
+  transition:background .4s ease;
+}
+.nc-halo{
+  position:absolute; top:50%; left:50%; width:34px; height:34px; margin:-17px 0 0 -17px;
+  border-radius:50%; border:1px solid color-mix(in srgb, var(--nuni-aura-color, var(--or-2)) 55%, transparent);
+  transition:width .3s cubic-bezier(.2,.8,.2,1), height .3s cubic-bezier(.2,.8,.2,1), margin .3s cubic-bezier(.2,.8,.2,1), border-color .4s ease, background .3s ease;
+}
+/* Cible en survol (bouton, lien, carte) : le halo grossit et se remplit légèrement. */
+#nuni-cursor.is-hover .nc-halo{
+  width:52px; height:52px; margin:-26px 0 0 -26px;
+  background:color-mix(in srgb, var(--nuni-aura-color, var(--or-2)) 10%, transparent);
+}
+/* Cible "magnétique" (CTA principaux) : halo encore plus marqué, le point disparaît car
+   l'élément lui-même se charge d'attirer le regard (voir .nc-magnetic dans app.js). */
+#nuni-cursor.is-magnetic .nc-halo{ width:64px; height:64px; margin:-32px 0 0 -32px; border-width:1.5px; }
+#nuni-cursor.is-magnetic .nc-dot{ opacity:0; }
+@media(hover:none){ #nuni-cursor{ display:none; } }
+@media(prefers-reduced-motion: reduce){ #nuni-cursor{ display:none; } }
 .track-card:hover .cover.pal-1{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(110,69,168,0.55); }
 .track-card:hover .cover.pal-2{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(212,175,106,0.55); }
 .track-card:hover .cover.pal-3{ box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 34px -6px rgba(201,102,122,0.55); }

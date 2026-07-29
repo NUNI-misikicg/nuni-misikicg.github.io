@@ -4534,6 +4534,61 @@ if(window.matchMedia && window.matchMedia('(hover: hover)').matches){
   }, { passive:true });
 }
 
+/* ============================================================
+   CURSEUR NUNI — halo qui suit la souris + aimantation sur quelques
+   CTA principaux seulement (pas toutes les pochettes, ça deviendrait
+   fatiguant). Un seul écouteur mousemove délégué, comme le tilt
+   ci-dessus. Désactivé sur tactile et si prefers-reduced-motion
+   (déjà géré côté CSS via `display:none`, donc ce JS ne coûte rien
+   dans ces cas — juste un peu de calcul inutile évité en amont).
+============================================================ */
+if(window.matchMedia && window.matchMedia('(hover: hover)').matches && !(window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+  const cursorEl = document.getElementById('nuni-cursor');
+  if(cursorEl){
+    let cursorRaf = null, cx = 0, cy = 0, curX = 0, curY = 0, activated = false;
+    document.addEventListener('mousemove', (e)=>{
+      cx = e.clientX; cy = e.clientY;
+      if(!activated){ activated = true; cursorEl.classList.add('is-active'); curX = cx; curY = cy; }
+      const isInteractive = e.target.closest && e.target.closest('button, a, .track-card, [role="button"], input, select, .asv-genre-tile, .genre-tile');
+      const isMagnetic = e.target.closest && e.target.closest('.nc-magnetic');
+      cursorEl.classList.toggle('is-hover', !!isInteractive);
+      cursorEl.classList.toggle('is-magnetic', !!isMagnetic);
+      if(cursorRaf) return;
+      cursorRaf = requestAnimationFrame(function tick(){
+        // Léger amorti (lerp) façon "traîne douce" plutôt qu'un curseur qui saute
+        // brutalement à chaque pixel — sensation plus organique, coût quasi nul.
+        curX += (cx - curX) * 0.25;
+        curY += (cy - curY) * 0.25;
+        cursorEl.style.transform = `translate(${curX}px, ${curY}px)`;
+        if(Math.abs(cx-curX) > 0.5 || Math.abs(cy-curY) > 0.5){ cursorRaf = requestAnimationFrame(tick); }
+        else { cursorRaf = null; }
+      });
+    }, { passive:true });
+    document.addEventListener('mouseleave', ()=> cursorEl.classList.remove('is-active'));
+  }
+  // ---- Aimantation — uniquement sur les CTA marqués .nc-magnetic (voir index.html : bouton
+  // Play du Hero, bouton Play principal du mini-lecteur). L'élément se déplace très
+  // légèrement vers le curseur, comme attiré par lui. Toujours borné, jamais un déplacement
+  // brutal ou disproportionné. */
+  document.addEventListener('mousemove', (e)=>{
+    const magnet = e.target.closest && e.target.closest('.nc-magnetic');
+    document.querySelectorAll('.nc-magnetic.nc-magnet-active').forEach(el=>{
+      if(el !== magnet) el.style.transform = '';
+    });
+    if(!magnet) return;
+    magnet.classList.add('nc-magnet-active');
+    const rect = magnet.getBoundingClientRect();
+    const relX = e.clientX - (rect.left + rect.width/2);
+    const relY = e.clientY - (rect.top + rect.height/2);
+    const maxPull = 8; // pixels — volontairement discret
+    magnet.style.transform = `translate(${(relX*0.2).toFixed(1)}px, ${(relY*0.2).toFixed(1)}px)`;
+  }, { passive:true });
+  document.addEventListener('mouseout', (e)=>{
+    const magnet = e.target.closest && e.target.closest('.nc-magnetic');
+    if(magnet && !magnet.contains(e.relatedTarget)){ magnet.style.transform = ''; magnet.classList.remove('nc-magnet-active'); }
+  }, { passive:true });
+}
+
 /* ============ RELEASE CALENDAR — vraies sorties, toute la plateforme ============ */
 function loadUpcomingReleases(){
   const row = document.getElementById('release-row');

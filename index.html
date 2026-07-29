@@ -15,11 +15,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727b8">
-<link rel="stylesheet" href="css/corners.css?v=20260727b8">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727b8">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727b8">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727b8">
+<link rel="stylesheet" href="css/style.css?v=20260727b9">
+<link rel="stylesheet" href="css/corners.css?v=20260727b9">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727b9">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727b9">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727b9">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -29,6 +29,7 @@
 
 <!-- ============ ÉCRAN DE CHARGEMENT (SPLASH) ============ -->
 <div id="nuni-aura-ambient" aria-hidden="true"></div>
+<div id="nuni-cursor" aria-hidden="true"><div class="nc-halo"></div><div class="nc-dot"></div></div>
 <div id="splash-screen">
   <img src="assets/logo-clean.png" alt="NUNI" class="splash-logo" id="splash-logo" onerror="this.style.display='none'; document.getElementById('splash-fallback').style.display='flex';">
   <div class="splash-fallback" id="splash-fallback">NUNI</div>
@@ -721,7 +722,7 @@
             <span onclick="filterCatalogByGenre('Gospel'); document.querySelectorAll('.genre-tile').forEach(t=>t.classList.toggle('is-active', t.querySelector('.gname') && t.querySelector('.gname').textContent==='Gospel'));">Gospel</span>
           </div>
           <div class="premium-hero-actions">
-            <button class="ph-play-pill" id="premium-hero-play-btn" onclick="const top=getTopStreamedTracks(1)[0]; if(top){ playTrack(top); openFullPlayer(); } else { toast('Pas encore assez d\'écoutes pour établir un Top.'); }"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Écouter maintenant</button>
+            <button class="ph-play-pill nc-magnetic" id="premium-hero-play-btn" onclick="const top=getTopStreamedTracks(1)[0]; if(top){ playTrack(top); openFullPlayer(); } else { toast('Pas encore assez d\'écoutes pour établir un Top.'); }"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Écouter maintenant</button>
             <button class="btn btn-ghost" onclick="filterCatalogByGenre('Top Congo'); document.querySelectorAll('.genre-tile').forEach((t,i)=>t.classList.toggle('is-active', t.querySelector('.gname') && t.querySelector('.gname').textContent==='Top Congo'));"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 21V10M11 21V4M18 21v-7"/><path d="M2 21h20"/></svg> Top Congo</button>
             <button class="ph-share-btn" id="premium-hero-share-btn" aria-label="Partager"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 3.9M15.4 6.6 8.6 10.5"/></svg></button>
           </div>
@@ -1600,7 +1601,7 @@
     <div class="player-controls">
       <button onclick="shuffleToggle(this)" aria-label="Lecture aléatoire"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
       <button onclick="prevTrack()" aria-label="Précédent"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM10 12l9-6v12z"/></svg></button>
-      <button class="play-pause" id="play-pause-btn" onclick="togglePlay()" aria-label="Lecture / Pause">
+      <button class="play-pause nc-magnetic" id="play-pause-btn" onclick="togglePlay()" aria-label="Lecture / Pause">
         <svg viewBox="0 0 24 24" fill="currentColor" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
       </button>
       <button onclick="nextTrack()" aria-label="Suivant"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM5 18l9-6-9-6z"/></svg></button>
@@ -1901,8 +1902,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727b8"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727b9"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727b8"></script>
+<script src="js/app.js?v=20260727b9"></script>
 </body>
 </html>
