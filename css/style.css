@@ -1106,6 +1106,21 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   transform:scaleX(0); transform-origin:left; opacity:0; transition:transform .4s var(--ease), opacity .35s ease;
 }
 
+/* ---- Mode clair : le texte/icônes des tuiles de genre restent en blanc fixe (voir plus
+   haut), donc le fond DOIT rester sombre et coloré même en thème clair — sinon blanc sur
+   fond pâle devient illisible. On remplace var(--bg-card) (pâle en mode clair) par la
+   propre couleur foncée de chaque genre (--gc2), déjà définie pour chaque tuile en JS. ---- */
+html[data-theme="light"] .genre-tile{
+  background:
+    radial-gradient(140% 120% at 15% 12%, color-mix(in srgb, var(--gc1,#6E45A8) 55%, transparent) 0%, transparent 60%),
+    linear-gradient(155deg, rgba(255,255,255,.08) 0%, transparent 40%),
+    color-mix(in srgb, var(--gc2,#141A38) 88%, black 12%);
+  border-color: rgba(255,255,255,.10);
+}
+html[data-theme="light"] .genre-tile:hover{
+  border-color: color-mix(in srgb, var(--gc1,#6E45A8) 55%, transparent);
+}
+
 /* Survol desktop uniquement — jamais de hover "collé" sur tactile */
 @media(hover:hover) and (pointer:fine){
   .genre-tile:hover{ transform:translateY(-4px) scale(1.03); box-shadow:0 18px 34px -14px rgba(0,0,0,.6); border-color:rgba(255,255,255,.24); }
