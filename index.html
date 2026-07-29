@@ -15,11 +15,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727c3">
-<link rel="stylesheet" href="css/corners.css?v=20260727c3">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727c3">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727c3">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727c3">
+<link rel="stylesheet" href="css/style.css?v=20260727c4">
+<link rel="stylesheet" href="css/corners.css?v=20260727c4">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727c4">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727c4">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727c4">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -805,6 +805,22 @@
           <canvas id="globe3d-canvas"></canvas>
           <div class="globe3d-loading" id="globe3d-loading">Chargement du globe…</div>
           <div class="globe3d-tooltip" id="globe3d-tooltip"></div>
+          <div class="globe3d-stat" id="globe3d-stat" style="display:none;">
+            <div class="g3-stat-label">Écoutes totales</div>
+            <div class="g3-stat-value" id="g3-stat-value">—</div>
+            <div class="g3-stat-trend" id="g3-stat-trend"></div>
+          </div>
+          <div class="globe3d-legend" id="globe3d-legend" style="display:none;">
+            <div class="g3-legend-title">Intensité des écoutes</div>
+            <div class="g3-legend-row"><span class="g3-dot g3-dot-high"></span>Élevée</div>
+            <div class="g3-legend-row"><span class="g3-dot g3-dot-mid"></span>Moyenne</div>
+            <div class="g3-legend-row"><span class="g3-dot g3-dot-low"></span>Faible</div>
+          </div>
+          <div class="globe3d-controls" id="globe3d-controls" style="display:none;">
+            <button class="g3-ctrl-btn" id="g3-zoom-in" aria-label="Zoomer">+</button>
+            <button class="g3-ctrl-btn" id="g3-zoom-out" aria-label="Dézoomer">−</button>
+            <button class="g3-ctrl-btn" id="g3-reset" aria-label="Réinitialiser la vue" title="Réinitialiser"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M4.5 15a8 8 0 0 0 14.5 3M19.5 9A8 8 0 0 0 5 6"/></svg></button>
+          </div>
         </div>
         <div class="afrolive-lists afrolive-lists-3" style="max-height:38vh; overflow-y:auto;">
           <div>
@@ -1907,8 +1923,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727c3"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727c4"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727c3"></script>
+<script src="js/app.js?v=20260727c4"></script>
 </body>
 </html>

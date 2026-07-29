@@ -4277,9 +4277,18 @@ function countryFlag(name){
 function trendBadge(trend){
   if(!trend) return '';
   if(trend.direction === 'new') return '<span class="afrolive-trend new">Nouveau</span>';
+  if(trend.direction === 'low_sample') return '<span class="afrolive-trend low_sample">— pas assez de recul</span>';
   if(trend.direction === 'up') return `<span class="afrolive-trend up">▲ +${trend.pct}%</span>`;
   if(trend.direction === 'down') return `<span class="afrolive-trend down">▼ ${trend.pct}%</span>`;
   return '<span class="afrolive-trend flat">➡ Stable</span>';
+}
+// Format compact K/M façon "892K", "2.48M" — juste une présentation différente du même vrai
+// nombre, jamais un chiffre recalculé ou arrondi de façon trompeuse.
+function formatK(n){
+  n = Number(n||0);
+  if(n >= 1000000) return (n/1000000).toFixed(2).replace(/\.?0+$/,'') + 'M';
+  if(n >= 1000) return (n/1000).toFixed(1).replace(/\.0$/,'') + 'K';
+  return String(n);
 }
 let lastAfroliveData = null;
 function renderAfroliveInto(prefix, data){
@@ -4289,7 +4298,7 @@ function renderAfroliveInto(prefix, data){
   const citiesEl = document.getElementById(prefix + '-cities');
   if(regionsEl){
     regionsEl.innerHTML = data.topRegions.length
-      ? data.topRegions.map(r=> `<div class="afrolive-row"><span class="ar-name">🗺️ ${r.region}</span><span class="plays">${fmt(r.plays)}</span></div>`).join('')
+      ? data.topRegions.map(r=> `<div class="afrolive-row"><span class="ar-name">🗺️ ${r.region}</span><span class="plays">${trendBadge(data.regionTrends && data.regionTrends[r.region])} ${fmt(r.plays)}</span></div>`).join('')
       : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
   }
   if(countriesEl){
@@ -4299,8 +4308,20 @@ function renderAfroliveInto(prefix, data){
   }
   if(citiesEl){
     citiesEl.innerHTML = data.topCities.length
-      ? data.topCities.map(c=> `<div class="afrolive-row" data-key="${c.city}"><span class="ar-name">${countryFlag(c.country)} ${c.city}</span><span class="plays">${fmt(c.plays)}</span></div>`).join('')
+      ? data.topCities.map(c=> `<div class="afrolive-row" data-key="${c.city}"><span class="ar-name">${countryFlag(c.country)} ${c.city}</span><span class="plays">${trendBadge(data.cityTrends && data.cityTrends[c.city])} ${fmt(c.plays)}</span></div>`).join('')
       : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
+  }
+  // ---- Carte "Écoutes totales" du globe — vrai total, vraie tendance mensuelle. ----
+  const statBox = document.getElementById('globe3d-stat');
+  if(statBox && data.totalTrend){
+    document.getElementById('g3-stat-value').textContent = formatK(data.totalPlays);
+    const t = data.totalTrend;
+    const trendEl = document.getElementById('g3-stat-trend');
+    trendEl.innerHTML = t.direction === 'new' ? '<span style="color:var(--or-2);">Nouveau ce mois-ci</span>'
+      : t.direction === 'up' ? `<span style="color:#3BC26A;">▲ +${t.pct}% vs mois précédent</span>`
+      : t.direction === 'down' ? `<span style="color:#E05252;">▼ ${t.pct}% vs mois précédent</span>`
+      : '<span style="color:var(--text-faint);">➡ Stable vs mois précédent</span>';
+    statBox.style.display = 'block';
   }
 }
 async function loadAfroliveStats(isRefresh){
@@ -4421,17 +4442,26 @@ async function initGlobe3D(){
   renderer.setSize(w, h);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
-  // Sphère filaire dorée — pas de vraie texture terrestre (aucune image disponible), un
-  // maillage évoque le globe sans prétendre à une carte géographique précise.
+  // Sphère filaire dorée — sert de grille par-dessus la texture (ou seule, en repli).
   const wireGeo = new THREE.SphereGeometry(2.6, 28, 22);
   const wireMat = new THREE.MeshBasicMaterial({ color:0xD4AF6A, wireframe:true, transparent:true, opacity:.28 });
   const wireSphere = new THREE.Mesh(wireGeo, wireMat);
   scene.add(wireSphere);
-  // Sphère intérieure pleine, très sombre, pour donner de la profondeur derrière le filaire.
+  // Sphère intérieure — tente une vraie texture Terre (source stable, hébergée par le projet
+  // three.js lui-même) ; si ça échoue pour une raison quelconque (réseau, CDN indisponible),
+  // repli automatique et silencieux sur un matériau sombre uni, jamais un globe cassé/vide.
   const coreGeo = new THREE.SphereGeometry(2.56, 28, 22);
-  const coreMat = new THREE.MeshPhongMaterial({ color:0x0c0906, shininess:8, transparent:true, opacity:.9 });
+  const coreMat = new THREE.MeshPhongMaterial({ color:0x2a2015, shininess:6, transparent:true, opacity:.95 });
   const coreSphere = new THREE.Mesh(coreGeo, coreMat);
   scene.add(coreSphere);
+  try{
+    new THREE.TextureLoader().load(
+      'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg',
+      (texture)=>{ coreMat.map = texture; coreMat.color.set(0xffffff); coreMat.needsUpdate = true; wireMat.opacity = .16; },
+      undefined,
+      ()=>{ /* échec silencieux — le matériau sombre uni déjà en place reste tel quel */ },
+    );
+  }catch(e){ /* navigateur très ancien sans TextureLoader — pas grave, repli déjà en place */ }
 
   // Éclairage doré premium — une lumière ambiante douce + une "lumière du soleil" dorée
   // qui vient d'un coin, pour du relief plutôt qu'un rendu plat.
@@ -4452,9 +4482,11 @@ async function initGlobe3D(){
     const coords = COUNTRY_LATLNG[normalizeCountryKeyFront(c.country)];
     if(!coords) return; // pays réel mais coordonnées inconnues — pas de point inventé au hasard
     const pos = latLngToVec3(coords[0], coords[1], 2.62, THREE);
-    const size = 0.035 + (c.plays / maxPlays) * 0.09;
+    const ratio = c.plays / maxPlays; // vraie proportion par rapport au pays le plus écouté — cohérent avec la légende (Élevée/Moyenne/Faible)
+    const size = 0.032 + ratio * 0.09;
+    const color = ratio >= 0.66 ? 0xE8C77E : ratio >= 0.33 ? 0xE08A3C : 0x8a6a3e;
     const dotGeo = new THREE.SphereGeometry(size, 10, 10);
-    const dotMat = new THREE.MeshBasicMaterial({ color: i < 3 ? 0xE8C77E : 0xE08A3C });
+    const dotMat = new THREE.MeshBasicMaterial({ color });
     const dot = new THREE.Mesh(dotGeo, dotMat);
     dot.position.copy(pos);
     dot.userData = { country: c.country, plays: c.plays };
@@ -4509,6 +4541,23 @@ async function initGlobe3D(){
     renderer.setSize(wrap.clientWidth, wrap.clientHeight);
   });
   if(loading) loading.classList.add('hide');
+
+  // ---- Contrôles réels — zoom avant/arrière borné, réinitialisation complète de la vue.
+  const CAM_Z_DEFAULT = 6.4, CAM_Z_MIN = 3.6, CAM_Z_MAX = 9.5;
+  const zoomInBtn = document.getElementById('g3-zoom-in');
+  const zoomOutBtn = document.getElementById('g3-zoom-out');
+  const resetBtn = document.getElementById('g3-reset');
+  if(zoomInBtn) zoomInBtn.onclick = ()=>{ camera.position.z = Math.max(CAM_Z_MIN, camera.position.z - 0.8); };
+  if(zoomOutBtn) zoomOutBtn.onclick = ()=>{ camera.position.z = Math.min(CAM_Z_MAX, camera.position.z + 0.8); };
+  if(resetBtn) resetBtn.onclick = ()=>{ camera.position.z = CAM_Z_DEFAULT; rotX = 0; };
+  canvas.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    camera.position.z = Math.max(CAM_Z_MIN, Math.min(CAM_Z_MAX, camera.position.z + e.deltaY * 0.003));
+  }, { passive:false });
+  const legend = document.getElementById('globe3d-legend');
+  const controls = document.getElementById('globe3d-controls');
+  if(legend) legend.style.display = 'block';
+  if(controls) controls.style.display = 'flex';
 }
 
 function renderHomeHero(){
