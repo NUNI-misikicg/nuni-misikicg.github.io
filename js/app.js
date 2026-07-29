@@ -3521,7 +3521,13 @@ function ensureAlbumViewStyles(){
     /* ---- Liste des pistes : deux lignes (titre + artiste), sans numéro, menu "…" à droite,
        exactement le motif de rangée utilisé sur les pages album de Spotify ---- */
     .av-list{max-width:640px; margin:22px auto calc(120px + env(safe-area-inset-bottom,0)); padding:0 20px;}
-    .av-total-duration{font-size:12px; color:#727272; margin-bottom:8px;}
+    .av-total-duration{font-size:12px; color:#727272; margin-top:14px; padding:0 20px;}
+    .av-followed-section{max-width:640px; margin:36px auto 40px; padding:24px 20px 0; border-top:1px solid rgba(255,255,255,.08);}
+    .av-followed-title{color:#fff; font-size:14px; font-weight:700; margin-bottom:14px;}
+    .av-followed-row{display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px;}
+    .av-followed-card{flex-shrink:0; width:84px; text-align:center; cursor:pointer;}
+    .av-followed-photo{width:72px; height:72px; border-radius:50%; margin:0 auto 8px; background:var(--grad-envol); background-size:cover; background-position:center; box-shadow:0 6px 16px -6px rgba(0,0,0,.5);}
+    .av-followed-name{color:#e6e6e6; font-size:11.5px; font-weight:600; line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
     .av-list-panel{display:flex; flex-direction:column;}
     .av-row{display:flex; align-items:center; gap:12px; padding:9px 4px; border-radius:4px; cursor:pointer; opacity:0; animation:avRowIn .3s ease forwards;}
     @keyframes avRowIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
@@ -3642,6 +3648,30 @@ async function loadRealAlbumDuration(albumTracks, releaseDateLabel, creditsText)
     el.textContent = [releaseDateLabel, `${countLabel}, ${durationLabel}`].filter(Boolean).join(' · ') + creditsLine;
   }catch(e){ /* la ligne de base (date · nb titres + crédits) reste affichée, pas grave */ }
 }
+/* Vrais artistes suivis par l'artiste de cet album (table follows) — jamais une
+   recommandation générique, uniquement ce qu'il suit lui-même réellement. */
+async function loadArtistFollowedArtists(artistId){
+  const section = document.getElementById('av-followed-section');
+  const row = document.getElementById('av-followed-row');
+  if(!section || !row || !artistId) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/artist/' + artistId + '/follows');
+    const data = await res.json();
+    const list = data.artists || [];
+    if(!list.length) return; // rien à montrer plutôt qu'une section vide
+    row.innerHTML = list.map(a=>{
+      const photoStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
+      return `<div class="av-followed-card" data-id="${a.id}" data-name="${(a.artist_name||'').replace(/"/g,'&quot;')}">
+        <div class="av-followed-photo ${a.avatar_url ? '' : 'pal-1'}" style="${photoStyle}"></div>
+        <div class="av-followed-name">${a.artist_name||''}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+      </div>`;
+    }).join('');
+    row.querySelectorAll('.av-followed-card').forEach(card=>{
+      card.onclick = ()=>{ openArtistPage(card.dataset.name, Number(card.dataset.id)); };
+    });
+    section.style.display = 'block';
+  }catch(e){ /* pas grave — la section reste simplement masquée */ }
+}
 function openAlbumView(tr){
   const albumTracks = tracks.filter(t => t.album === tr.album && t.a === tr.a);
   if(albumTracks.length <= 1){ playTrack(tr); return; } // un seul morceau trouvé : on joue direct par sécurité
@@ -3689,8 +3719,12 @@ function openAlbumView(tr){
       </div>
     </div>
     <div class="av-list">
-      <div class="av-total-duration" id="av-total-duration">Calcul de la durée totale…</div>
       <div class="av-list-panel"></div>
+      <div class="av-total-duration" id="av-total-duration">Calcul de la durée totale…</div>
+    </div>
+    <div class="av-followed-section" id="av-followed-section" style="display:none;">
+      <div class="av-followed-title">Artistes suivis par ${tr.a}</div>
+      <div class="av-followed-row" id="av-followed-row"></div>
     </div>
   `;
 
@@ -3795,6 +3829,7 @@ function openAlbumView(tr){
   // les morceaux d'un même album partagent la même mention, saisie une fois par l'artiste).
   const albumCredits = albumTracks.find(t => t.credits)?.credits || null;
   loadRealAlbumDuration(albumTracks, tr.release, albumCredits);
+  loadArtistFollowedArtists(tr.artistId);
   renderSimilarTracksRow(overlay, tr, albumTracks);
 
   requestAnimationFrame(()=> overlay.classList.add('show'));
@@ -5352,6 +5387,8 @@ function updateProgress(){
   document.getElementById('time-elapsed').textContent = fmt(elapsed);
   document.getElementById('time-total').textContent = fmt(duration);
   document.getElementById('progress-fill').style.width = (elapsed/duration*100) + '%';
+  const slimFill = document.getElementById('player-bar-slim-fill');
+  if(slimFill) slimFill.style.width = (elapsed/duration*100) + '%';
   const fpFill = document.getElementById('fp-progress-fill');
   if(fpFill){
     fpFill.style.width = (elapsed/duration*100) + '%';
