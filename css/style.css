@@ -2160,6 +2160,7 @@ html.is-playing .fp-title{ font-weight:800; }
   max-width:440px; width:100%; text-align:center; box-shadow:var(--shadow);
 }
 .ai-modal-avatar{ font-size:38px; margin-bottom:10px; }
+.ai-modal-logo{ display:block; width:56px; height:56px; margin:0 auto 12px; object-fit:contain; }
 .ai-modal-eyebrow{ font-family:var(--font-data); font-size:10.5px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); }
 .ai-modal h2{ font-size:24px; font-weight:600; margin:8px 0 10px; }
 .ai-modal p{ font-size:13.5px; color:var(--text-dim); margin-bottom:24px; line-height:1.6; }

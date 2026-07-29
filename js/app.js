@@ -3294,7 +3294,7 @@ function filterCatalogByGenre(genreName){
       const rank = i + 1;
       const badge = document.createElement('div');
       badge.className = 'tc-rank-badge' + (rank <= 3 ? ` tc-rank-${rank}` : '');
-      badge.innerHTML = rank <= 3 ? '🏆' : `#${rank}`;
+      badge.innerHTML = rank <= 3 ? '<svg class="nuni-ic nuni-ic-gold filled" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M9 21h6M12 15v6"/></svg>' : `#${rank}`;
       const cover = card.querySelector('.cover');
       if(cover) cover.appendChild(badge);
     }
@@ -4287,7 +4287,7 @@ function renderAfroliveInto(prefix, data){
   // "Écoutes totales" du globe, où le contexte (mois complet) la rend plus significative.
   if(regionsEl){
     regionsEl.innerHTML = data.topRegions.length
-      ? data.topRegions.map(r=> `<div class="afrolive-row"><span class="ar-name">🗺️ ${r.region}</span><span class="plays">${fmt(r.plays)}</span></div>`).join('')
+      ? data.topRegions.map(r=> `<div class="afrolive-row"><span class="ar-name"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px;"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>${r.region}</span><span class="plays">${fmt(r.plays)}</span></div>`).join('')
       : '<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez de données.</p>';
   }
   if(countriesEl){
@@ -4404,7 +4404,7 @@ function renderRecapBody(month){
   const body = document.getElementById('recap-body');
   let html = '';
   if(recapData.topArtists.length){
-    html += `<div class="recap-section-title">🏆 Vos artistes du mois</div><div class="recap-artists-row">`;
+    html += `<div class="recap-section-title"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px;"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M9 21h6M12 15v6"/></svg> Vos artistes du mois</div><div class="recap-artists-row">`;
     html += recapData.topArtists.map((a,i)=>{
       const photo = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
       return `<div class="recap-artist-card" style="${photo}" data-artist-id="${a.id}" data-artist-name="${(a.artist_name||'').replace(/"/g,'&quot;')}">
@@ -4419,7 +4419,7 @@ function renderRecapBody(month){
     html += `</div>`;
   }
   if(recapData.topTracks.length){
-    html += `<div class="recap-section-title">🎵 Vos morceaux du mois</div><div>`;
+    html += `<div class="recap-section-title"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" style="width:16px;height:16px;vertical-align:-3px;margin-right:4px;"><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/><path d="M10 18V5l9.5-2v13"/></svg> Vos morceaux du mois</div><div>`;
     html += recapData.topTracks.map(t=>{
       const cover = t.cover_url ? `background-image:url(${t.cover_url});` : '';
       return `<div class="recap-track-row">
@@ -6773,7 +6773,7 @@ function concertCardHtml(c){
     <div class="concert-card">
       <div class="concert-flyer">
         ${c.flyer_url ? `<img src="${c.flyer_url}" alt="" loading="lazy" decoding="async">` : ''}
-        ${isShowcase ? '<span class="concert-type-badge">🎬 Showcase</span>' : ''}
+        ${isShowcase ? '<span class="concert-type-badge"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px;"><path d="M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8z"/><path d="M3 8l2-4h4l-2 4M9 8l2-4h4l-2 4M15 8l2-4h4l-2 4"/></svg>Showcase</span>' : ''}
       </div>
       <div class="concert-body">
         <div class="concert-artist-row">
@@ -6785,7 +6785,7 @@ function concertCardHtml(c){
         <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg> ${[c.venue, c.city, c.country].filter(Boolean).join(', ')}</div>
         ${c.description ? `<p class="concert-desc">${c.description}</p>` : ''}
         ${(c.ticket_price_vip || c.ticket_price_standard) ? `<div class="concert-tiers">
-          ${c.ticket_price_vip ? `<span class="concert-tier is-vip">💛 VIP — ${c.ticket_price_vip}</span>` : ''}
+          ${c.ticket_price_vip ? `<span class="concert-tier is-vip"><svg class="nuni-ic filled" viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px;"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.9L5.7 21l1.7-7L2 9.2l7.1-.6z"/></svg>VIP — ${c.ticket_price_vip}</span>` : ''}
           ${c.ticket_price_standard ? `<span class="concert-tier">Standard — ${c.ticket_price_standard}</span>` : ''}
         </div>` : ''}
         <div class="concert-foot-row">
@@ -7958,7 +7958,7 @@ async function loadHomeTalentRowInner(){
       if(a.avatar_url) card.style.backgroundImage = `url(${a.avatar_url})`;
       const votedBadge = (data.my_vote_artist_id === a.id)
         ? `<div class="htal-voted" title="Vous avez voté"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></div>` : '';
-      const crown = a.rank === 1 ? '<div class="htal-crown">👑</div>' : '';
+      const crown = a.rank === 1 ? '<div class="htal-crown"><svg class="nuni-ic nuni-ic-gold filled" viewBox="0 0 24 24" style="width:100%;height:100%;"><path d="M4 18h16l1-9-5 3-4-6-4 6-5-3 1 9z"/></svg></div>' : '';
       card.innerHTML = `
         ${crown}
         <div class="htal-scrim"></div>
@@ -9432,11 +9432,11 @@ function renderSearchViewBrowse(){
       <div class="asv-genre-tile asv-radio-tile" data-radio="1">
         <div class="asv-radio-eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
         <span class="asv-radio-badge" id="asv-radio-badge"><span class="dot"></span>EN DIRECT</span>
-        <span class="asv-radio-title">🎧 NUNI Radio &amp; DJ</span>
+        <span class="asv-radio-title"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg>NUNI Radio &amp; DJ</span>
       </div>
-      <div class="asv-genre-tile" style="background:#6E45A8;" data-concerts="1">🎤 Concerts</div>
-      <div class="asv-genre-tile" style="background:#B3512E;" data-nuni-events="1">🎉 NUNI Événements</div>
-      <div class="asv-genre-tile" style="background:#1976D2;" data-top="1">📈 Top</div>
+      <div class="asv-genre-tile" style="background:#6E45A8;" data-concerts="1"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 21v-3"/></svg>Concerts</div>
+      <div class="asv-genre-tile" style="background:#B3512E;" data-nuni-events="1"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><path d="M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V9z"/></svg>NUNI Événements</div>
+      <div class="asv-genre-tile" style="background:#1976D2;" data-top="1"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><path d="M4 21V10M11 21V4M18 21v-7"/><path d="M2 21h20"/></svg>Top</div>
       ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
     </div>
     ${renderRecentSearchesRow()}`;
