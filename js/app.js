@@ -347,8 +347,7 @@ function stopAllPlayback(){
     if(djVoiceClipAudio) djVoiceClipAudio.pause();
     if(djDuckRampTimer){ clearInterval(djDuckRampTimer); djDuckRampTimer = null; }
     realAudio.volume = userVolume; // même filet de sécurité que dans djTogglePlay — sinon un volume resté coincé bas (annonce DJ interrompue) restait bas indéfiniment, même après déconnexion/changement de compte
-    const radioBadge = document.getElementById('radio-badge');
-    if(radioBadge) radioBadge.style.display = 'none';
+    setRadioLiveBadge(false);
   }catch(e){ /* pas bloquant si un élément du lecteur n'existe pas encore au moment de l'appel */ }
 }
 // Vérification périodique en arrière-plan : si l'admin suspend/supprime ce compte pendant
@@ -3560,6 +3559,13 @@ document.addEventListener('click', (e)=>{
 /* ============ RADIO DÉSACTIVÉE (temporairement, code conservé pour réactivation future) ============ */
 // Le mode DJ reste actif. Seule la Radio est retirée de la navigation ; tout son code
 // (openTuner, tunerStations, startTunerPlayback, etc.) reste inchangé ci-dessous.
+// Bascule le badge "EN DIRECT" — vit maintenant uniquement sur la tuile Radio & DJ de la
+// recherche (l'ancienne bannière d'accueil a été retirée). Un seul point d'entrée pour tous
+// les appelants, plutôt que de dupliquer la logique à chaque endroit.
+function setRadioLiveBadge(visible){
+  const badge = document.getElementById('asv-radio-badge');
+  if(badge) badge.style.display = visible ? 'inline-flex' : 'none';
+}
 function ensureRadioHiddenFromNav(){
   // Force toute ouverture du tuner à atterrir sur l'onglet DJ, jamais Radio
   const originalOpenTuner = window.openTuner;
@@ -3574,8 +3580,7 @@ function ensureRadioHiddenFromNav(){
   const radioTab = document.getElementById('tuner-tab-radio');
   if(radioTab) radioTab.style.display = 'none';
   // Cache l'indicateur "radio en direct" sur le lecteur
-  const radioBadge = document.getElementById('radio-badge');
-  if(radioBadge) radioBadge.style.display = 'none';
+  setRadioLiveBadge(false);
 }
 ensureRadioHiddenFromNav();
 setTimeout(ensureRadioHiddenFromNav, 500); // sécurité si certains éléments se rendent un peu après
@@ -8033,7 +8038,7 @@ async function startTunerPlayback(){
   if(realTrack){
     usingRealAudio = false;
     playTrack(realTrack);
-    document.getElementById('radio-badge').style.display = 'inline-flex';
+    setRadioLiveBadge(true);
     updateTunerNowPlaying();
     return;
   }
@@ -8063,7 +8068,7 @@ async function startTunerPlayback(){
   document.getElementById('play-icon').innerHTML = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
   const fpIcon = document.getElementById('fp-play-icon');
   if(fpIcon) fpIcon.innerHTML = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
-  document.getElementById('radio-badge').style.display = 'inline-flex';
+  setRadioLiveBadge(true);
   updateTunerNowPlaying();
 }
 function updateTunerNowPlaying(){
@@ -8083,7 +8088,7 @@ function tunerTogglePlay(){
   } else {
     btn.innerHTML = '<svg class="nuni-ic filled" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M8 5v14l11-7z"/></svg> Écouter cette station';
     radioMode = false;
-    document.getElementById('radio-badge').style.display = 'none';
+    setRadioLiveBadge(false);
     if(playing) togglePlay();
   }
 }
@@ -9275,12 +9280,18 @@ function renderSearchViewBrowse(){
   box.innerHTML = `
     <div class="asv-browse-title">Parcourir</div>
     <div class="asv-genre-grid">
+      <div class="asv-genre-tile asv-radio-tile" data-radio="1">
+        <div class="asv-radio-eq" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+        <span class="asv-radio-badge" id="asv-radio-badge"><span class="dot"></span>EN DIRECT</span>
+        <span class="asv-radio-title">🎧 NUNI Radio &amp; DJ</span>
+      </div>
       <div class="asv-genre-tile" style="background:#6E45A8;" data-concerts="1">🎤 Concerts</div>
       <div class="asv-genre-tile" style="background:#B3512E;" data-nuni-events="1">🎉 NUNI Événements</div>
       <div class="asv-genre-tile" style="background:#1976D2;" data-top="1">📈 Top</div>
       ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
     </div>
     ${renderRecentSearchesRow()}`;
+  box.querySelector('[data-radio]').onclick = ()=> openTuner('radio');
   box.querySelector('[data-concerts]').onclick = ()=> enterApp('concerts');
   box.querySelector('[data-nuni-events]').onclick = ()=> enterApp('nuniEvents');
   box.querySelector('[data-top]').onclick = ()=> window.location.href = 'top.html';

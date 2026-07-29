@@ -434,6 +434,20 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .asv-genre-tile.is-coming-soon{ opacity:0.88; }
 .asv-soon-badge{ position:absolute; top:10px; right:10px; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; background:rgba(0,0,0,0.35); padding:3px 8px; border-radius:20px; text-shadow:none; }
 
+/* ---- Tuile Radio & DJ — vrai rendu "pochette" plutôt qu'un aplat de couleur : dégradé
+   sombre + égaliseur animé, cohérent avec la bannière qui vivait avant sur l'accueil. ---- */
+.asv-radio-tile{ background:linear-gradient(120deg, var(--bleu-nuit) 0%, #0A0A10 100%); justify-content:space-between; flex-direction:column; align-items:flex-start; gap:6px; }
+.asv-radio-eq{ position:absolute; right:14px; bottom:14px; z-index:0; display:flex; align-items:flex-end; gap:3px; height:32px; opacity:.35; }
+.asv-radio-eq span{ width:4px; border-radius:2px 2px 0 0; background:linear-gradient(180deg, var(--or-2,#E8C77E), transparent); animation:eqBar 1.6s ease-in-out infinite; }
+.asv-radio-eq span:nth-child(2){ animation-delay:-.4s; } .asv-radio-eq span:nth-child(3){ animation-delay:-.9s; } .asv-radio-eq span:nth-child(4){ animation-delay:-.2s; } .asv-radio-eq span:nth-child(5){ animation-delay:-1.2s; }
+.asv-radio-badge{
+  display:none; position:relative; z-index:1; align-items:center; gap:6px; font-family:var(--font-data); font-size:9.5px; letter-spacing:1.2px;
+  color:#FF6B6B; background:rgba(255,107,107,.15); padding:4px 9px; border-radius:999px;
+}
+.asv-radio-badge .dot{ width:5px; height:5px; border-radius:50%; background:#FF6B6B; animation:dotPulse 1.2s ease-in-out infinite; }
+.asv-radio-title{ position:relative; z-index:1; font-size:14.5px; }
+@media(prefers-reduced-motion: reduce){ .asv-radio-eq span{ animation:none; } }
+
 /* ---- Résultats groupés par section (Artistes / Morceaux / Clips), lignes larges ---- */
 .asv-section{ margin-bottom:28px; }
 .asv-section-title{ font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--text-dim); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px; }
