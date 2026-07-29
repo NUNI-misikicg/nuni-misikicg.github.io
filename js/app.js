@@ -4995,12 +4995,13 @@ realAudio.addEventListener('timeupdate', ()=>{
   // purement cosmétique — un décalage éventuel ne serait visible que sur la sphère, jamais
   // sur le son réel).
   if(usingRealAudio && nuniAnalyser){ nuniSyncAnalysisAudio(realAudio.src, realAudio.currentTime); }
-  // Fondu enchaîné façon Apple Music, uniquement en mode DJ : dès qu'il reste moins de
-  // DJ_CROSSFADE_SECONDS, on lance la transition — bien avant que le morceau ne se termine
-  // vraiment, contrairement à l'ancien comportement (coupure nette à 'ended').
+  // Fondu enchaîné façon Apple Music, uniquement en mode DJ : dès qu'il reste moins que la
+  // durée de fondu du mode actif (ou du réglage manuel choisi), on lance la transition —
+  // bien avant que le morceau ne se termine vraiment, contrairement à l'ancien comportement
+  // (coupure nette à 'ended').
   if(djMode && usingRealAudio && !djCrossfadeTriggered && isFinite(duration) && duration > 0){
     const remaining = duration - elapsed;
-    if(remaining > 0 && remaining <= DJ_CROSSFADE_SECONDS){
+    if(remaining > 0 && remaining <= currentDjCrossfadeSeconds()){
       djCrossfadeTriggered = true;
       startDjCrossfade();
     }
@@ -8225,24 +8226,24 @@ const DJ_BONUS_TRACKS = [
 ];
 function realPlayableTracks(){ return tracks.filter(t=> !!t.audioUrl).concat(DJ_BONUS_TRACKS); }
 const djModes = [
-  { id:'club', name:'Club', bpm:126, transition:'Beat Sync', filter: ()=> shuffleArray(realPlayableTracks()) },
-  { id:'festival', name:'Festival', bpm:132, transition:'Drop enchaîné', filter: ()=> [...realPlayableTracks()].sort((a,b)=>(b.likes||0)-(a.likes||0)) },
-  { id:'chill', name:'Chill', bpm:92, transition:'Fondu doux', filter: ()=>{
+  { id:'club', name:'Club', bpm:126, transition:'Beat Sync', crossfade:3, filter: ()=> shuffleArray(realPlayableTracks()) },
+  { id:'festival', name:'Festival', bpm:132, transition:'Drop enchaîné', crossfade:2.5, filter: ()=> [...realPlayableTracks()].sort((a,b)=>(b.likes||0)-(a.likes||0)) },
+  { id:'chill', name:'Chill', bpm:92, transition:'Fondu doux', crossfade:6, filter: ()=>{
       const all = realPlayableTracks();
       const pool = all.filter(t=>t.genre==='Gospel' || t.genre==='Traditionnel');
       return shuffleArray(pool.length ? pool : all);
     } },
-  { id:'afro', name:'Afro Party', bpm:118, transition:'Crossfade rythmé', filter: ()=>{
+  { id:'afro', name:'Afro Party', bpm:118, transition:'Crossfade rythmé', crossfade:4, filter: ()=>{
       const all = realPlayableTracks();
       const pool = all.filter(t=>['Afro','Traditionnel'].includes(t.genre));
       return shuffleArray(pool.length ? pool : all);
     } },
-  { id:'rapcongo', name:'Rap Congo', bpm:96, transition:'Cut sec', filter: ()=>{
+  { id:'rapcongo', name:'Rap Congo', bpm:96, transition:'Cut sec', crossfade:1.5, filter: ()=>{
       const all = realPlayableTracks();
       const pool = all.filter(t=>t.genre==='Rap');
       return shuffleArray(pool.length ? pool : all);
     } },
-  { id:'rumba', name:'Rumba Lounge', bpm:100, transition:'Mix très doux', filter: ()=>{
+  { id:'rumba', name:'Rumba Lounge', bpm:100, transition:'Mix très doux', crossfade:7, filter: ()=>{
       const all = realPlayableTracks();
       const pool = all.filter(t=>t.genre==='Rumba');
       return shuffleArray(pool.length ? pool : all);
@@ -8289,6 +8290,7 @@ function updateDjLabels(){
   document.getElementById('dj-mode-label').textContent = m.name;
   document.getElementById('dj-transition-label').textContent = m.transition;
   document.getElementById('dj-bpm-label').textContent = m.bpm;
+  updateDjCrossfadeLabel();
   applyDjFxTheme();
 }
 let djAvatarInstance = null; // instance unique de NuniDJAvatar, créée à la première activation du mode DJ
@@ -8458,10 +8460,15 @@ function djSpeakFallbackTTS(force){
 // parallèle sur un second élément audio dédié, à volume 0. Les deux volumes se croisent
 // progressivement, puis on "passe la main" au vrai lecteur (realAudio) exactement à la
 // même position — aucune coupure nette, aucun redémarrage audible à 0.
-const DJ_CROSSFADE_SECONDS = 4;
+let djCrossfadeOverride = 'auto'; // 'auto' | 2 | 4 | 6 | 8 — réglage choisi dans les paramètres DJ
 let djCrossfadeTriggered = false;
 let djFadeAudio = null;
 let djFadeTimer = null;
+function currentDjCrossfadeSeconds(){
+  if(djCrossfadeOverride !== 'auto') return Number(djCrossfadeOverride);
+  const mode = djModes.find(x=>x.id===djModeId);
+  return (mode && mode.crossfade) || 4;
+}
 function startDjCrossfade(){
   if(!djMode || djQueue.length < 2) return; // pas de morceau suivant : le 'ended' naturel prendra le relais
   const nextTr = djQueue[(djQueuePos + 1) % djQueue.length];
@@ -8472,9 +8479,14 @@ function startDjCrossfade(){
   djFadeAudio.currentTime = 0;
   djFadeAudio.volume = 0;
   djFadeAudio.play().catch(()=>{});
+  // Signal visuel + couleur de l'aura qui commence déjà à basculer vers le prochain morceau,
+  // pendant que le fondu audio est en cours — la transition se voit autant qu'elle s'entend.
+  document.documentElement.classList.add('dj-transitioning');
+  if(typeof NuniAura !== 'undefined') NuniAura.applyTrack(nextTr);
 
-  const steps = 28;
-  const stepMs = (DJ_CROSSFADE_SECONDS * 1000) / steps;
+  const crossfadeSeconds = currentDjCrossfadeSeconds();
+  const steps = Math.round(crossfadeSeconds * 7); // ~7 pas/seconde, fluide sans être excessif
+  const stepMs = (crossfadeSeconds * 1000) / steps;
   let i = 0;
   djFadeTimer = setInterval(()=>{
     i++;
@@ -8484,6 +8496,7 @@ function startDjCrossfade(){
     if(i >= steps){
       clearInterval(djFadeTimer);
       djFadeTimer = null;
+      document.documentElement.classList.remove('dj-transitioning');
       const handoffTime = djFadeAudio.currentTime;
       const tr = djAdvanceQueue(); // fait vraiment avancer la file (mêmes règles anti-répétition qu'ailleurs)
       playTrack(tr); // remet tout en ordre : métadonnées, vrai stream compté, historique, avatar, voix…
@@ -8524,19 +8537,23 @@ function handleDjLocalUpload(e){
 function djTogglePlay(){
   djPlaying = !djPlaying;
   const btn = document.getElementById('dj-play-btn');
+  const playerDjBtn = document.getElementById('fp-dj-toggle-btn');
   if(djPlaying){
     btn.innerHTML = '<svg class="nuni-ic filled" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg> DJ en cours';
+    if(playerDjBtn){ playerDjBtn.classList.add('is-dj-active'); playerDjBtn.innerHTML = playerDjBtn.innerHTML.replace('DJ', 'DJ ACTIVÉ'); }
     startDjPlayback();
     djVoiceUsedIndexes.clear();
     djSpeak(true); // annonce toujours au lancement
     toast('NUNI DJ activé — enchaînement automatique selon le mode ' + djModes.find(x=>x.id===djModeId).name + '.');
   } else {
     btn.innerHTML = '<svg class="nuni-ic filled" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M8 5v14l11-7z"/></svg> Lancer le DJ';
+    if(playerDjBtn){ playerDjBtn.classList.remove('is-dj-active'); playerDjBtn.innerHTML = playerDjBtn.innerHTML.replace('DJ ACTIVÉ', 'DJ'); }
     djMode = false;
     clearInterval(djTimer);
     if(djFadeTimer){ clearInterval(djFadeTimer); djFadeTimer = null; }
     if(djFadeAudio) djFadeAudio.pause();
     djCrossfadeTriggered = false;
+    document.documentElement.classList.remove('dj-transitioning');
     if(djAvatarInstance) djAvatarInstance.stop();
     if('speechSynthesis' in window) window.speechSynthesis.cancel();
     if(djVoiceClipAudio) djVoiceClipAudio.pause();
@@ -8547,6 +8564,20 @@ function djTogglePlay(){
     toast('NUNI DJ arrêté.');
   }
 }
+// ---------- Réglages du fondu enchaîné — vrai choix, pas décoratif (voir currentDjCrossfadeSeconds) ----------
+function updateDjCrossfadeLabel(){
+  const label = document.getElementById('dj-crossfade-label');
+  if(label) label.textContent = currentDjCrossfadeSeconds() + ' s';
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('.dj-cf-opt').forEach(btn=>{
+    btn.onclick = ()=>{
+      djCrossfadeOverride = btn.dataset.cf === 'auto' ? 'auto' : Number(btn.dataset.cf);
+      document.querySelectorAll('.dj-cf-opt').forEach(b=> b.classList.toggle('is-active', b === btn));
+      updateDjCrossfadeLabel();
+    };
+  });
+});
 renderDjModes();
 updateDjLabels();
 

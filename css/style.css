@@ -2384,6 +2384,25 @@ html.is-playing .fp-title{ font-weight:800; }
 .dj-live-badge .dot{ width:6px; height:6px; border-radius:50%; background:#FF6B6B; animation:dotPulse 1.2s ease-in-out infinite; }
 .dj-row{ display:flex; justify-content:space-between; font-size:12.5px; color:rgba(255,255,255,.6); padding:5px 0; }
 .dj-row b{ color:#fff; font-weight:600; }
+.dj-settings-panel{ background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px 16px; margin-bottom:16px; }
+.dj-settings-title{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,.45); margin-bottom:10px; }
+.dj-crossfade-options{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.dj-cf-opt{ padding:7px 13px; border-radius:999px; font-size:11.5px; font-weight:600; background:rgba(255,255,255,.06); color:rgba(255,255,255,.65); border:1px solid transparent; cursor:pointer; transition:all .2s ease; }
+.dj-cf-opt:hover{ background:rgba(255,255,255,.1); }
+.dj-cf-opt.is-active{ background:var(--grad-envol); color:#0A0A10; }
+.dj-settings-note{ font-size:10.5px; color:rgba(255,255,255,.4); line-height:1.5; margin:0; }
+/* ---- DJ ACTIVÉ — légère lueur dorée sur le bouton DJ du mini-lecteur/plein écran pendant
+   que le mode DJ tourne, et un fin indicateur "Transition DJ" sur la barre de lecture
+   pendant un fondu enchaîné réel (voir document.documentElement.classList dans app.js). ---- */
+.dj-toggle-btn.is-dj-active{ color:var(--or-2); box-shadow:0 0 12px -2px rgba(212,175,106,.5); }
+html.dj-transitioning .fp-progress-track, html.dj-transitioning .progress-track{ position:relative; }
+html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress-track::after{
+  content:'Transition DJ'; position:absolute; left:50%; top:-18px; transform:translateX(-50%);
+  font-size:9.5px; font-weight:700; letter-spacing:.5px; color:var(--or-2); white-space:nowrap;
+  opacity:0; animation:djTransitionLabel 1s ease forwards;
+}
+@keyframes djTransitionLabel{ from{ opacity:0; transform:translateX(-50%) translateY(4px); } to{ opacity:1; transform:translateX(-50%) translateY(0); } }
+@media(prefers-reduced-motion: reduce){ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress-track::after{ animation:none; opacity:1; } }
 @media(max-width:520px){ .tuner-freq{ font-size:34px; } }
 .ai-choice .t{ display:block; font-weight:600; font-size:14px; }
 .ai-choice .d{ display:block; font-size:11.5px; color:var(--text-faint); margin-top:2px; }

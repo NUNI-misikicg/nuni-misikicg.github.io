@@ -15,11 +15,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727d1">
-<link rel="stylesheet" href="css/corners.css?v=20260727d1">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727d1">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727d1">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727d1">
+<link rel="stylesheet" href="css/style.css?v=20260727d2">
+<link rel="stylesheet" href="css/corners.css?v=20260727d2">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727d2">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727d2">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727d2">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -468,12 +468,24 @@
       </div>
       <div class="dj-modes" id="dj-modes"></div>
       <div class="dj-panel">
-        <div class="dj-live-badge"><span class="dot"></span>EN DIRECT</div>
+        <div class="dj-live-badge" id="dj-live-badge"><span class="dot"></span>EN DIRECT</div>
         <div class="dj-row"><span>Mode</span><b id="dj-mode-label">Club</b></div>
         <div class="dj-row"><span>Transition</span><b id="dj-transition-label">Beat Sync</b></div>
+        <div class="dj-row"><span>Fondu enchaîné</span><b id="dj-crossfade-label" class="data">3 s</b></div>
         <div class="dj-row"><span>BPM</span><b id="dj-bpm-label" class="data">126</b></div>
         <div class="dj-row"><span>Prochain morceau</span><b id="dj-next-label">—</b></div>
         <div class="dj-row"><span>Temps restant</span><b id="dj-remaining-label" class="data">--:--</b></div>
+      </div>
+      <div class="dj-settings-panel">
+        <div class="dj-settings-title">Réglages du fondu enchaîné</div>
+        <div class="dj-crossfade-options" id="dj-crossfade-options">
+          <button class="dj-cf-opt is-active" data-cf="auto">Auto</button>
+          <button class="dj-cf-opt" data-cf="2">2 s</button>
+          <button class="dj-cf-opt" data-cf="4">4 s</button>
+          <button class="dj-cf-opt" data-cf="6">6 s</button>
+          <button class="dj-cf-opt" data-cf="8">8 s</button>
+        </div>
+        <p class="dj-settings-note">"Auto" utilise la durée propre à chaque ambiance (ci-dessus) — un choix manuel s'applique à tous les enchaînements, quel que soit le mode.</p>
       </div>
       <div class="tuner-nowplaying" id="dj-nowplaying">
         <div class="cover" id="dj-cover"></div>
@@ -1722,6 +1734,7 @@
         <button class="fp-pill" id="speed-btn" onclick="cycleSpeed()">1×</button>
         <button class="fp-pill" id="quality-btn" onclick="cycleQuality()">Qualité originale</button>
         <button class="fp-pill" id="lyrics-toggle-btn" onclick="toggleLyrics()">Paroles</button>
+        <button class="fp-pill dj-toggle-btn" id="fp-dj-toggle-btn" onclick="openTuner('dj')"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:13px;height:13px;display:inline-block;vertical-align:-2px;margin-right:3px;"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg>DJ</button>
         <button class="fp-pill" id="queue-toggle-btn" onclick="toggleQueuePanel()">File d'attente</button>
         <div class="volume-row" style="margin-left:4px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4zM19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
@@ -1929,8 +1942,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727d1"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727d2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727d1"></script>
+<script src="js/app.js?v=20260727d2"></script>
 </body>
 </html>
