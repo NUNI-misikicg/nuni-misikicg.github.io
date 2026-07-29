@@ -9005,7 +9005,16 @@ function ensureCategoryPageStyles(){
     .cp-wrap{max-width:1080px; margin:0 auto; padding:0 24px calc(120px + env(safe-area-inset-bottom,0));}
     .cp-title{color:#fff; font-family:var(--font-display,inherit); font-size:34px; font-weight:800; line-height:1.1; margin-bottom:6px; text-shadow:0 4px 20px rgba(0,0,0,.5);}
     .cp-sub{color:#D8CDB0; font-size:13.5px; text-shadow:0 2px 10px rgba(0,0,0,.5);}
-    .cp-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:20px; padding-top:28px;}
+    .cp-grid{display:grid; grid-template-columns:1fr; gap:2px; padding-top:28px; max-width:1080px; margin:0 auto;}
+    @media(min-width:820px){ .cp-grid{ grid-template-columns:1fr 1fr; gap:2px 32px; } }
+    .cp-row{ display:flex; align-items:center; gap:14px; padding:9px 10px; border-radius:10px; cursor:pointer; transition:background .15s ease; }
+    .cp-row:hover{ background:rgba(255,255,255,.05); }
+    .cp-row .thumb{ width:48px; height:48px; border-radius:8px; flex-shrink:0; background-size:cover; background-position:center; }
+    .cp-row .info{ flex:1; min-width:0; }
+    .cp-row .info .t{ font-size:14px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .cp-row .info .s{ font-size:12px; color:#9a9aa4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+    .cp-row .menu-btn{ flex-shrink:0; opacity:0; transition:opacity .15s ease; background:none; border:none; color:#9a9aa4; cursor:pointer; padding:6px; }
+    .cp-row:hover .menu-btn{ opacity:1; }
     .cp-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0; grid-column:1/-1;}
   `;
   document.head.appendChild(style);
@@ -9020,10 +9029,18 @@ function renderCategoryGrid(getList, shuffle){
     return;
   }
   dedupeAlbums(list).forEach((tr,i)=>{
-    const card = trackCard(tr);
-    card.style.animationDelay = (i*0.04) + 's';
-    card.classList.add('reveal-in');
-    grid.appendChild(card);
+    const row = document.createElement('div');
+    row.className = 'cp-row reveal-in';
+    row.style.animationDelay = (i*0.03) + 's';
+    const coverStyle = tr.cover ? `background-image:url(${tr.cover});` : '';
+    row.innerHTML = `
+      <div class="thumb ${tr.cover ? '' : (tr.p||'')}" style="${coverStyle}"></div>
+      <div class="info"><div class="t">${tr.t}</div><div class="s">${tr.a}</div></div>
+      <button class="menu-btn" aria-label="Options"><svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>`;
+    row.querySelector('.info').onclick = ()=> handleTrackCardClick(tr);
+    row.querySelector('.thumb').onclick = ()=> handleTrackCardClick(tr);
+    row.querySelector('.menu-btn').onclick = (e)=>{ e.stopPropagation(); openTrackCardMenu(tr, e.currentTarget); };
+    grid.appendChild(row);
   });
   // De vraies pochettes (parmi celles réellement affichées) dérivent lentement dans le
   // décor de l'en-tête — jamais d'image inventée, seulement ce qui existe vraiment ici.
