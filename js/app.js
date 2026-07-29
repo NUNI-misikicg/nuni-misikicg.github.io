@@ -3281,6 +3281,17 @@ function filterCatalogByGenre(genreName){
     const card = trackCard(tr);
     card.style.animationDelay = (i*0.05) + 's';
     card.classList.add('reveal-in');
+    // ---- Top Congo est un vrai classement (déjà trié par vrais streams) — un badge de
+    // rang donne le sentiment de trophée demandé, sans rien changer pour les autres genres
+    // qui n'ont pas de notion d'ordre. ----
+    if(genreName === 'Top Congo'){
+      const rank = i + 1;
+      const badge = document.createElement('div');
+      badge.className = 'tc-rank-badge' + (rank <= 3 ? ` tc-rank-${rank}` : '');
+      badge.innerHTML = rank <= 3 ? '🏆' : `#${rank}`;
+      const cover = card.querySelector('.cover');
+      if(cover) cover.appendChild(badge);
+    }
     row.appendChild(card);
   });
 
@@ -4329,9 +4340,170 @@ setInterval(()=> loadAfroliveStats(true), 45000); // rafraîchissement réel tou
 function openWorldModal(){
   if(lastAfroliveData) renderAfroliveInto('world-modal', lastAfroliveData);
   document.getElementById('world-modal-overlay').classList.add('show');
+  initGlobe3D();
 }
 function closeWorldModal(){
   document.getElementById('world-modal-overlay').classList.remove('show');
+  if(globe3dState) globe3dState.paused = true; // pas la peine de continuer à faire tourner le globe hors écran
+}
+
+/* ============================================================
+   GLOBE 3D — chargé UNIQUEMENT au premier clic sur "Voir le monde",
+   jamais au chargement de la page (coût WebGL évité pour qui ne
+   l'utilise jamais). Vraies données (voir lastAfroliveData, déjà
+   chargées par loadAfroliveStats) positionnées sur une sphère à leurs
+   vraies coordonnées approximatives — aucun point inventé.
+============================================================ */
+// Coordonnées approximatives (capitale ou grande ville) — suffisant pour situer un pays sur
+// le globe, pas une précision cartographique de haute exactitude.
+const COUNTRY_LATLNG = {
+  'congo':[-4.26,15.28],'republique du congo':[-4.26,15.28],'rdc':[-4.32,15.31],'republique democratique du congo':[-4.32,15.31],
+  'gabon':[0.42,9.45],'cameroun':[3.85,11.50],'tchad':[12.11,15.05],'centrafrique':[4.36,18.56],'guinee equatoriale':[3.75,8.78],
+  'senegal':[14.69,-17.44],'cote d\'ivoire':[6.83,-5.29],'ivoire':[6.83,-5.29],'mali':[12.65,-8.00],'burkina faso':[12.37,-1.53],
+  'guinee':[9.51,-13.71],'benin':[6.37,2.42],'togo':[6.13,1.22],'niger':[13.51,2.11],'nigeria':[9.08,7.40],'ghana':[5.55,-0.20],
+  'sierra leone':[8.48,-13.23],'liberia':[6.31,-10.80],
+  'kenya':[-1.29,36.82],'tanzanie':[-6.79,39.21],'ouganda':[0.35,32.58],'ethiopie':[9.03,38.74],'rwanda':[-1.94,30.06],'burundi':[-3.38,29.36],
+  'afrique du sud':[-25.75,28.19],'zimbabwe':[-17.83,31.05],'zambie':[-15.39,28.32],'namibie':[-22.56,17.08],'angola':[-8.84,13.23],'mozambique':[-25.97,32.57],
+  'maroc':[34.02,-6.83],'algerie':[36.75,3.06],'tunisie':[36.81,10.18],'egypte':[30.04,31.24],'libye':[32.89,13.19],
+  'france':[48.86,2.35],'belgique':[50.85,4.35],'allemagne':[52.52,13.40],'royaume-uni':[51.51,-0.13],'angleterre':[51.51,-0.13],
+  'suisse':[46.95,7.45],'italie':[41.90,12.50],'espagne':[40.42,-3.70],'portugal':[38.72,-9.14],'pays-bas':[52.37,4.90],'suede':[59.33,18.07],'norvege':[59.91,10.75],
+  'etats-unis':[38.90,-77.04],'usa':[38.90,-77.04],'canada':[45.42,-75.70],'mexique':[19.43,-99.13],'bresil':[-15.79,-47.88],
+  'jamaique':[18.02,-76.80],'haiti':[18.53,-72.34],'cuba':[23.13,-82.38],
+  'chine':[39.90,116.40],'inde':[28.61,77.21],'japon':[35.68,139.69],'coree du sud':[37.57,126.98],'emirats arabes unis':[24.47,54.37],
+  'australie':[-35.28,149.13],'nouvelle-zelande':[-41.29,174.78],
+};
+let globe3dState = null;
+function latLngToVec3(lat, lng, radius, THREE){
+  const phi = (90 - lat) * (Math.PI/180);
+  const theta = (lng + 180) * (Math.PI/180);
+  return new THREE.Vector3(
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta),
+  );
+}
+function loadThreeJs(){
+  if(window.THREE) return Promise.resolve();
+  if(window.__threeLoadingPromise) return window.__threeLoadingPromise;
+  window.__threeLoadingPromise = new Promise((resolve, reject)=>{
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return window.__threeLoadingPromise;
+}
+async function initGlobe3D(){
+  const wrap = document.getElementById('globe3d-wrap');
+  const loading = document.getElementById('globe3d-loading');
+  if(!wrap || !lastAfroliveData) return;
+  if(globe3dState){ globe3dState.paused = false; return; } // déjà initialisé — juste relancer l'animation
+  try{
+    await loadThreeJs();
+  }catch(e){
+    if(loading) loading.textContent = 'Globe 3D indisponible pour le moment — voir les classements ci-dessous.';
+    return;
+  }
+  const THREE = window.THREE;
+  const canvas = document.getElementById('globe3d-canvas');
+  const tooltip = document.getElementById('globe3d-tooltip');
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
+  camera.position.z = 6.4;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+  // Sphère filaire dorée — pas de vraie texture terrestre (aucune image disponible), un
+  // maillage évoque le globe sans prétendre à une carte géographique précise.
+  const wireGeo = new THREE.SphereGeometry(2.6, 28, 22);
+  const wireMat = new THREE.MeshBasicMaterial({ color:0xD4AF6A, wireframe:true, transparent:true, opacity:.28 });
+  const wireSphere = new THREE.Mesh(wireGeo, wireMat);
+  scene.add(wireSphere);
+  // Sphère intérieure pleine, très sombre, pour donner de la profondeur derrière le filaire.
+  const coreGeo = new THREE.SphereGeometry(2.56, 28, 22);
+  const coreMat = new THREE.MeshPhongMaterial({ color:0x0c0906, shininess:8, transparent:true, opacity:.9 });
+  const coreSphere = new THREE.Mesh(coreGeo, coreMat);
+  scene.add(coreSphere);
+
+  // Éclairage doré premium — une lumière ambiante douce + une "lumière du soleil" dorée
+  // qui vient d'un coin, pour du relief plutôt qu'un rendu plat.
+  scene.add(new THREE.AmbientLight(0x4a3a20, 1.1));
+  const sunLight = new THREE.DirectionalLight(0xE8C77E, 1.4);
+  sunLight.position.set(4, 3, 5);
+  scene.add(sunLight);
+
+  // ---- Points de données RÉELS — un point par pays réellement présent dans les vraies
+  // écoutes (lastAfroliveData.topCountries), positionné à ses vraies coordonnées
+  // approximatives, avec une taille proportionnelle au vrai nombre d'écoutes.
+  const group = new THREE.Group();
+  scene.add(group);
+  wireSphere.add(coreSphere); // rotation groupée
+  const dataPoints = [];
+  const maxPlays = Math.max(1, ...lastAfroliveData.topCountries.map(c=>c.plays));
+  lastAfroliveData.topCountries.forEach((c, i)=>{
+    const coords = COUNTRY_LATLNG[normalizeCountryKeyFront(c.country)];
+    if(!coords) return; // pays réel mais coordonnées inconnues — pas de point inventé au hasard
+    const pos = latLngToVec3(coords[0], coords[1], 2.62, THREE);
+    const size = 0.035 + (c.plays / maxPlays) * 0.09;
+    const dotGeo = new THREE.SphereGeometry(size, 10, 10);
+    const dotMat = new THREE.MeshBasicMaterial({ color: i < 3 ? 0xE8C77E : 0xE08A3C });
+    const dot = new THREE.Mesh(dotGeo, dotMat);
+    dot.position.copy(pos);
+    dot.userData = { country: c.country, plays: c.plays };
+    wireSphere.add(dot);
+    dataPoints.push(dot);
+  });
+
+  let dragging = false, lastX = 0, lastY = 0, rotY = 0, rotX = 0, velX = 0;
+  canvas.addEventListener('pointerdown', (e)=>{ dragging = true; lastX = e.clientX; lastY = e.clientY; });
+  window.addEventListener('pointerup', ()=>{ dragging = false; });
+  window.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    velX = (e.clientX - lastX) * 0.005;
+    rotY += velX;
+    rotX = Math.max(-1, Math.min(1, rotX + (e.clientY - lastY) * 0.004));
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  // Survol : affiche le vrai nombre d'écoutes du pays visé, jamais un chiffre inventé.
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  canvas.addEventListener('pointermove', (e)=>{
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left)/rect.width)*2 - 1;
+    mouse.y = -((e.clientY - rect.top)/rect.height)*2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(dataPoints);
+    if(hits.length){
+      const d = hits[0].object.userData;
+      tooltip.innerHTML = `${d.country} — <b>${d.plays.toLocaleString('fr-FR')}</b> écoutes`;
+      tooltip.style.left = (e.clientX - rect.left) + 'px';
+      tooltip.style.top = (e.clientY - rect.top) + 'px';
+      tooltip.style.display = 'block';
+    } else { tooltip.style.display = 'none'; }
+  });
+  canvas.addEventListener('pointerleave', ()=>{ tooltip.style.display = 'none'; });
+
+  globe3dState = { paused:false };
+  function animate(){
+    requestAnimationFrame(animate);
+    if(globe3dState.paused) return;
+    if(!dragging){ rotY += 0.0016 + velX*0; velX *= 0.92; rotY += velX; } // légère rotation continue, ralentit après un glissement
+    wireSphere.rotation.y = rotY;
+    wireSphere.rotation.x = rotX;
+    renderer.render(scene, camera);
+  }
+  animate();
+  window.addEventListener('resize', ()=>{
+    if(!wrap.clientWidth) return;
+    camera.aspect = wrap.clientWidth/wrap.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  });
+  if(loading) loading.classList.add('hide');
 }
 
 function renderHomeHero(){
@@ -7623,11 +7795,13 @@ async function loadHomeTalentRowInner(){
     list.forEach(a=>{
       const name = a.artist_name || a.first_name;
       const card = document.createElement('div');
-      card.className = 'htal-card';
+      card.className = 'htal-card' + (a.rank <= 3 ? ` htal-podium-${a.rank}` : '');
       if(a.avatar_url) card.style.backgroundImage = `url(${a.avatar_url})`;
       const votedBadge = (data.my_vote_artist_id === a.id)
         ? `<div class="htal-voted" title="Vous avez voté"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></div>` : '';
+      const crown = a.rank === 1 ? '<div class="htal-crown">👑</div>' : '';
       card.innerHTML = `
+        ${crown}
         <div class="htal-scrim"></div>
         <div class="htal-rank">#${a.rank}</div>
         ${votedBadge}
@@ -8383,7 +8557,7 @@ async function loadChallenges(){
     data.challenges.forEach(c=>{
       const pct = Math.min(100, Math.round((c.progress / c.target) * 100));
       const card = document.createElement('div');
-      card.className = 'challenge-card' + (c.claimed ? ' is-claimed' : '');
+      card.className = 'challenge-card' + (c.claimed ? ' is-claimed' : c.completed ? ' is-ready' : '');
       card.innerHTML = `
         <div class="cc-top">
           <span class="cc-tag">${c.period === 'weekly' ? 'Hebdo' : 'Quotidien'}</span>

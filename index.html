@@ -15,11 +15,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20260727c1">
-<link rel="stylesheet" href="css/corners.css?v=20260727c1">
-<link rel="stylesheet" href="css/nuni-premium.css?v=20260727c1">
-<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727c1">
-<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727c1">
+<link rel="stylesheet" href="css/style.css?v=20260727c2">
+<link rel="stylesheet" href="css/corners.css?v=20260727c2">
+<link rel="stylesheet" href="css/nuni-premium.css?v=20260727c2">
+<link rel="stylesheet" href="css/nuni-mimi-avatar.css?v=20260727c2">
+<link rel="stylesheet" href="css/nuni-dj-avatar.css?v=20260727c2">
 </head>
 <body>
 <div class="nuni-corner-decor top-left"></div>
@@ -800,8 +800,13 @@
         </button>
         <span class="ai-modal-eyebrow">🌍 NUNI dans le monde</span>
         <h2 class="serif">La musique congolaise voyage</h2>
-        <p style="font-size:13px; color:var(--text-dim); margin-bottom:20px;">Basé sur les vraies écoutes enregistrées sur NUNI, par pays d'inscription des auditeurs.</p>
-        <div class="afrolive-lists afrolive-lists-3" style="max-height:60vh; overflow-y:auto;">
+        <p style="font-size:13px; color:var(--text-dim); margin-bottom:14px;">Basé sur les vraies écoutes enregistrées sur NUNI, par pays d'inscription des auditeurs. Fais glisser le globe pour le faire tourner.</p>
+        <div class="globe3d-wrap" id="globe3d-wrap">
+          <canvas id="globe3d-canvas"></canvas>
+          <div class="globe3d-loading" id="globe3d-loading">Chargement du globe…</div>
+          <div class="globe3d-tooltip" id="globe3d-tooltip"></div>
+        </div>
+        <div class="afrolive-lists afrolive-lists-3" style="max-height:38vh; overflow-y:auto;">
           <div>
             <div class="afrolive-list-title">Top 10 régions</div>
             <div id="world-modal-regions"></div>
@@ -1902,8 +1907,8 @@
   </symbol>
 </svg>
 
-<script src="js/nuni-dj-avatar.js?v=20260727c1"></script>
+<script src="js/nuni-dj-avatar.js?v=20260727c2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/app.js?v=20260727c1"></script>
+<script src="js/app.js?v=20260727c2"></script>
 </body>
 </html>

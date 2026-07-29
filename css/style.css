@@ -674,6 +674,19 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 @media(max-width:640px){ .poster-card, .poster-cover{ width:170px; } .poster-cover{ height:230px; } .poster-title{ font-size:18px; } }
 
 .afrolive-section{ margin-bottom:58px; }
+.globe3d-wrap{ position:relative; width:100%; height:340px; border-radius:18px; overflow:hidden; background:radial-gradient(circle at 50% 40%, #14100a 0%, #08070a 75%); margin-bottom:20px; touch-action:none; }
+.globe3d-wrap canvas{ display:block; width:100%; height:100%; cursor:grab; }
+.globe3d-wrap canvas:active{ cursor:grabbing; }
+.globe3d-loading{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12.5px; color:var(--text-faint); pointer-events:none; }
+.globe3d-loading.hide{ display:none; }
+.globe3d-tooltip{
+  position:absolute; pointer-events:none; z-index:5; display:none;
+  background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(8px);
+  border:1px solid var(--border-strong); border-radius:10px; padding:7px 12px; font-size:12px;
+  transform:translate(-50%,-120%); white-space:nowrap; box-shadow:var(--shadow);
+}
+.globe3d-tooltip b{ font-family:var(--font-data); color:var(--accent); }
+@media(max-width:640px){ .globe3d-wrap{ height:260px; } }
 .afrolive-section .shelf-head a{ font-size:12.5px; color:var(--accent); font-weight:600; }
 .afrolive-card{
   display:grid; grid-template-columns:230px 1fr; gap:36px; align-items:center;
@@ -775,13 +788,25 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .htal-info{ position:absolute; left:10px; right:10px; bottom:9px; }
 .htal-name{ color:#fff; font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .htal-votes{ color:rgba(255,255,255,.72); font-size:10.5px; margin-top:1px; }
+/* ---- Podium — le n°1 se distingue vraiment, pas juste un numéro différent. Couronne
+   dorée + carte légèrement plus grande + lueur ambrée ; argent/bronze pour #2 et #3. ---- */
+.htal-card.htal-podium-1{ width:150px; height:198px; box-shadow:0 0 30px -8px rgba(212,175,106,.55), 0 10px 24px -16px rgba(0,0,0,.65); border-color:rgba(212,175,106,.4); }
+.htal-card.htal-podium-1 .htal-rank{ background:linear-gradient(135deg, var(--or-2), var(--or)); color:#1a1006; font-weight:800; }
+.htal-card.htal-podium-2 .htal-rank{ background:linear-gradient(135deg, #E5E5EA, #A8A8B0); color:#1a1a1a; font-weight:800; }
+.htal-card.htal-podium-3 .htal-rank{ background:linear-gradient(135deg, #D8935A, #A85F30); color:#fff; font-weight:800; }
+.htal-crown{ position:absolute; top:-11px; left:50%; transform:translateX(-50%) rotate(-8deg); font-size:20px; z-index:2; filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)); }
 @media(max-width:640px){ .htal-card{ width:112px; height:156px; } }
 .challenge-card{
   flex-shrink:0; width:220px; background:var(--bg-elev); border:1px solid var(--border);
-  border-radius:16px; padding:16px 18px; transition:transform .3s var(--ease);
+  border-radius:16px; padding:16px 18px; transition:transform .3s var(--ease), border-color .3s ease, box-shadow .3s ease;
 }
 .challenge-card:hover{ transform:translateY(-3px); }
 .challenge-card.is-claimed{ opacity:.55; }
+/* ---- Mission accomplie — la carte se met à respirer doucement en doré tant que la
+   récompense n'a pas été récupérée, pour un vrai signal "quelque chose t'attend". ---- */
+.challenge-card.is-ready{ border-color:rgba(212,175,106,.45); animation:ccReadyGlow 2.6s ease-in-out infinite; }
+@keyframes ccReadyGlow{ 0%,100%{ box-shadow:0 0 0 0 rgba(212,175,106,.25); } 50%{ box-shadow:0 0 22px 2px rgba(212,175,106,.25); } }
+@media(prefers-reduced-motion: reduce){ .challenge-card.is-ready{ animation:none; box-shadow:0 0 16px 0 rgba(212,175,106,.25); } }
 .challenge-card .cc-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
 .challenge-card .cc-tag{ font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-faint); }
 .challenge-card .cc-xp{ font-size:11px; font-weight:700; color:var(--accent,#D4AF6A); }
@@ -797,6 +822,15 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .challenge-card .cc-claim:disabled{ cursor:default; opacity:.6; transform:none; }
 
 .shop-row{ display:flex; gap:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
+/* ---- Top Congo — badge de rang façon trophée sur chaque pochette classée. ---- */
+.tc-rank-badge{
+  position:absolute; top:8px; left:8px; z-index:3; min-width:24px; height:24px; padding:0 6px; border-radius:8px;
+  background:rgba(10,10,16,.6); backdrop-filter:blur(6px); color:var(--or-2,#E8C77E);
+  font-family:var(--font-data); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
+}
+.tc-rank-badge.tc-rank-1{ background:linear-gradient(135deg, var(--or-2), var(--or)); font-size:14px; box-shadow:0 0 14px -2px rgba(212,175,106,.6); }
+.tc-rank-badge.tc-rank-2{ background:linear-gradient(135deg, #E5E5EA, #A8A8B0); font-size:13px; }
+.tc-rank-badge.tc-rank-3{ background:linear-gradient(135deg, #D8935A, #A85F30); font-size:13px; }
 .shop-card{
   flex-shrink:0; width:150px; text-align:center; background:var(--bg-elev); border:1px solid var(--border);
   border-radius:16px; padding:18px 12px; transition:transform .3s var(--ease);
