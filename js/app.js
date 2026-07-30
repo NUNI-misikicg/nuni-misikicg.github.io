@@ -6288,6 +6288,186 @@ function openClipWatchPage(clip){
   requestAnimationFrame(()=> overlay.classList.add('show'));
   attachSwipeDownToClose(overlay, closeOverlay);
 }
+
+/* ============ STORIES NUNI — plein écran façon TikTok ============
+   Réutilise les vrais clips déjà chargés (mêmes données que l'onglet Clips et le Dashboard
+   artiste) : aucune "story" séparée à créer côté artiste, aucune donnée inventée. Navigation
+   par tap (droite = suivant, gauche = précédent) et swipe vers le bas pour fermer — mêmes
+   conventions que Instagram/TikTok. Chaque story avance automatiquement à la fin du clip. */
+function ensureStoriesStyles(){
+  if(document.getElementById('stories-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'stories-styles';
+  style.textContent = `
+    #stories-overlay{ position:fixed; inset:0; z-index:10000; background:#000; opacity:0; transition:opacity .25s ease; }
+    #stories-overlay.show{ opacity:1; }
+    .stories-stage{ position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .stories-video{ max-width:100%; max-height:100%; width:auto; height:100%; object-fit:contain; background:#000; }
+    .stories-placeholder{ color:rgba(255,255,255,.6); font-size:13.5px; text-align:center; padding:0 30px; }
+    .stories-progress-row{ position:absolute; top:calc(10px + env(safe-area-inset-top,0)); left:10px; right:10px; display:flex; gap:4px; z-index:3; }
+    .stories-progress-seg{ flex:1; height:2.5px; border-radius:2px; background:rgba(255,255,255,.28); overflow:hidden; }
+    .stories-progress-fill{ height:100%; width:0%; background:#fff; border-radius:2px; }
+    .stories-progress-seg.is-done .stories-progress-fill{ width:100%; }
+    .stories-header{ position:absolute; top:calc(24px + env(safe-area-inset-top,0)); left:14px; right:50px; display:flex; align-items:center; gap:10px; z-index:3; }
+    .stories-avatar{ width:34px; height:34px; border-radius:50%; border:1.5px solid rgba(255,255,255,.7); background-size:cover; background-position:center; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:12px; flex-shrink:0; }
+    .stories-artist-name{ color:#fff; font-weight:700; font-size:13.5px; text-shadow:0 1px 4px rgba(0,0,0,.5); }
+    .stories-follow-btn{ background:rgba(255,255,255,.16); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.3); color:#fff; font-weight:700; font-size:11.5px; padding:5px 12px; border-radius:999px; cursor:pointer; flex-shrink:0; }
+    .stories-follow-btn.is-following{ background:var(--grad-envol); color:#241708; border-color:transparent; }
+    .stories-close{ position:absolute; top:calc(20px + env(safe-area-inset-top,0)); right:14px; z-index:3; width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,.4); color:#fff; display:flex; align-items:center; justify-content:center; }
+    .stories-tapzone{ position:absolute; top:0; bottom:0; width:34%; z-index:2; }
+    .stories-tapzone.left{ left:0; } .stories-tapzone.right{ right:0; }
+    .stories-footer{ position:absolute; left:14px; right:14px; bottom:calc(22px + env(safe-area-inset-bottom,0)); z-index:3; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; pointer-events:none; }
+    .stories-title{ color:#fff; font-weight:600; font-size:13.5px; text-shadow:0 1px 4px rgba(0,0,0,.5); max-width:70%; }
+    .stories-meta{ color:rgba(255,255,255,.75); font-size:12px; margin-top:3px; }
+    .stories-like-btn{ pointer-events:auto; display:flex; flex-direction:column; align-items:center; gap:3px; color:#fff; background:rgba(0,0,0,.35); width:44px; height:44px; border-radius:50%; flex-shrink:0; }
+    .stories-like-btn svg{ width:20px; height:20px; }
+    .stories-like-btn.is-active svg{ fill:var(--rouge-nuni,#C0392B); stroke:var(--rouge-nuni,#C0392B); }
+    .stories-like-count{ font-size:9.5px; font-weight:700; }
+  `;
+  document.head.appendChild(style);
+}
+function openStoriesViewer(startIndex){
+  ensureStoriesStyles();
+  const realClips = clips.filter(c=>c.isReal && c.videoUrl);
+  if(!realClips.length){ toast('Aucun clip disponible pour le moment.'); return; }
+  let idx = Math.max(0, Math.min(startIndex||0, realClips.length-1));
+  if(playing) togglePlay(); // jamais deux sons superposés
+  setImmersiveMode(true);
+
+  let overlay = document.getElementById('stories-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'stories-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+
+  const closeOverlay = ()=>{
+    const v = overlay.querySelector('video');
+    if(v) v.pause();
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+    setImmersiveMode(false);
+    setTimeout(()=> overlay.remove(), 200);
+  };
+
+  overlay.innerHTML = `
+    <div class="stories-progress-row" id="stories-progress-row"></div>
+    <button class="stories-close" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="stories-header" id="stories-header"></div>
+    <div class="stories-stage" id="stories-stage">
+      <div class="stories-tapzone left"></div>
+      <div class="stories-tapzone right"></div>
+    </div>
+    <div class="stories-footer" id="stories-footer"></div>`;
+
+  const progressRow = overlay.querySelector('#stories-progress-row');
+  realClips.forEach(()=>{
+    const seg = document.createElement('div');
+    seg.className = 'stories-progress-seg';
+    seg.innerHTML = '<div class="stories-progress-fill"></div>';
+    progressRow.appendChild(seg);
+  });
+
+  function renderStory(){
+    const clip = realClips[idx];
+    // Vraie vue comptée, exactement comme le lecteur de clip classique.
+    if(clip.realId){
+      fetch(NUNI_API_BASE + '/api/clips/' + clip.realId + '/view', {
+        method:'POST', headers: realAuthToken ? {'Authorization':'Bearer ' + realAuthToken} : {}
+      }).then(r=>r.json()).then(data=>{ if(typeof data.views === 'number') clip.views = data.views; }).catch(()=>{});
+    }
+    progressRow.querySelectorAll('.stories-progress-seg').forEach((seg, i)=>{
+      seg.classList.toggle('is-done', i < idx);
+      const fill = seg.querySelector('.stories-progress-fill');
+      fill.style.width = i < idx ? '100%' : '0%';
+    });
+    const initials = (clip.artist||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const avatarStyle = clip.artistAvatarUrl ? `background-image:url(${clip.artistAvatarUrl}); background-size:cover; background-position:center;` : '';
+    overlay.querySelector('#stories-header').innerHTML = `
+      <div class="stories-avatar" style="${avatarStyle}">${clip.artistAvatarUrl ? '' : initials}</div>
+      <div class="stories-artist-name">${clip.artist}</div>
+      <button class="stories-follow-btn">Suivre</button>`;
+    overlay.querySelector('#stories-header .stories-avatar').onclick = ()=>{ closeOverlay(); openArtistPage(clip.artist, clip.artistId); };
+    const followBtn = overlay.querySelector('.stories-follow-btn');
+    if(clip.artistId && realAuthToken){
+      fetch(NUNI_API_BASE + '/api/follow/' + clip.artistId + '/status', { headers:{ 'Authorization':'Bearer ' + realAuthToken } })
+        .then(r=>r.json()).then(d=>{ followBtn.textContent = d.following ? 'Suivi' : 'Suivre'; followBtn.classList.toggle('is-following', d.following); }).catch(()=>{});
+    }
+    followBtn.onclick = ()=>{
+      if(!realAuthToken){ toast('Connectez-vous pour suivre un artiste.'); return; }
+      if(!clip.artistId) return;
+      followBtn.disabled = true;
+      fetch(NUNI_API_BASE + '/api/follow', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + realAuthToken}, body: JSON.stringify({ artistId: clip.artistId }) })
+        .then(r=>r.json()).then(data=>{
+          followBtn.disabled = false;
+          if(data.error){ toast(' ' + data.error); return; }
+          followBtn.textContent = data.following ? 'Suivi' : 'Suivre';
+          followBtn.classList.toggle('is-following', !!data.following);
+        }).catch(()=>{ followBtn.disabled = false; });
+    };
+    overlay.querySelector('#stories-footer').innerHTML = `
+      <div>
+        <div class="stories-title">${clip.title}</div>
+        <div class="stories-meta">${formatLikes(clip.views||0)} vues</div>
+      </div>
+      <button class="stories-like-btn" aria-label="J'aime">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        <span class="stories-like-count">${clip.likes ? formatLikes(clip.likes) : ''}</span>
+      </button>`;
+    const likeBtn = overlay.querySelector('.stories-like-btn');
+    if(clip.realId && realAuthToken){
+      fetch(NUNI_API_BASE + '/api/clips/' + clip.realId + '/my-reaction', { headers:{ 'Authorization':'Bearer ' + realAuthToken } })
+        .then(r=>r.json()).then(d=> likeBtn.classList.toggle('is-active', !!d.liked)).catch(()=>{});
+    }
+    likeBtn.onclick = async (e)=>{
+      e.stopPropagation();
+      bounceEl(likeBtn); hapticPing();
+      if(clip.realId && realAuthToken){
+        likeBtn.disabled = true;
+        try{
+          const res = await fetch(NUNI_API_BASE + '/api/clips/' + clip.realId + '/like', { method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+          const data = await res.json();
+          likeBtn.disabled = false;
+          if(!res.ok){ toast(' ' + (data.error||'Erreur.')); return; }
+          clip.likes = data.likes;
+          likeBtn.classList.toggle('is-active', data.liked);
+          likeBtn.querySelector('.stories-like-count').textContent = clip.likes ? formatLikes(clip.likes) : '';
+        }catch(err){ likeBtn.disabled = false; }
+        return;
+      }
+      if(!realAuthToken) toast('Connectez-vous pour aimer ce clip.');
+    };
+
+    const stage = overlay.querySelector('#stories-stage');
+    stage.querySelectorAll('video, .stories-placeholder').forEach(el=> el.remove());
+    const video = document.createElement('video');
+    video.className = 'stories-video';
+    video.src = clip.videoUrl; video.autoplay = true; video.playsInline = true;
+    video.addEventListener('timeupdate', ()=>{
+      if(!video.duration) return;
+      const fill = progressRow.children[idx].querySelector('.stories-progress-fill');
+      fill.style.width = Math.min(100, (video.currentTime/video.duration)*100) + '%';
+    });
+    video.addEventListener('ended', goNext);
+    stage.insertBefore(video, stage.querySelector('.stories-tapzone.left'));
+  }
+  function goNext(){
+    if(idx >= realClips.length-1){ closeOverlay(); return; }
+    idx++; renderStory();
+  }
+  function goPrev(){
+    if(idx <= 0) return;
+    idx--; renderStory();
+  }
+  overlay.querySelector('.stories-tapzone.left').onclick = goPrev;
+  overlay.querySelector('.stories-tapzone.right').onclick = goNext;
+  overlay.querySelector('.stories-close').onclick = closeOverlay;
+
+  renderStory();
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+}
+
 function clipCard(clip){
   const card = document.createElement('div');
   card.className = 'clip-card';
@@ -9662,6 +9842,7 @@ function renderSearchViewBrowse(){
       <div class="asv-genre-tile" style="background:#6E45A8;" data-concerts="1"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 21v-3"/></svg>Concerts</div>
       <div class="asv-genre-tile" style="background:#B3512E;" data-nuni-events="1"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><path d="M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V9z"/></svg>NUNI Événements</div>
       <div class="asv-genre-tile" style="background:#1976D2;" data-top="1"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><path d="M4 21V10M11 21V4M18 21v-7"/><path d="M2 21h20"/></svg>Top</div>
+      <div class="asv-genre-tile" style="background:linear-gradient(135deg,#C0392B,#6E45A8);" data-stories="1"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m10 9 5 3-5 3z"/></svg>Stories</div>
       ${genres.map(g => {
         const st = genreStats(g);
         if(!st) return `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`;
@@ -9687,6 +9868,7 @@ function renderSearchViewBrowse(){
   box.querySelector('[data-concerts]').onclick = ()=> enterApp('concerts');
   box.querySelector('[data-nuni-events]').onclick = ()=> enterApp('nuniEvents');
   box.querySelector('[data-top]').onclick = ()=> window.location.href = 'top.html';
+  box.querySelector('[data-stories]').onclick = ()=> openStoriesViewer(0);
   box.querySelectorAll('.asv-genre-tile[data-genre]').forEach(tile=>{
     tile.onclick = ()=>{
       const g = tile.dataset.genre;
