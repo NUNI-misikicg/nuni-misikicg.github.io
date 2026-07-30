@@ -2169,13 +2169,29 @@ html.is-playing .fp-title{ font-weight:800; }
 .legal-body ul{ padding-left:18px; margin-bottom:10px; list-style:disc; }
 
 .ai-modal-overlay{
-  position:fixed; inset:0; z-index:90; background:rgba(5,5,8,.65); backdrop-filter:blur(6px);
+  position:fixed; inset:0; z-index:90; background:rgba(4,4,7,.72); backdrop-filter:blur(8px);
   display:none; align-items:center; justify-content:center; padding:20px;
 }
 .ai-modal-overlay.show{ display:flex; animation:fadeUp .3s var(--ease); }
+/* ---- Carte "vitrée" avec halo coloré en coin — inspirée d'une maquette de référence,
+   adaptée à la palette NUNI (or/rouge/vert congolais) plutôt qu'un dégradé générique. ---- */
 .ai-modal{
-  background:var(--bg-elev); border:1px solid var(--border-strong); border-radius:28px; padding:36px 32px;
-  max-width:440px; width:100%; text-align:center; box-shadow:var(--shadow);
+  position:relative; overflow:hidden;
+  background:
+    radial-gradient(120% 90% at 8% -6%, color-mix(in srgb, var(--rouge-nuni) 38%, transparent) 0%, transparent 46%),
+    radial-gradient(90% 70% at 100% 0%, color-mix(in srgb, var(--or) 20%, transparent) 0%, transparent 50%),
+    color-mix(in srgb, var(--bg-elev) 88%, black 12%);
+  backdrop-filter:blur(22px) saturate(1.4); -webkit-backdrop-filter:blur(22px) saturate(1.4);
+  border:1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border-radius:30px; padding:36px 32px;
+  max-width:440px; width:100%; text-align:center;
+  box-shadow:0 30px 70px -20px rgba(0,0,0,.65), inset 0 1px 0 color-mix(in srgb, var(--text) 10%, transparent);
+}
+/* Reflet fin en haut de la carte — capte la lumière comme du verre, même esprit que la
+   tabbar mobile en "liquid glass". */
+.ai-modal::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(160deg, color-mix(in srgb, var(--text) 7%, transparent) 0%, transparent 32%);
 }
 .ai-modal-avatar{ font-size:38px; margin-bottom:10px; }
 .ai-modal-logo{ display:block; width:56px; height:56px; margin:0 auto 12px; object-fit:contain; }
@@ -2186,6 +2202,22 @@ html.is-playing .fp-title{ font-weight:800; }
 .ai-choice{ display:flex; align-items:center; gap:14px; text-align:left; padding:16px 18px; border-radius:16px; background:var(--bg-card); border:1px solid var(--border); transition:all .3s var(--ease); }
 .ai-choice:hover{ border-color:var(--accent); transform:translateY(-2px); }
 .ai-choice .ic{ font-size:24px; flex-shrink:0; }
+/* ---- Champs façon "pilule vitrée" à l'intérieur de ces cartes précisément — on ne
+   touche pas au style .field utilisé ailleurs (Dashboard, concerts...) pour ne rien
+   casser en dehors de ces modals de connexion/inscription. ---- */
+.ai-modal .field input[type=text], .ai-modal .field input[type=number], .ai-modal .field input[type=date],
+.ai-modal .field input[type=email], .ai-modal .field input[type=password], .ai-modal .field input[type=tel],
+.ai-modal .field select{
+  background:color-mix(in srgb, var(--bg-card) 70%, transparent);
+  border:1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  border-radius:999px; padding:13px 18px;
+}
+.ai-modal .field input:focus, .ai-modal .field select:focus{
+  border-color:var(--accent); background:color-mix(in srgb, var(--bg-card) 90%, transparent);
+}
+.ai-modal .field-password-wrap input{ padding-right:46px; }
+.ai-modal .field-eye-btn{ right:10px; }
+.ai-modal .btn-primary{ box-shadow:0 14px 32px -10px color-mix(in srgb, var(--or) 55%, transparent); }
 .profile-info-modal{ max-width:480px; max-height:80vh; overflow-y:auto; }
 .pi-list{ display:flex; flex-direction:column; gap:10px; }
 .pi-item{
