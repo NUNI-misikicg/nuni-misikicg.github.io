@@ -9534,6 +9534,19 @@ function renderSearchViewBrowse(){
   // Congo, voir getTopStreamedTracks) : jamais de faux badge "Trending" ni de chiffre
   // inventé, seulement les vraies écoutes déjà comptabilisées.
   const trending = getTopStreamedTracks(10);
+  // ---- Tuiles de genre "premium" — avant : simple aplat de couleur avec juste le nom.
+  // Maintenant : pochette du morceau le plus streamé du genre (au lieu d'une couleur plate),
+  // vrai nombre de morceaux publiés, et vrai top artiste du genre par streams cumulés.
+  // Un genre sans aucun vrai morceau garde son ancien rendu (couleur unie, rien d'inventé).
+  function genreStats(g){
+    const inGenre = tracks.filter(t=> t.isReal && t.genre === g);
+    if(!inGenre.length) return null;
+    const withCover = [...inGenre].sort((a,b)=> parseStreamsCount(b.streams) - parseStreamsCount(a.streams));
+    const byArtist = {};
+    inGenre.forEach(t=>{ byArtist[t.a] = (byArtist[t.a]||0) + parseStreamsCount(t.streams); });
+    const topArtist = Object.entries(byArtist).sort((a,b)=> b[1]-a[1])[0][0];
+    return { count: inGenre.length, cover: withCover[0].cover || null, topArtist };
+  }
   box.innerHTML = `
     ${trending.length ? `
     <div class="asv-trending-block">
@@ -9550,7 +9563,17 @@ function renderSearchViewBrowse(){
       <div class="asv-genre-tile" style="background:#6E45A8;" data-concerts="1"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 21v-3"/></svg>Concerts</div>
       <div class="asv-genre-tile" style="background:#B3512E;" data-nuni-events="1"><svg class="nuni-ic" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><path d="M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V9z"/></svg>NUNI Événements</div>
       <div class="asv-genre-tile" style="background:#1976D2;" data-top="1"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px;"><path d="M4 21V10M11 21V4M18 21v-7"/><path d="M2 21h20"/></svg>Top</div>
-      ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
+      ${genres.map(g => {
+        const st = genreStats(g);
+        if(!st) return `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`;
+        const bg = st.cover ? `background-image:linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.82) 100%), url(${st.cover}); background-size:cover; background-position:center;` : `background:${ASV_GENRE_COLORS[g]};`;
+        return `<div class="asv-genre-tile asv-genre-tile-premium" style="${bg}" data-genre="${g}">
+          <div>
+            <div>${g}</div>
+            <div class="asv-genre-tile-meta">${st.count} morceau${st.count>1?'x':''} · ${st.topArtist}</div>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
     ${renderRecentSearchesRow()}`;
   if(trending.length){
