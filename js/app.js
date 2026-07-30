@@ -4874,6 +4874,7 @@ const NuniAura = {
   // visible, jamais d'impact sur la vraie lecture du son.
   startLiveLoop(){
     if(this._liveRAF) return; // déjà en cours
+    let lastBass = 0, lastVibeHitAt = 0; // pour détecter un vrai "coup de basse" et déclencher une particule Mode Vibe
     const tick = ()=>{
       this._liveRAF = requestAnimationFrame(tick);
       if(!playing || !usingRealAudio || !nuniAnalyser || !nuniFreqData){
@@ -4887,6 +4888,17 @@ const NuniAura = {
       const bass = (bSum/bassEnd)/255; // 0 (silence) à 1 (basse pleine puissance)
       // Boost doux et plafonné — "augmente légèrement", jamais un clignotement agressif.
       document.documentElement.style.setProperty('--nuni-aura-live-boost', (bass*0.22).toFixed(3));
+      // ---- Mode Vibe réactif : un vrai "coup de basse" (front montant au-delà d'un seuil)
+      // déclenche une particule musicale supplémentaire, en plus du rythme de base déjà en
+      // place — les particules suivent enfin vraiment le morceau, pas juste un minuteur fixe.
+      if(typeof vibeMode !== 'undefined' && vibeMode && bass > 0.55 && lastBass <= 0.55){
+        const now = performance.now();
+        if(now - lastVibeHitAt > 180){ // évite une rafale si les basses restent hautes plusieurs frames de suite
+          spawnVibeParticle();
+          lastVibeHitAt = now;
+        }
+      }
+      lastBass = bass;
     };
     tick();
   },
