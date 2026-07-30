@@ -4197,6 +4197,44 @@ function getTopStreamedTracks(n){
     .sort((a,b)=> parseStreamsCount(b.streams) - parseStreamsCount(a.streams))
     .slice(0, n);
 }
+// ---------- Écoute automatique au survol — desktop uniquement (le survol n'existe pas
+// au doigt), et jamais si ce morceau précis est déjà la vraie lecture en cours (on ne veut
+// jamais deux sons superposés). Un seul aperçu à la fois : en survoler un nouveau coupe
+// net l'aperçu précédent. Volume réduit et coupure automatique après 20s — un aperçu,
+// jamais un moyen d'écouter le morceau entier gratuitement en survolant.
+const HOVER_PREVIEW_SUPPORTED = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+let hoverPreviewAudio = null, hoverPreviewTimer = null, hoverPreviewCard = null, hoverPreviewDelay = null;
+function stopHoverPreview(){
+  if(hoverPreviewDelay){ clearTimeout(hoverPreviewDelay); hoverPreviewDelay = null; }
+  if(hoverPreviewTimer){ clearTimeout(hoverPreviewTimer); hoverPreviewTimer = null; }
+  if(hoverPreviewAudio){ hoverPreviewAudio.pause(); }
+  if(hoverPreviewCard){ hoverPreviewCard.classList.remove('is-preview-playing'); hoverPreviewCard = null; }
+}
+function wireHoverPreview(card, tr){
+  if(!HOVER_PREVIEW_SUPPORTED || !tr.isReal || !tr.audioUrl) return;
+  card.addEventListener('mouseenter', ()=>{
+    // Léger délai avant de démarrer — évite de charger/jouer un extrait à chaque survol
+    // rapide en balayant la rangée du regard (même principe que Spotify).
+    hoverPreviewDelay = setTimeout(()=>{
+      stopHoverPreview();
+      // Jamais de double son si ce morceau précis est déjà la vraie lecture en cours.
+      if(currentTrack && trackKeyOf(currentTrack) === trackKeyOf(tr) && playing) return;
+      if(!hoverPreviewAudio){
+        hoverPreviewAudio = document.createElement('audio');
+        hoverPreviewAudio.preload = 'none';
+        hoverPreviewAudio.volume = 0.55;
+      }
+      hoverPreviewAudio.src = tr.audioUrl;
+      hoverPreviewAudio.currentTime = 0;
+      hoverPreviewAudio.play().then(()=>{
+        card.classList.add('is-preview-playing');
+        hoverPreviewCard = card;
+        hoverPreviewTimer = setTimeout(stopHoverPreview, 20000); // 20s d'extrait max
+      }).catch(()=>{ /* autoplay refusé par le navigateur — silencieux, jamais d'erreur visible */ });
+    }, 350);
+  });
+  card.addEventListener('mouseleave', stopHoverPreview);
+}
 function renderTopCongo(){
   const row = document.getElementById('shelf-top');
   if(!row) return;
@@ -9639,7 +9677,11 @@ function renderSearchViewBrowse(){
     ${renderRecentSearchesRow()}`;
   if(trending.length){
     const trow = document.getElementById('asv-trending-row');
-    trending.forEach(tr=> trow.appendChild(trackCard(tr)));
+    trending.forEach(tr=>{
+      const card = trackCard(tr);
+      wireHoverPreview(card, tr);
+      trow.appendChild(card);
+    });
   }
   box.querySelector('[data-radio]').onclick = ()=> openTuner('radio');
   box.querySelector('[data-concerts]').onclick = ()=> enterApp('concerts');

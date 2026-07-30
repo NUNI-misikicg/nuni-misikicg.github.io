@@ -1241,6 +1241,17 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .track-card.is-now-playing .cover{ box-shadow:0 10px 26px -12px rgba(0,0,0,0.55), 0 0 22px -4px var(--nuni-signature-glow, var(--or)); }
 @media(prefers-reduced-motion: reduce){ .track-card.is-now-playing::before{ animation:none; opacity:.5; } }
 
+/* ---- Aperçu au survol (section "Extraits populaires") — glow doré discret + équaliseur
+   sur la pochette, indépendant de la vraie lecture en cours (.is-now-playing gère déjà ça
+   ailleurs). Respecte prefers-reduced-motion comme le reste de l'app. */
+.track-card.is-preview-playing .cover{ box-shadow:0 10px 26px -12px rgba(0,0,0,0.55), 0 0 20px -4px var(--accent); }
+.track-card.is-preview-playing .play-fab{ opacity:1; transform:translateY(0) scale(1); }
+.track-card.is-preview-playing .play-fab-eq i{ animation: eqBounce 0.9s ease-in-out infinite; }
+.track-card.is-preview-playing .play-fab-eq i:nth-child(1){ animation-delay:0s; }
+.track-card.is-preview-playing .play-fab-eq i:nth-child(2){ animation-delay:.15s; }
+.track-card.is-preview-playing .play-fab-eq i:nth-child(3){ animation-delay:.3s; }
+@media(prefers-reduced-motion: reduce){ .track-card.is-preview-playing .play-fab-eq i{ animation:none; } }
+
 /* Reflet très doux sur le fond général de l'app — un unique calque fixe, sous tout le
    contenu, quasi imperceptible sauf en y prêtant attention. Deux paliers d'intensité :
    "au repos" (rien ne joue, juste la sortie mise en avant du Hero — voir applyHeroTrack)
