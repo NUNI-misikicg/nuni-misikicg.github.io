@@ -9530,7 +9530,16 @@ function renderSearchViewBrowse(){
   const box = document.getElementById('asv-results');
   if(!box) return;
   const genres = Object.keys(ASV_GENRE_COLORS);
+  // "Extraits populaires" — vrais morceaux les plus streamés (même classement que Top
+  // Congo, voir getTopStreamedTracks) : jamais de faux badge "Trending" ni de chiffre
+  // inventé, seulement les vraies écoutes déjà comptabilisées.
+  const trending = getTopStreamedTracks(10);
   box.innerHTML = `
+    ${trending.length ? `
+    <div class="asv-trending-block">
+      <div class="asv-browse-title" style="margin-bottom:14px;">Extraits populaires</div>
+      <div class="shelf-row" id="asv-trending-row"></div>
+    </div>` : ''}
     <div class="asv-browse-title">Parcourir</div>
     <div class="asv-genre-grid">
       <div class="asv-genre-tile asv-radio-tile" data-radio="1">
@@ -9544,6 +9553,10 @@ function renderSearchViewBrowse(){
       ${genres.map(g => `<div class="asv-genre-tile" style="background:${ASV_GENRE_COLORS[g]};" data-genre="${g}">${g}</div>`).join('')}
     </div>
     ${renderRecentSearchesRow()}`;
+  if(trending.length){
+    const trow = document.getElementById('asv-trending-row');
+    trending.forEach(tr=> trow.appendChild(trackCard(tr)));
+  }
   box.querySelector('[data-radio]').onclick = ()=> openTuner('radio');
   box.querySelector('[data-concerts]').onclick = ()=> enterApp('concerts');
   box.querySelector('[data-nuni-events]').onclick = ()=> enterApp('nuniEvents');
