@@ -8011,13 +8011,36 @@ updateProgress();
    de la base de données. Rafraîchi régulièrement pour rester à jour sans devoir recharger la page. */
 const impactEl = document.getElementById('impact-value');
 function formatFCFA(n){ return Math.round(n).toLocaleString('fr-FR'); }
+// ---------- Animation de comptage progressif — micro-interaction premium sur un vrai
+// chiffre (pas une valeur inventée) : au lieu de remplacer le texte d'un coup, le compteur
+// défile du dernier chiffre affiché jusqu'au nouveau, comme les compteurs d'impact des
+// grandes apps. Respecte prefers-reduced-motion (saute directement à la valeur finale).
+function animateCountUp(el, from, to, duration = 700){
+  if(from === to || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+    el.textContent = formatFCFA(to);
+    return;
+  }
+  const start = performance.now();
+  function tick(now){
+    const p = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    el.textContent = formatFCFA(from + (to - from) * eased);
+    if(p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+let lastActiveUsersValue = null;
 async function refreshActiveUsersCount(){
   if(!impactEl) return;
   try{
     const res = await fetch(NUNI_API_BASE + '/api/stats/public');
     if(!res.ok) return;
     const data = await res.json();
-    if(typeof data.active_users === 'number') impactEl.textContent = formatFCFA(data.active_users);
+    if(typeof data.active_users === 'number'){
+      const from = lastActiveUsersValue != null ? lastActiveUsersValue : data.active_users;
+      animateCountUp(impactEl, from, data.active_users);
+      lastActiveUsersValue = data.active_users;
+    }
   }catch(e){ /* pas grave si le serveur est momentanément indisponible — l'ancien chiffre reste affiché */ }
 }
 refreshActiveUsersCount();
