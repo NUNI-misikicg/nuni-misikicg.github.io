@@ -6284,9 +6284,27 @@ async function loadRealClips(){
     }));
     clips.unshift(...mapped);
     renderClips();
+    renderHomeClipsShelf();
   }catch(e){ /* pas grave si le serveur est indisponible, les clips de démo restent affichés */ }
 }
 loadRealClips();
+
+// ---------- Rangée "Clips" sur l'accueil, juste après "Nouveautés" ----------
+// Réutilise clipCard() (même carte que l'onglet Clips complet) — seuls les vrais clips
+// publiés apparaissent ici, jamais de contenu inventé. Voir #shelf-clips-home en CSS pour
+// la largeur fixe qui permet à ces cartes (pensées pour une grille) de s'aligner en
+// rangée horizontale comme les autres étagères de l'accueil.
+function renderHomeClipsShelf(){
+  const row = document.getElementById('shelf-clips-home');
+  if(!row) return;
+  row.innerHTML = '';
+  const real = clips.filter(c=>c.isReal).slice(0,10);
+  if(!real.length){
+    row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucun clip publié pour le moment.</p>`;
+    return;
+  }
+  real.forEach(c=> row.appendChild(clipCard(c)));
+}
 
 /* ============ LECTEUR VIDÉO CLIP (style iOS) ============ */
 let currentClip = null;
