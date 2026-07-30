@@ -4220,6 +4220,32 @@ function refreshMainShelves(){
   if(row) row.innerHTML = '';
   fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
   renderTopCongo();
+  renderForYouShelf();
+}
+// ---------- "Découvertes pour vous" — vraie personnalisation, basée sur les artistes que
+// la personne suit réellement (table follows), jamais un algorithme inventé. Le bloc entier
+// reste masqué (display:none, posé dans le HTML) tant qu'il n'y a rien de réel à montrer :
+// visiteur non connecté, personne ne suit encore d'artiste, ou aucun morceau réel chez eux.
+async function renderForYouShelf(){
+  const wrap = document.getElementById('shelf-for-you-wrap');
+  if(!wrap) return;
+  if(!realAuthToken){ wrap.style.display = 'none'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/following', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    if(!res.ok){ wrap.style.display = 'none'; return; }
+    const data = await res.json();
+    const followedIds = new Set((data.following||[]).map(a=>a.id));
+    if(!followedIds.size){ wrap.style.display = 'none'; return; }
+    const picks = tracks
+      .filter(t=> t.isReal && followedIds.has(t.artistId))
+      .sort((a,b)=> b.releaseTs - a.releaseTs)
+      .slice(0, 10);
+    if(!picks.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    const row = document.getElementById('shelf-for-you');
+    row.innerHTML = '';
+    picks.forEach(tr=> row.appendChild(trackCard(tr)));
+  }catch(e){ wrap.style.display = 'none'; }
 }
 /* ============ RESYNCHRONISATION DES LIKES APRÈS CONNEXION ============
    Avant : les cœurs (Favoris) vivaient uniquement dans un tableau en mémoire du navigateur,
