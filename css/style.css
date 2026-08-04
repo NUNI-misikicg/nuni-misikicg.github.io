@@ -2682,3 +2682,45 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
 
 /* ---- Rotation : transition douce plutôt qu'un changement brutal de mise en page ---- */
 .fp-hero, .fp-cover-wrap, .fp-cover{ transition: width .3s ease, height .3s ease, flex-direction .3s ease; }
+
+/* ============================================================
+   ANTIGRAVITÉ / IMMERSIF — Accueil, page Artiste, Dashboard
+   Éléments qui flottent doucement (mouvement indépendant, décalé par carte) + un peu de
+   profondeur (parallax léger) — jamais sur les grilles denses (recherche, bibliothèque)
+   pour ne pas surcharger visuellement, uniquement les zones "vitrine". Respecte
+   prefers-reduced-motion comme tout le reste de l'app.
+   ============================================================ */
+@keyframes cardLevitate{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-7px); }
+}
+#view-catalog .shelf-row > .track-card,
+#view-catalog .shelf-row > .clip-card,
+.dash-stat-card,
+.ap-hero-photo{
+  animation:cardLevitate 5.5s ease-in-out infinite;
+}
+/* Décalage par position — sans ça, toutes les cartes bougent exactement en même temps et
+   ça a l'air mécanique plutôt qu'organique. */
+#view-catalog .shelf-row > *:nth-child(2n){ animation-delay:-1.4s; animation-duration:6.2s; }
+#view-catalog .shelf-row > *:nth-child(3n){ animation-delay:-2.8s; animation-duration:4.8s; }
+#view-catalog .shelf-row > *:nth-child(5n){ animation-delay:-3.6s; animation-duration:5.9s; }
+.dash-stat-card:nth-child(2n){ animation-delay:-1.8s; animation-duration:6.4s; }
+.dash-stat-card:nth-child(3n){ animation-delay:-3.2s; animation-duration:5.1s; }
+@media(prefers-reduced-motion: reduce){
+  #view-catalog .shelf-row > .track-card, #view-catalog .shelf-row > .clip-card,
+  .dash-stat-card, .ap-hero-photo{ animation:none; }
+}
+
+/* ---- Profondeur au défilement (parallax léger) sur le hero de l'accueil connecté ----
+   Le fond bouge un peu plus lentement que le contenu au scroll, comme s'il était "posé
+   plus loin" — effet de profondeur discret, jamais nauséeux. Géré en JS via une variable
+   CSS (--parallax-y) mise à jour au scroll, voir applyHomeParallax() dans app.js. */
+#view-catalog{ --parallax-y:0px; }
+#view-catalog .shelf-head + .shelf-row:first-of-type,
+.hero-card, .radio-banner, .talent-banner{
+  transform:translateY(calc(var(--parallax-y, 0px) * 0.06));
+}
+@media(prefers-reduced-motion: reduce){
+  #view-catalog .shelf-head + .shelf-row:first-of-type, .hero-card, .radio-banner, .talent-banner{ transform:none !important; }
+}
