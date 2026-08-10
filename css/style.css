@@ -1875,10 +1875,10 @@ html.is-playing .player-track-info .t{ font-weight:700; }
    togglePlay() dans app.js), ce qui relance automatiquement cette animation d'entrée
    (un changement display:none → display:flex redémarre toujours les animations CSS). */
 @keyframes playerBarSlideIn{
-  from{ transform:translateY(100%); opacity:0; }
+  from{ transform:translateY(15px); opacity:0; }
   to{ transform:translateY(0); opacity:1; }
 }
-.player-bar{ animation:playerBarSlideIn .38s cubic-bezier(.22,1,.36,1); }
+.player-bar{ animation:playerBarSlideIn .3s cubic-bezier(.22,1,.36,1); }
 @media (prefers-reduced-motion: reduce){
   .player-bar{ animation:none; }
 }
@@ -2632,31 +2632,41 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
      que .mobile-tabbar réserve, elle. Sur un iPhone avec indicateur d'accueil, la tabbar
      remonte de cette zone et la mini-barre de lecture (restée à 64px pile) se retrouvait à
      cheval dessus. Elle s'aligne maintenant sur le même calcul que la tabbar. */
-  /* ---- Mini-lecteur mobile façon Apple Music — avant : la barre complète desktop
-     (aléatoire, précédent, lecture, suivant, répéter, temps écoulé/restant, volume) tenait
-     tout entière sur mobile, bien trop chargée pour une pilule de 88px, en plus de risquer
-     le chevauchement avec la tabbar (zone de sécurité en bas). Maintenant : juste la
-     pochette, le titre/artiste, Lecture et Suivant — comme le mini-lecteur d'Apple Music.
-     La fine ligne de progression tout en haut de la barre (déjà en place) reste le seul
-     indicateur de progression, sans chiffres ni piste complète. */
+  /* ---- Refonte complète du mini-lecteur mobile — plus une simple barre plate : vraie
+     hiérarchie (pochette 52px, titre/artiste toujours visibles, barre de progression fine
+     et cliquable, Précédent/Lecture/Suivant), et un fond qui reprend subtilement la couleur
+     de la pochette en cours (--nuni-aura-color, déjà calculée ailleurs) sans jamais nuire à
+     la lisibilité du texte. */
   .player-bar{
-    height:64px; padding:0 12px; gap:10px; border-radius:16px;
-    left:10px; right:10px; bottom:calc(10px + 74px + env(safe-area-inset-bottom,0));
-    box-shadow:0 10px 30px -10px rgba(0,0,0,.45);
+    height:70px; padding:0 14px; gap:12px; border-radius:22px;
+    left:12px; right:12px; bottom:calc(8px + 78px + env(safe-area-inset-bottom,0));
+    box-shadow:0 14px 34px -12px rgba(0,0,0,.5);
+    background:
+      radial-gradient(120% 140% at 0% 100%, color-mix(in srgb, var(--nuni-aura-color, transparent) 16%, transparent) 0%, transparent 60%),
+      color-mix(in srgb, var(--bg-elev) 90%, transparent);
   }
-  .player-track{ width:auto; flex:1; min-width:0; gap:10px; }
-  .player-cover{ width:42px; height:42px; border-radius:8px; }
+  .player-track{ width:auto; flex:1; min-width:0; gap:12px; cursor:pointer; }
+  .player-cover{ width:52px; height:52px; border-radius:11px; flex-shrink:0; transition:transform .3s var(--ease); }
   .player-track-info{ min-width:0; }
-  .player-track-info .t, .player-track-info .a{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .player-track-info .t{ font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .player-track-info .a{ font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.75; }
   .player-like{ display:none; }
-  .player-center{ flex:0 0 auto; max-width:none; flex-direction:row; gap:6px; }
-  .player-controls{ gap:2px; }
+  .player-center{ flex:0 0 auto; max-width:none; flex-direction:row; align-items:center; gap:4px; }
+  .player-controls{ gap:4px; }
+  .player-controls button{ width:34px; height:34px; display:flex; align-items:center; justify-content:center; }
+  .player-controls button svg{ width:19px; height:19px; }
   .player-controls button[onclick*="shuffleToggle"],
-  .player-controls button[onclick="prevTrack()"],
   .player-controls button[onclick*="repeatToggle"]{ display:none; }
-  .player-bar .play-pause{ width:34px; height:34px; }
-  .player-bar .progress-row{ display:none; }
+  /* Précédent/Suivant réintroduits (retirés dans une version précédente, trop minimaliste) —
+     le bouton Lecture/Pause reste le plus grand, comme le centre de gravité des commandes. */
+  .player-controls button[onclick="prevTrack()"] svg,
+  .player-controls button[onclick="nextTrack()"] svg{ width:17px; height:17px; }
+  .player-bar .play-pause{ width:38px; height:38px; }
+  .player-bar .progress-row{ display:none; } /* remplacée par la barre pleine largeur ci-dessous, plus lisible dans l'espace disponible */
   .player-right{ display:none; }
+  /* Barre de progression pleine largeur, fine et cliquable, en bas de la pilule — couleur
+     d'accent NUNI, jamais de chiffres qui surchargeraient une hauteur aussi compacte. */
+  .player-bar-slim-progress{ height:3px; bottom:0; top:auto; border-radius:0 0 22px 22px; }
   .demo-nav{ bottom:calc(170px + env(safe-area-inset-bottom,0)); }
   .demo-nav.no-player{ bottom:calc(20px + env(safe-area-inset-bottom,0)); }
   .radio-banner, .talent-banner{ flex-direction:column; align-items:flex-start; }
