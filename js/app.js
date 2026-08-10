@@ -9988,9 +9988,28 @@ function runSearchView(q){
   const albumMatches = [...albumGroups.values()]
     .map(groupTracks => groupTracks.find(t=>t.cover) || groupTracks[0])
     .slice(0, 6);
+  // ---- Morceaux — inclut maintenant les featurings (un artiste en "feat." sur le titre de
+  // quelqu'un d'autre doit remonter quand on cherche son nom, pas seulement l'artiste
+  // principal) — puis trié pour une recherche qui se sent vivante : les vrais sons du
+  // moment d'abord (mêmes vraies écoutes que "Extraits populaires"), les sorties les plus
+  // récentes ensuite, et le reste trié par popularité réelle plutôt que dans un ordre au
+  // hasard.
+  const trendingSet = new Set(getTopStreamedTracks(15));
+  function searchTier(t){
+    if(trendingSet.has(t)) return 0; // en tendance réelle
+    const days = t.releaseTs ? (Date.now() - t.releaseTs) / 86400000 : Infinity;
+    if(days <= 30) return 1; // sortie récente
+    return 2; // le reste
+  }
   const trackMatches = tracks.filter(t =>
-    (t.t||'').toLowerCase().includes(query) || (t.a||'').toLowerCase().includes(query) || (t.album||'').toLowerCase().includes(query)
-  ).slice(0, 10);
+    (t.t||'').toLowerCase().includes(query) || (t.a||'').toLowerCase().includes(query) ||
+    (t.album||'').toLowerCase().includes(query) || (t.featuring||'').toLowerCase().includes(query)
+  ).sort((a,b)=>{
+    const tierDiff = searchTier(a) - searchTier(b);
+    if(tierDiff !== 0) return tierDiff;
+    if(searchTier(a) === 1) return (b.releaseTs||0) - (a.releaseTs||0); // nouveautés : la plus récente d'abord
+    return parseStreamsCount(b.streams) - parseStreamsCount(a.streams); // tendances + le reste : la plus écoutée d'abord
+  }).slice(0, 15);
   const clipMatches = clips.filter(c =>
     (c.title||'').toLowerCase().includes(query) || (c.artist||'').toLowerCase().includes(query)
   ).slice(0, 6);
@@ -10001,8 +10020,30 @@ function runSearchView(q){
   }
 
   let html = '';
-  if(artistMatches.length){
-    html += `<div class="asv-section"><div class="asv-section-title">Artistes</div>${artistMatches.map(name=>{
+  // ---- Carte artiste "vedette" — quand la recherche correspond clairement à un seul
+  // artiste (nom exact, ou seul résultat), on sort du simple listing pour donner un vrai
+  // moment immersif : grande photo, vrais abonnés, vrai genre — plutôt qu'une ligne parmi
+  // d'autres. Cet artiste est alors retiré de la liste "Artistes" plus bas pour ne pas se
+  // répéter.
+  const spotlightName = artistMatches.find(n => n.toLowerCase() === query) || (artistMatches.length === 1 ? artistMatches[0] : null);
+  if(spotlightName){
+    const spotlightTrack = tracks.find(t => t.a === spotlightName);
+    const initials = spotlightName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const avatarUrl = spotlightTrack && spotlightTrack.artistAvatarUrl;
+    const bgStyle = avatarUrl ? `background-image:linear-gradient(0deg, rgba(0,0,0,.75) 0%, rgba(0,0,0,.15) 55%), url(${avatarUrl}); background-size:cover; background-position:center 20%;` : '';
+    html += `
+    <div class="asv-spotlight" id="asv-spotlight-card" style="${bgStyle}">
+      ${!avatarUrl ? `<div class="asv-spotlight-fallback">${initials}</div>` : ''}
+      <div class="asv-spotlight-info">
+        <div class="asv-spotlight-eyebrow">Artiste</div>
+        <div class="asv-spotlight-name">${spotlightName}</div>
+        <div class="asv-spotlight-meta" id="asv-spotlight-meta">…</div>
+      </div>
+    </div>`;
+  }
+  const artistListMatches = artistMatches.filter(n => n !== spotlightName);
+  if(artistListMatches.length){
+    html += `<div class="asv-section"><div class="asv-section-title">Artistes</div>${artistListMatches.map(name=>{
       const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
       // Vraie photo de profil si un morceau de cet artiste en a déjà ramené une (voir
       // artistAvatarUrl dans loadRealTracks) — sinon repli honnête sur les initiales.
@@ -10027,9 +10068,15 @@ function runSearchView(q){
   if(trackMatches.length){
     html += `<div class="asv-section"><div class="asv-section-title">Morceaux</div>${trackMatches.map((t,i)=>{
       const coverStyle = t.cover ? `background-image:url(${t.cover});` : '';
+      const tier = searchTier(t);
+      const tierBadge = tier === 0 ? '<span class="asv-tier-badge is-trending">🔥 Tendance</span>' : tier === 1 ? '<span class="asv-tier-badge is-new">🆕 Nouveauté</span>' : '';
+      // Si ce résultat vient d'un featuring (le nom cherché n'est pas l'artiste principal),
+      // on le précise plutôt que d'afficher juste l'artiste principal sans contexte.
+      const matchedViaFeaturing = !(t.a||'').toLowerCase().includes(query) && (t.featuring||'').toLowerCase().includes(query);
+      const sub = matchedViaFeaturing ? `${t.a} · avec ${t.featuring}` : `${t.a}${t.album ? ' · ' + t.album : ''}`;
       return `<div class="asv-row" data-kind="track" data-idx="${tracks.indexOf(t)}">
         <div class="asv-row-cover ${t.cover ? '' : (t.p||'')}" style="${coverStyle}"></div>
-        <div><div class="asv-row-title">${t.t}</div><div class="asv-row-sub">${t.a}${t.album ? ' · ' + t.album : ''}</div></div>
+        <div><div class="asv-row-title">${t.t} ${tierBadge}</div><div class="asv-row-sub">${sub}</div></div>
       </div>`;
     }).join('')}</div>`;
   }
@@ -10043,6 +10090,23 @@ function runSearchView(q){
     }).join('')}</div>`;
   }
   box.innerHTML = html;
+
+  if(spotlightName){
+    const spotlightTrack = tracks.find(t => t.a === spotlightName);
+    const card = document.getElementById('asv-spotlight-card');
+    if(card){
+      card.onclick = ()=>{ enterApp('catalog'); openArtistPage(spotlightName, spotlightTrack && spotlightTrack.artistId); };
+      if(spotlightTrack && spotlightTrack.artistId){
+        fetch(NUNI_API_BASE + '/api/artist/' + spotlightTrack.artistId + '/public-stats')
+          .then(r=>r.json()).then(data=>{
+            const metaEl = document.getElementById('asv-spotlight-meta');
+            if(!metaEl) return;
+            const genre = spotlightTrack.genre ? spotlightTrack.genre + ' · ' : '';
+            metaEl.textContent = `${genre}${(data.follower_count||0).toLocaleString('fr-FR')} abonnés`;
+          }).catch(()=>{});
+      }
+    }
+  }
 
   box.querySelectorAll('.asv-row[data-kind="artist"]').forEach(row=>{
     row.onclick = ()=>{

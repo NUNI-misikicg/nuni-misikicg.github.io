@@ -462,6 +462,22 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .asv-row-cover.is-round{ border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-data); font-weight:700; color:#0A0A10; font-size:14px; }
 .asv-row-title{ font-size:14.5px; font-weight:600; color:var(--text); }
 .asv-row-sub{ font-size:12.5px; color:var(--text-faint); margin-top:2px; }
+/* ---- Carte artiste "vedette" — grande photo immersive quand la recherche correspond
+   clairement à un seul artiste, comme un mini hero plutôt qu'une simple ligne. ---- */
+.asv-spotlight{
+  position:relative; height:180px; border-radius:20px; margin-bottom:24px; cursor:pointer;
+  display:flex; align-items:flex-end; overflow:hidden; background:var(--grad-envol);
+  transition:transform .3s var(--ease);
+}
+.asv-spotlight:hover{ transform:translateY(-2px); }
+.asv-spotlight-fallback{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:44px; color:#0A0A10; }
+.asv-spotlight-info{ position:relative; padding:18px 20px; z-index:1; }
+.asv-spotlight-eyebrow{ font-family:var(--font-data); font-size:10.5px; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,.75); text-shadow:0 1px 4px rgba(0,0,0,.5); }
+.asv-spotlight-name{ font-family:var(--font-display); font-size:26px; font-weight:700; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.5); margin-top:2px; }
+.asv-spotlight-meta{ font-size:12.5px; color:rgba(255,255,255,.85); margin-top:4px; text-shadow:0 1px 4px rgba(0,0,0,.5); }
+.asv-tier-badge{ display:inline-flex; align-items:center; font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px; margin-left:6px; vertical-align:middle; }
+.asv-tier-badge.is-trending{ background:color-mix(in srgb, var(--rouge-nuni,#C0392B) 22%, transparent); color:var(--rouge-nuni,#C0392B); }
+.asv-tier-badge.is-new{ background:color-mix(in srgb, var(--accent) 22%, transparent); color:var(--accent); }
 .asv-empty{ color:var(--text-faint); font-size:14px; padding:30px 6px; text-align:center; }
 @media(max-width:640px){
   .asv-genre-grid{ grid-template-columns:repeat(2, 1fr); }
