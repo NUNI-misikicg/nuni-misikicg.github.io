@@ -850,6 +850,23 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 
 .release-row{ display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 .artist-suggest-row{ display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
+/* ---- "Reprendre l'écoute" — carte horizontale pochette + titre/artiste + vraie
+   progression + bouton lecture, comme un mini-lecteur au repos. ---- */
+.resume-row{ display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
+.resume-card{
+  display:flex; align-items:center; gap:12px; flex-shrink:0; width:280px; padding:12px;
+  background:var(--bg-card); border:1px solid var(--border); border-radius:16px; cursor:pointer;
+  transition:transform .25s var(--ease), border-color .25s ease;
+}
+.resume-card:hover{ transform:translateY(-2px); border-color:var(--border-strong); }
+.resume-cover{ width:52px; height:52px; border-radius:10px; flex-shrink:0; background:var(--grad-envol); background-size:cover; background-position:center; }
+.resume-info{ flex:1; min-width:0; }
+.resume-info .t{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.resume-info .a{ font-size:12px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.resume-progress-track{ height:3px; background:var(--border); border-radius:3px; margin-top:8px; overflow:hidden; }
+.resume-progress-fill{ height:100%; width:0%; background:var(--grad-envol); border-radius:3px; transition:width .3s ease; }
+.resume-play-btn{ width:34px; height:34px; border-radius:50%; background:var(--grad-envol); color:#0A0A10; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.resume-play-btn svg{ width:16px; height:16px; }
 .badges-row{ display:flex; gap:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 .badge-chip{
   flex-shrink:0; width:120px; text-align:center; background:var(--bg-elev); border:1px solid var(--border);

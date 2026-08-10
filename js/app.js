@@ -4345,6 +4345,58 @@ function refreshMainShelves(){
   renderTopCongo();
   renderForYouShelf();
   renderContinueListening();
+  renderResumeListening();
+}
+// ---------- "Reprendre l'écoute" — vraie position de lecture sauvegardée côté serveur.
+// La progression affichée vient de la vraie durée du fichier (chargée via les métadonnées
+// audio, jamais une estimation) — si elle n'a pas encore fini de charger, la carte
+// s'affiche quand même, juste sans barre de progression tant que la vraie durée est inconnue.
+async function renderResumeListening(){
+  const wrap = document.getElementById('shelf-resume-wrap');
+  const row = document.getElementById('resume-row');
+  if(!wrap || !row) return;
+  if(!realAuthToken){ wrap.style.display = 'none'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/resume', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    if(!res.ok){ wrap.style.display = 'none'; return; }
+    const data = await res.json();
+    const resumes = (data.resumes || [])
+      .map(r => ({ tr: tracks.find(t => t.isReal && t.realId === r.track_id), positionSeconds: r.position_seconds }))
+      .filter(x => x.tr);
+    if(!resumes.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    row.innerHTML = '';
+    resumes.forEach(({ tr, positionSeconds })=>{
+      const card = document.createElement('div');
+      card.className = 'resume-card';
+      const coverStyle = tr.cover ? `background-image:url(${tr.cover});` : '';
+      card.innerHTML = `
+        <div class="resume-cover ${tr.cover ? '' : (tr.p||'')}" style="${coverStyle}"></div>
+        <div class="resume-info">
+          <div class="t">${tr.t}</div>
+          <div class="a">${tr.a}</div>
+          <div class="resume-progress-track"><div class="resume-progress-fill"></div></div>
+        </div>
+        <button class="resume-play-btn" aria-label="Reprendre"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
+      card.querySelector('.resume-play-btn').onclick = (e)=>{ e.stopPropagation(); resumeTrackAt(tr, positionSeconds); };
+      card.onclick = ()=> resumeTrackAt(tr, positionSeconds);
+      row.appendChild(card);
+      // Vraie durée uniquement — chargée à la volée pour ce morceau précis, sans jouer le
+      // son (preload='metadata' ne télécharge que l'en-tête du fichier, pas l'audio entier).
+      if(tr.audioUrl){
+        const probe = new Audio();
+        probe.preload = 'metadata';
+        probe.src = tr.audioUrl;
+        probe.addEventListener('loadedmetadata', ()=>{
+          if(isFinite(probe.duration) && probe.duration > 0){
+            const pct = Math.min(100, (positionSeconds / probe.duration) * 100);
+            const fill = card.querySelector('.resume-progress-fill');
+            if(fill) fill.style.width = pct + '%';
+          }
+        }, { once:true });
+      }
+    });
+  }catch(e){ wrap.style.display = 'none'; }
 }
 // ---------- "Découvertes pour vous" — vraie personnalisation, basée sur les artistes que
 // la personne suit réellement (table follows), jamais un algorithme inventé. Le bloc entier
@@ -5233,8 +5285,34 @@ realAudio.addEventListener('timeupdate', ()=>{
       startDjCrossfade();
     }
   }
+  if(usingRealAudio) savePlaybackPositionThrottled();
 });
-realAudio.addEventListener('ended', ()=>{ if(usingRealAudio) handleTrackEnded(); });
+realAudio.addEventListener('ended', ()=>{
+  if(usingRealAudio){
+    handleTrackEnded();
+    // Le morceau est allé au bout naturellement — plus rien à "reprendre" pour lui.
+    if(currentTrack && currentTrack.isReal && currentTrack.realId && realAuthToken){
+      fetch(NUNI_API_BASE + '/api/me/playback-position/' + currentTrack.realId, {
+        method:'DELETE', headers:{ 'Authorization':'Bearer ' + realAuthToken }
+      }).catch(()=>{});
+    }
+  }
+});
+// ---------- Sauvegarde de la vraie position de lecture (pour "Reprendre l'écoute") ----------
+// Appelée à chaque timeupdate (plusieurs fois par seconde), mais un throttle interne limite
+// le vrai appel réseau à une fois toutes les ~10s — jamais bloquant pour la lecture elle-même.
+let lastSavedPositionAt = 0;
+function savePlaybackPositionThrottled(){
+  if(!currentTrack || !currentTrack.isReal || !currentTrack.realId || !realAuthToken) return;
+  const now = Date.now();
+  if(now - lastSavedPositionAt < 10000) return;
+  lastSavedPositionAt = now;
+  fetch(NUNI_API_BASE + '/api/me/playback-position', {
+    method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken },
+    body: JSON.stringify({ trackId: currentTrack.realId, positionSeconds: Math.round(elapsed) }),
+    keepalive: true, // la requête part quand même si la personne change de page juste après
+  }).catch(()=>{});
+}
 // Avant : le bouton passait instantanément sur "Pause" dès le clic, même si le son mettait
 // encore plusieurs secondes à charger (taille du fichier, qualité de connexion) — donnant
 // l'impression que la lecture avait planté. Ici : un vrai état "chargement" honnête pendant
@@ -5544,6 +5622,19 @@ function playTrack(tr){
   applyMusicAura(tr);
   playing = false;
   togglePlay();
+}
+// ---------- "Reprendre l'écoute" — relance le morceau puis saute à la vraie position
+// laissée la dernière fois (jamais un saut à 0 suivi d'une correction visible). ----------
+function resumeTrackAt(tr, seconds){
+  playTrack(tr);
+  if(!usingRealAudio) return;
+  const seekToSavedPosition = ()=>{
+    realAudio.currentTime = seconds;
+    elapsed = seconds;
+    updateProgress();
+  };
+  if(realAudio.readyState >= 1) seekToSavedPosition();
+  else realAudio.addEventListener('loadedmetadata', seekToSavedPosition, { once:true });
 }
 function togglePlay(){
   playing = !playing;
