@@ -2156,9 +2156,6 @@ function enterApp(view){
   document.getElementById('mimi-widget').classList.remove('no-player');
   loadNotifications();
   if(!window.__notifPollingStarted){ window.__notifPollingStarted = true; setInterval(loadNotifications, 60000); }
-  loadChatUnreadCount();
-  connectUserChatWS();
-  if(!window.__chatPollingStarted){ window.__chatPollingStarted = true; setInterval(loadChatUnreadCount, 60000); }
   if(view === 'catalog'){ updateGreeting(); renderContinueListening(); loadProgress(); }
   if(view === 'clips') loadRealClips(); // recharge les vrais clips à chaque ouverture (loadRealClips appelle renderClips())
   if(view === 'library') renderLibrary();
@@ -10668,127 +10665,6 @@ function toggleNotifPanel(){
 document.addEventListener('click', (e)=>{
   const wrap = document.querySelector('.notif-wrap');
   if(wrap && !wrap.contains(e.target)) document.getElementById('notif-panel').classList.remove('open');
-});
-
-/* ============ MESSAGERIE SUPPORT NUNI (temps réel, WebSocket) ============
-   Un seul fil de discussion par compte, avec l'équipe NUNI (admin.html, onglet
-   Communication → Messagerie). Connexion WS authentifiée par le vrai JWT de session — le
-   même token que toutes les autres routes /api/me, /api/notifications, etc. Si le socket
-   n'est pas ouvert au moment d'envoyer (page qui vient de charger, coupure réseau...), on
-   retombe sur POST /api/messages/send, qui fait exactement la même chose côté serveur. */
-let userChatWS = null;
-let userChatWSRetryTimer = null;
-let chatPanelOpen = false;
-
-function wsBaseFromApi(){ return NUNI_API_BASE.replace(/^http/, 'ws'); }
-
-function connectUserChatWS(){
-  if(!realAuthToken) return;
-  if(userChatWS && (userChatWS.readyState === WebSocket.OPEN || userChatWS.readyState === WebSocket.CONNECTING)) return;
-  userChatWS = new WebSocket(`${wsBaseFromApi()}/ws?token=${encodeURIComponent(realAuthToken)}`);
-  userChatWS.onmessage = (evt) => {
-    try{
-      const data = JSON.parse(evt.data);
-      if(data.type === 'new_message'){
-        if(chatPanelOpen){
-          appendUserChatBubble(data.message);
-          scrollUserChatToBottom();
-          // Le panneau est ouvert : on considère le message lu tout de suite.
-          fetch(NUNI_API_BASE + '/api/messages', { headers:{ 'Authorization':'Bearer '+realAuthToken } }).catch(()=>{});
-        } else if(data.message.sender === 'admin'){
-          loadChatUnreadCount();
-        }
-      }
-    }catch(e){ /* trame non-JSON ignorée */ }
-  };
-  userChatWS.onclose = () => {
-    clearTimeout(userChatWSRetryTimer);
-    userChatWSRetryTimer = setTimeout(connectUserChatWS, 4000);
-  };
-  userChatWS.onerror = () => { try{ userChatWS.close(); }catch(e){} };
-}
-
-async function loadChatMessages(){
-  if(!realAuthToken) return;
-  const body = document.getElementById('chat-panel-body');
-  try{
-    const res = await fetch(NUNI_API_BASE + '/api/messages', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
-    if(!res.ok) return;
-    const data = await res.json();
-    body.innerHTML = '';
-    if(!data.messages.length){
-      body.innerHTML = '<div class="chat-panel-empty">Aucun message pour l\'instant. Écrivez à l\'équipe NUNI ci-dessous 👇</div>';
-    } else {
-      data.messages.forEach(appendUserChatBubble);
-      scrollUserChatToBottom();
-    }
-  }catch(e){ body.innerHTML = '<div class="chat-panel-empty">Impossible de charger la conversation.</div>'; }
-}
-
-function appendUserChatBubble(msg){
-  const body = document.getElementById('chat-panel-body');
-  if(!body) return;
-  if(body.querySelector('.chat-panel-empty')) body.innerHTML = '';
-  const el = document.createElement('div');
-  el.className = 'chat-bubble ' + (msg.sender === 'admin' ? 'admin' : 'user');
-  const safeBody = String(msg.body || '').replace(/</g, '&lt;');
-  el.innerHTML = `<div>${safeBody}</div><div class="chat-bubble-time">${timeAgoFr(msg.created_at)}</div>`;
-  body.appendChild(el);
-}
-function scrollUserChatToBottom(){
-  const body = document.getElementById('chat-panel-body');
-  if(body) body.scrollTop = body.scrollHeight;
-}
-
-async function loadChatUnreadCount(){
-  if(!realAuthToken) return;
-  try{
-    const res = await fetch(NUNI_API_BASE + '/api/messages/unread-count', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
-    if(!res.ok) return;
-    const { count } = await res.json();
-    const dot = document.getElementById('chat-dot');
-    if(count > 0){ dot.textContent = count > 9 ? '9+' : String(count); dot.style.display = ''; }
-    else { dot.style.display = 'none'; }
-  }catch(e){ /* le badge reste tel quel */ }
-}
-
-async function sendChatMessage(){
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if(!text || !realAuthToken) return;
-  input.value = '';
-  if(userChatWS && userChatWS.readyState === WebSocket.OPEN){
-    // Le serveur renvoie cet envoi via 'new_message' (voir onmessage plus haut) — pas besoin
-    // d'ajouter la bulle ici, la latence est quasi nulle.
-    userChatWS.send(JSON.stringify({ type:'send_message', body: text }));
-  } else {
-    try{
-      const res = await fetch(NUNI_API_BASE + '/api/messages/send', {
-        method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+realAuthToken },
-        body: JSON.stringify({ body: text }),
-      });
-      const data = await res.json();
-      if(res.ok){ appendUserChatBubble(data.message); scrollUserChatToBottom(); }
-    }catch(e){ input.value = text; }
-  }
-}
-
-function toggleChatPanel(){
-  const panel = document.getElementById('chat-panel');
-  panel.classList.toggle('open');
-  chatPanelOpen = panel.classList.contains('open');
-  if(chatPanelOpen){
-    document.getElementById('chat-dot').style.display = 'none';
-    connectUserChatWS();
-    loadChatMessages();
-  }
-}
-document.addEventListener('click', (e)=>{
-  const wrap = document.querySelector('.chat-wrap');
-  if(wrap && !wrap.contains(e.target)){
-    document.getElementById('chat-panel').classList.remove('open');
-    chatPanelOpen = false;
-  }
 });
 
 /* ============ FULL-SCREEN PLAYER INIT ============ */
