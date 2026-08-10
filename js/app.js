@@ -4254,6 +4254,44 @@ function wireHoverPreview(card, tr){
   }, { passive:true });
 })();
 
+// ---------- Scroll intelligent — mini-lecteur + navigation qui s'effacent/reviennent
+// avec le sens du scroll (signature NUNI) ----------
+// Composant global réutilisable : on lui donne une liste d'ids, il se charge de leur
+// ajouter/retirer la classe .hide-for-scroll (translateY + opacity en CSS, jamais
+// display/height — pas de reflow) selon le sens réel du scroll. Un seuil minimum évite un
+// tremblement sur de tout petits mouvements, et rien ne se réaffiche automatiquement après
+// un délai : l'état reste figé tant que la personne ne remonte pas vraiment. Respecte
+// prefers-reduced-motion (le CSS neutralise alors la classe, voir style.css).
+function attachScrollHideReveal(elementIds, opts){
+  opts = opts || {};
+  const threshold = opts.threshold != null ? opts.threshold : 8; // px avant de considérer que ça a vraiment bougé
+  const minY = opts.minY != null ? opts.minY : 40; // ne jamais cacher tant qu'on est encore près du haut de la page
+  let lastY = window.scrollY;
+  let hidden = false;
+  let ticking = false;
+  window.addEventListener('scroll', ()=>{
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(()=>{
+      const y = window.scrollY;
+      const delta = y - lastY;
+      if(Math.abs(delta) > threshold){
+        const shouldHide = delta > 0 && y > minY; // vers le bas ET assez loin du haut
+        if(shouldHide !== hidden){
+          hidden = shouldHide;
+          elementIds.forEach(id=>{
+            const el = document.getElementById(id);
+            if(el) el.classList.toggle('hide-for-scroll', hidden);
+          });
+        }
+        lastY = y;
+      }
+      ticking = false;
+    });
+  }, { passive:true });
+}
+attachScrollHideReveal(['player-bar', 'mobile-tabbar']);
+
 function renderTopCongo(){
   const row = document.getElementById('shelf-top');
   if(!row) return;
