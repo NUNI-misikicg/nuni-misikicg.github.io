@@ -4346,6 +4346,7 @@ function refreshMainShelves(){
   renderForYouShelf();
   renderContinueListening();
   renderResumeListening();
+  renderNuniSelection();
 }
 // ---------- "Reprendre l'écoute" — vraie position de lecture sauvegardée côté serveur.
 // La progression affichée vient de la vraie durée du fichier (chargée via les métadonnées
@@ -4397,6 +4398,46 @@ async function renderResumeListening(){
       }
     });
   }catch(e){ wrap.style.display = 'none'; }
+}
+// ---------- "Votre sélection NUNI" — grande carte éditoriale basée sur les vrais genres
+// que ce compte écoute le plus (voir /api/me/selection). Reste masquée tant qu'il n'y a pas
+// assez d'historique réel pour en tirer quoi que ce soit — jamais une sélection générique
+// déguisée en "personnalisée".
+let nuniSelectionTracks = [];
+async function renderNuniSelection(){
+  const hero = document.getElementById('nuni-selection-hero');
+  if(!hero) return;
+  if(!realAuthToken){ hero.style.display = 'none'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/selection', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    if(!res.ok){ hero.style.display = 'none'; return; }
+    const data = await res.json();
+    const mapped = (data.tracks || [])
+      .map(r => tracks.find(t => t.isReal && t.realId === r.id))
+      .filter(Boolean);
+    if(!mapped.length){ hero.style.display = 'none'; return; }
+    nuniSelectionTracks = mapped;
+    const genreLabel = (data.genres || []).join(', ');
+    const first = mapped[0];
+    hero.className = 'premium-hero';
+    hero.style.display = 'flex';
+    hero.style.backgroundImage = first.cover ? `url('${first.cover}')` : '';
+    hero.innerHTML = `
+      <div class="premium-hero-overlay"></div>
+      <div class="premium-hero-content">
+        <span class="premium-hero-badge"><svg class="nuni-ic filled nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 2 9 9l-7 1 5 5-1.5 7L12 18l6.5 4L17 15l5-5-7-1z"/></svg> POUR VOUS</span>
+        <h2 class="premium-hero-title">Votre sélection NUNI</h2>
+        <p class="premium-hero-sub">Basée sur ce que vous écoutez vraiment — ${genreLabel}.</p>
+        <div class="premium-hero-actions">
+          <button class="btn btn-primary" id="nuni-selection-play-btn"><svg class="nuni-ic filled" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M8 5v14l11-7z"/></svg> Écouter la sélection</button>
+          <button class="btn btn-ghost" id="nuni-selection-seeall-btn">Tout voir</button>
+        </div>
+      </div>`;
+    document.getElementById('nuni-selection-play-btn').onclick = ()=>{ playTrack(first); openFullPlayer(); };
+    document.getElementById('nuni-selection-seeall-btn').onclick = ()=>{
+      openCategoryPage('Votre sélection NUNI', `Basée sur ce que vous écoutez vraiment — ${genreLabel}.`, ()=> nuniSelectionTracks, false);
+    };
+  }catch(e){ hero.style.display = 'none'; }
 }
 // ---------- "Découvertes pour vous" — vraie personnalisation, basée sur les artistes que
 // la personne suit réellement (table follows), jamais un algorithme inventé. Le bloc entier
