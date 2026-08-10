@@ -2118,26 +2118,54 @@ function updateGreeting(){
   });
 }
 
-/* Section "Continuer l'écoute" : basée sur le véritable historique de la session, pas des données de démo.
-   Ne s'affiche que s'il y a vraiment quelque chose à reprendre — pas de section vide qui donnerait
-   une impression d'écran cassé. */
-function renderContinueListening(){
+// ---------- "Écoutés récemment" — avant : basé uniquement sur listeningHistory, une
+// mémoire en RAM du navigateur remise à zéro à chaque connexion/rechargement (donc
+// invisible dès qu'on revenait sur NUNI). Maintenant : le vrai historique d'écoute
+// persistant côté serveur (table plays, /api/me/recently-played) — visible sur n'importe
+// quel appareil, à n'importe quel moment, tant qu'un vrai stream a été enregistré.
+async function renderContinueListening(){
   const wrap = document.getElementById('shelf-continue-wrap');
   const row = document.getElementById('shelf-continue');
   if(!wrap || !row) return;
-  // dernier morceau écouté par titre, le plus récent en premier, sans doublons
-  const seen = new Set();
-  const recent = [];
-  for(const h of listeningHistory){
-    if(seen.has(h.track.t)) continue;
-    seen.add(h.track.t);
-    recent.push(h.track);
-    if(recent.length >= 8) break;
+  if(!realAuthToken){ wrap.style.display = 'none'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/recently-played?limit=15', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    if(!res.ok){ wrap.style.display = 'none'; return; }
+    const data = await res.json();
+    // On réutilise les objets déjà chargés dans `tracks` (même vraie pochette, mêmes vrais
+    // streams déjà en mémoire) plutôt que de tout re-mapper depuis zéro — évite deux sources
+    // de vérité différentes pour le même morceau.
+    const recent = (data.tracks || [])
+      .map(r => tracks.find(t => t.isReal && t.realId === r.id))
+      .filter(Boolean);
+    if(!recent.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    row.innerHTML = '';
+    fillShelf('shelf-continue', recent);
+  }catch(e){ wrap.style.display = 'none'; }
+}
+// ---------- "Tout voir" de l'historique d'écoute — réutilise openCategoryPage (même
+// vitrine que Nouveautés/Top Congo), avec la vraie liste complète du serveur pré-chargée
+// avant l'ouverture puisque cette page attend une fonction synchrone.
+async function openRecentlyPlayedPage(){
+  let recentFull = [];
+  if(realAuthToken){
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/me/recently-played?limit=60', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+      if(res.ok){
+        const data = await res.json();
+        recentFull = (data.tracks || [])
+          .map(r => tracks.find(t => t.isReal && t.realId === r.id))
+          .filter(Boolean);
+      }
+    }catch(e){ /* la page s'ouvre quand même, juste vide */ }
   }
-  if(!recent.length){ wrap.style.display = 'none'; return; }
-  wrap.style.display = 'block';
-  row.innerHTML = '';
-  fillShelf('shelf-continue', recent);
+  openCategoryPage(
+    'Écoutés récemment',
+    "Votre vrai historique d'écoute sur NUNI, du plus récent au plus ancien.",
+    ()=> recentFull,
+    false,
+  );
 }
 
 let isOpeningArtistPage = false; // garde-fou anti-boucle : openArtistPage appelle enterApp('artist'),
@@ -4316,6 +4344,7 @@ function refreshMainShelves(){
   fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
   renderTopCongo();
   renderForYouShelf();
+  renderContinueListening();
 }
 // ---------- "Découvertes pour vous" — vraie personnalisation, basée sur les artistes que
 // la personne suit réellement (table follows), jamais un algorithme inventé. Le bloc entier
