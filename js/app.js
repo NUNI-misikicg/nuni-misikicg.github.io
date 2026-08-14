@@ -10636,6 +10636,7 @@ async function renderLibraryRecentGrid(){
   grid.innerHTML = '';
   items.forEach(it=>{
     const tile = document.createElement('div'); tile.className = 'lib-recent-tile';
+    let coverForGlow = null;
     if(it.kind === 'track'){
       const tr = it.track;
       const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
@@ -10644,6 +10645,7 @@ async function renderLibraryRecentGrid(){
         <div class="lib-recent-t">${tr.t}</div>
         <div class="lib-recent-s">Titre · ${tr.a}</div>`;
       tile.onclick = ()=> handleTrackCardClick(tr);
+      coverForGlow = tr.cover;
     } else {
       const ar = it.artist;
       const name = ar.artist_name || ar.first_name;
@@ -10653,8 +10655,20 @@ async function renderLibraryRecentGrid(){
         <div class="lib-recent-t">${name}</div>
         <div class="lib-recent-s">Artiste</div>`;
       tile.onclick = ()=> openArtistPage(name, ar.id);
+      coverForGlow = ar.avatar_url;
     }
     grid.appendChild(tile);
+    // Fusion pochette ↔ tuile : la vraie couleur dominante de CETTE image précise irrigue
+    // à la fois un halo derrière la pochette et un léger fond de tuile — jamais une couleur
+    // générique appliquée à toutes les tuiles indifféremment.
+    if(coverForGlow && typeof NuniPalette !== 'undefined'){
+      NuniPalette.extract(coverForGlow).then(palette=>{
+        const cov = tile.querySelector('.lib-recent-cov');
+        if(cov) cov.style.boxShadow = `0 10px 26px -10px rgba(0,0,0,.55), 0 0 30px -6px ${palette.accent}`;
+        tile.style.background = `radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, ${palette.dominant} 20%, transparent) 0%, transparent 70%)`;
+        tile.style.borderRadius = '14px';
+      }).catch(()=>{});
+    }
   });
 }
 function toggleLibrarySortMenu(){
@@ -10673,6 +10687,17 @@ function sortTrackList(list){
   else if(libraryActiveSort === 'artist') arr.sort((a,b)=> (a.a||'').localeCompare(b.a||''));
   return arr; // 'recent' = ordre déjà chronologique (le plus récent en premier)
 }
+// ---------- Fusion visuelle pochette ↔ interface, réutilisée dans toute la Bibliothèque ----------
+// S'appuie sur NuniPalette (déjà utilisée par le lecteur plein écran et le mini-lecteur) :
+// aucune nouvelle extraction de couleur inventée, juste la même vraie couleur dominante de
+// CETTE pochette précise, appliquée en halo derrière son propre élément visuel — jamais une
+// couleur générique partagée par tous les éléments.
+function applyCoverGlow(el, coverUrl){
+  if(!el || !coverUrl || typeof NuniPalette === 'undefined') return;
+  NuniPalette.extract(coverUrl).then(palette=>{
+    el.style.boxShadow = `0 8px 22px -10px rgba(0,0,0,.55), 0 0 24px -6px ${palette.accent}`;
+  }).catch(()=>{});
+}
 function buildLibraryTrackRow(tr, subtitleSuffix){
   const item = document.createElement('div'); item.className = 'pi-item lib-track-row';
   const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
@@ -10685,6 +10710,7 @@ function buildLibraryTrackRow(tr, subtitleSuffix){
   item.querySelector('.cov').onclick = ()=> handleTrackCardClick(tr);
   item.querySelector('.lib-track-info').onclick = ()=> handleTrackCardClick(tr);
   item.querySelector('.lib-track-menu-btn').onclick = (e)=>{ e.stopPropagation(); openTrackCardMenu(tr, e.currentTarget); };
+  if(tr.cover) applyCoverGlow(item.querySelector('.cov'), tr.cover);
   return item;
 }
 async function loadLibraryMyPlaylistsIfNeeded(force){
@@ -10783,6 +10809,7 @@ async function renderLibraryPlaylists(listEl){
       const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url})` : '';
       item.innerHTML = `<div class="cov pal-2" style="${covStyle}"></div><div><div class="t">${pl.title}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''} · Ma playlist</div></div>`;
       item.onclick = ()=> openMyPlaylistPage(pl.id);
+      if(pl.cover_url) applyCoverGlow(item.querySelector('.cov'), pl.cover_url);
       listEl.appendChild(item);
     });
   }
@@ -10794,6 +10821,7 @@ async function renderLibraryPlaylists(listEl){
       const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url})` : '';
       item.innerHTML = `<div class="cov pal-1" style="${covStyle}"></div><div><div class="t">${pl.title}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''}</div></div>`;
       item.onclick = ()=> openPlaylistPage(pl.id);
+      if(pl.cover_url) applyCoverGlow(item.querySelector('.cov'), pl.cover_url);
       listEl.appendChild(item);
     });
   }
@@ -10829,6 +10857,7 @@ async function renderLibraryArtists(listEl){
     const covStyle = ar.avatar_url ? `background-image:url(${ar.avatar_url})` : '';
     item.innerHTML = `<div class="cov pal-1" style="${covStyle}; border-radius:50%;"></div><div><div class="t">${name}${ar.is_verified?' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>':''}</div><div class="s">Artiste NUNI</div></div>`;
     item.onclick = ()=> openArtistPage(name, ar.id);
+    if(ar.avatar_url) applyCoverGlow(item.querySelector('.cov'), ar.avatar_url);
     listEl.appendChild(item);
   });
 }

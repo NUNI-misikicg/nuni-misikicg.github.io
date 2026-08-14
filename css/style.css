@@ -2362,6 +2362,14 @@ html.is-playing .fp-title{ font-weight:800; }
 .nuni-ic-warn{ color:var(--jaune-nuni, #F0AC2E); }
 
 /* ============ BIBLIOTHÈQUE — façon Apple Music : liste rapide + "Ajouts récents" ============ */
+/* ---- Fond ambiant discret, teinté par la vraie pochette du morceau en cours d'écoute
+   (même --nuni-aura-color que le lecteur/mini-lecteur) — vient s'ajouter au halo propre à
+   chaque tuile ci-dessous, jamais une couleur inventée ou figée. ---- */
+#lib-home, #lib-detail{
+  position:relative;
+  background:radial-gradient(90% 60% at 50% 0%, color-mix(in srgb, var(--nuni-aura-color, transparent) 7%, transparent) 0%, transparent 70%);
+  transition:background 1.1s ease;
+}
 /* ---- Liste rapide verticale (icône colorée + libellé + chevron), écran d'accueil ---- */
 .lib-quick-list{ display:flex; flex-direction:column; gap:1px; margin-bottom:32px; border-radius:14px; overflow:hidden; background:var(--border); }
 .lib-quick-item{
@@ -2384,11 +2392,11 @@ html.is-playing .fp-title{ font-weight:800; }
 /* ---- Grille "Ajouts récents" — 2 colonnes façon Apple Music, tuiles carrées ---- */
 .lib-recent-section{ margin-top:0; }
 .lib-recent-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.lib-recent-tile{ cursor:pointer; }
+.lib-recent-tile{ cursor:pointer; border-radius:14px; padding:6px; margin:-6px; transition:background 1s ease; }
 .lib-recent-cov{
   width:100%; aspect-ratio:1/1; border-radius:10px; background:var(--grad-envol);
   background-size:cover; background-position:center; box-shadow:0 8px 20px -8px rgba(0,0,0,.5);
-  transition:transform .2s var(--ease);
+  transition:transform .2s var(--ease), box-shadow 1s ease;
 }
 .lib-recent-cov-round{ border-radius:50%; }
 .lib-recent-tile:hover .lib-recent-cov{ transform:scale(1.02); }
