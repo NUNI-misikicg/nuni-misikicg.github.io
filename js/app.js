@@ -2186,7 +2186,7 @@ function enterApp(view){
   if(!window.__notifPollingStarted){ window.__notifPollingStarted = true; setInterval(loadNotifications, 60000); }
   if(view === 'catalog'){ updateGreeting(); renderContinueListening(); loadProgress(); }
   if(view === 'clips') loadRealClips(); // recharge les vrais clips à chaque ouverture (loadRealClips appelle renderClips())
-  if(view === 'library') renderLibrary();
+  if(view === 'library') openLibraryHome();
   if(view !== 'dashboard'){ clearTimeout(labelStatusPollTimer); }
   if(view === 'artist' && currentUser && currentUser.account_type === 'artist' && !isOpeningArtistPage){
     openArtistPage(currentUser.artist_name, currentUser.id); // sinon l'onglet ne fait qu'afficher l'ancien contenu, jamais rafraîchi
@@ -4477,12 +4477,17 @@ async function syncLikedTracksFromServer(){
     if(!res.ok) return;
     const data = await res.json();
     const likedIds = new Set(data.track_ids || []);
+    // Vraie date de like par morceau (liked_at renvoyé par le serveur) — sert à trier
+    // "Ajouts récents" dans la Bibliothèque par récence réelle, pas par ordre d'arrivée.
+    const likedAtMap = new Map((data.likes || []).map(l => [l.track_id, new Date(l.liked_at).getTime()]));
     tracks.forEach(tr=>{
-      if(tr.isReal && tr.realId && likedIds.has(tr.realId) && !favoritesPlaylist.find(f=>f.t===tr.t)){
-        favoritesPlaylist.unshift(tr);
+      if(tr.isReal && tr.realId && likedIds.has(tr.realId)){
+        tr.likedAt = likedAtMap.get(tr.realId) || tr.likedAt || Date.now();
+        if(!favoritesPlaylist.find(f=>f.t===tr.t)) favoritesPlaylist.unshift(tr);
       }
     });
     syncLikeButtons(currentTrack);
+    renderLibraryRecentGrid(); // rafraîchit "Ajouts récents" si la Bibliothèque est déjà ouverte
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
 }
 
@@ -4508,26 +4513,10 @@ async function loadArtistStats(){
     elArtist.textContent = fmt(s.artist_share_fcfa) + ' FCFA';
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
 }
-// Avant : un seul essai fetch() sans retry — si ce tout premier essai tombait pendant un
-// cold start Render (jusqu'à ~55s de réveil) ou un simple hoquet réseau, l'erreur était
-// avalée en silence (catch vide) et RIEN ne relançait jamais le chargement : "Nouveautés",
-// "Top Congo" et toutes les sections dépendant des vrais morceaux restaient vides pour
-// toute la session, même un rechargement complet pouvant retomber dans la même fenêtre de
-// réveil. Maintenant : jusqu'à 5 essais, avec des délais croissants (3s, 6s, 10s, 15s —
-// soit ~34s de marge après le tout premier essai), avant d'abandonner silencieusement.
-async function loadRealTracks(attempt){
-  attempt = attempt || 0;
-  const maxAttempts = 5;
-  const retryDelays = [3000, 6000, 10000, 15000];
+async function loadRealTracks(){
   try{
     const res = await fetch(NUNI_API_BASE + '/api/tracks');
-    if(!res.ok){
-      if(attempt < maxAttempts - 1){
-        await new Promise(r=> setTimeout(r, retryDelays[attempt] || 15000));
-        return loadRealTracks(attempt + 1);
-      }
-      return;
-    }
+    if(!res.ok) return;
     const data = await res.json();
     if(!data.tracks || !data.tracks.length) return;
     // retire les vrais morceaux déjà chargés avant de réinjecter (évite les doublons)
@@ -4568,13 +4557,7 @@ async function loadRealTracks(attempt){
       syncFullPlayer();
     }
     handleSharedTrackLink();
-  }catch(e){
-    if(attempt < maxAttempts - 1){
-      await new Promise(r=> setTimeout(r, retryDelays[attempt] || 15000));
-      return loadRealTracks(attempt + 1);
-    }
-    /* pas grave si le serveur reste indisponible après tous les essais, le catalogue de démo reste affiché */
-  }
+  }catch(e){ /* pas grave si le serveur est indisponible, le catalogue de démo reste affiché */ }
 }
 // Avant : la bannière hero affichait toujours la même image statique (le logo NUNI en grand),
 // jamais liée au vrai contenu de la plateforme. Ici : la vraie pochette + le vrai titre/artiste
@@ -6037,12 +6020,14 @@ async function toggleLike(btn, trackOverride){
  if(!res.ok){ toast(' ' + (data.error || 'Erreur.')); return; }
       tr.likes = data.likes;
       if(data.liked){
+        tr.likedAt = Date.now(); // vrai instant de l'ajout, confirmé par le serveur juste au-dessus
         if(!favoritesPlaylist.find(t=>t.t===tr.t)) favoritesPlaylist.unshift(tr);
         spawnFlyPing(btn, '<svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24" style="width:28px;height:28px;"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>');
       } else {
         favoritesPlaylist = favoritesPlaylist.filter(t=>t.t!==tr.t);
       }
       if(tr === currentTrack) syncLikeButtons(tr);
+      renderLibraryRecentGrid(); // rafraîchit "Ajouts récents" tout de suite, sans attendre un rechargement
       document.querySelectorAll('.track-card').forEach(card=>{
         if(card.dataset.trackId === String(tr.realId)){
           const likeSpan = card.querySelector('.likes-count');
@@ -6105,6 +6090,11 @@ function toggleFollow(btn){
  btn.textContent = data.following ? 'Suivi ' : 'Suivre';
       btn.classList.toggle('is-following', !!data.following);
       if(data.following) hapticPing();
+      // Le cache Bibliothèque (artistes suivis) est invalidé pour se resynchroniser avec la
+      // vraie date de suivi renvoyée par le serveur — sinon "Ajouts récents" et l'onglet
+      // Artistes continueraient d'afficher l'ancienne liste jusqu'au prochain rechargement.
+      libraryArtistsCache = null;
+      renderLibraryRecentGrid();
       // Le compteur de followers affiché sur le profil se met à jour tout de suite, sans
       // attendre un rechargement — avant, ce chiffre renvoyé par le serveur était ignoré.
       const statFollowersEl = document.getElementById('artist-stat-followers');
@@ -10424,7 +10414,77 @@ function setLibraryCategory(cat){
   libraryActiveCategory = cat;
   const sortMenu = document.getElementById('lib-sort-menu');
   if(sortMenu) sortMenu.style.display = 'none';
+  const home = document.getElementById('lib-home');
+  const detail = document.getElementById('lib-detail');
+  if(home) home.style.display = 'none';
+  if(detail) detail.style.display = '';
   renderLibrary();
+}
+// Retour à l'écran d'accueil de la Bibliothèque (liste rapide + Ajouts récents), façon
+// bouton "‹ Bibliothèque" d'Apple Music en haut d'une liste ouverte.
+function closeLibraryDetail(){
+  const home = document.getElementById('lib-home');
+  const detail = document.getElementById('lib-detail');
+  if(detail) detail.style.display = 'none';
+  if(home) home.style.display = '';
+  renderLibraryRecentGrid(); // au cas où un like/suivi a eu lieu pendant qu'on était dans le détail
+}
+// Réinitialise sur l'écran d'accueil à chaque entrée dans l'onglet Bibliothèque (appelé
+// depuis enterApp) — évite de rester coincé dans le détail d'une catégorie précédente.
+function openLibraryHome(){
+  const home = document.getElementById('lib-home');
+  const detail = document.getElementById('lib-detail');
+  if(detail) detail.style.display = 'none';
+  if(home) home.style.display = '';
+  renderLibraryRecentGrid();
+}
+// ---------- "Ajouts récents" — vraie fusion des titres aimés et artistes suivis, triée par
+// vraie date d'ajout (likedAt / followedAt), façon écran d'accueil Bibliothèque d'Apple Music.
+// Jamais de contenu inventé : si rien n'a encore été aimé ou suivi, la grille reste vide avec
+// un message clair plutôt que d'afficher un exemple fictif.
+function buildRecentlyAdded(limit){
+  const items = [];
+  favoritesPlaylist.forEach(tr=>{
+    if(tr.likedAt) items.push({ kind:'track', at: tr.likedAt, track: tr });
+  });
+  (libraryArtistsCache || []).forEach(ar=>{
+    if(ar.followedAt) items.push({ kind:'artist', at: ar.followedAt, artist: ar });
+  });
+  items.sort((a,b)=> b.at - a.at);
+  return items.slice(0, limit || 12);
+}
+async function renderLibraryRecentGrid(){
+  const grid = document.getElementById('lib-recent-grid');
+  if(!grid) return;
+  await loadLibraryArtistsIfNeeded();
+  const items = buildRecentlyAdded(12);
+  if(!items.length){
+    grid.innerHTML = `<div class="pi-empty">Rien ajouté pour l'instant.<br>Aimez un titre ou suivez un artiste pour le voir apparaître ici.</div>`;
+    return;
+  }
+  grid.innerHTML = '';
+  items.forEach(it=>{
+    const tile = document.createElement('div'); tile.className = 'lib-recent-tile';
+    if(it.kind === 'track'){
+      const tr = it.track;
+      const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
+      tile.innerHTML = `
+        <div class="lib-recent-cov ${tr.cover?'':tr.p}" style="${covStyle}"></div>
+        <div class="lib-recent-t">${tr.t}</div>
+        <div class="lib-recent-s">Titre · ${tr.a}</div>`;
+      tile.onclick = ()=> handleTrackCardClick(tr);
+    } else {
+      const ar = it.artist;
+      const name = ar.artist_name || ar.first_name;
+      const covStyle = ar.avatar_url ? `background-image:url(${ar.avatar_url})` : '';
+      tile.innerHTML = `
+        <div class="lib-recent-cov lib-recent-cov-round" style="${covStyle}"></div>
+        <div class="lib-recent-t">${name}</div>
+        <div class="lib-recent-s">Artiste</div>`;
+      tile.onclick = ()=> openArtistPage(name, ar.id);
+    }
+    grid.appendChild(tile);
+  });
 }
 function toggleLibrarySortMenu(){
   const menu = document.getElementById('lib-sort-menu');
@@ -10479,14 +10539,24 @@ async function renderLibraryPlaylists(listEl){
     listEl.appendChild(item);
   });
 }
+// Réutilisée par le détail "Artistes" ET par la grille "Ajouts récents" — un seul point de
+// chargement, pour ne jamais afficher deux versions différentes de la même vraie liste.
+async function loadLibraryArtistsIfNeeded(){
+  if(libraryArtistsCache) return libraryArtistsCache;
+  if(!realAuthToken){ libraryArtistsCache = []; return libraryArtistsCache; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/following', { headers:{'Authorization':'Bearer '+realAuthToken} });
+    const data = await res.json();
+    // followedAt = vraie date de suivi (followed_at renvoyé par le serveur), convertie en
+    // timestamp pour pouvoir trier "Ajouts récents" avec les titres aimés sur la même échelle.
+    libraryArtistsCache = (data.following || []).map(ar => ({ ...ar, followedAt: ar.followed_at ? new Date(ar.followed_at).getTime() : 0 }));
+  }catch(e){ libraryArtistsCache = []; }
+  return libraryArtistsCache;
+}
 async function renderLibraryArtists(listEl){
   if(!libraryArtistsCache){
     listEl.innerHTML = `<div class="pi-empty">Chargement…</div>`;
-    try{
-      const res = await fetch(NUNI_API_BASE + '/api/me/following', { headers: realAuthToken ? {'Authorization':'Bearer '+realAuthToken} : {} });
-      const data = await res.json();
-      libraryArtistsCache = data.following || [];
-    }catch(e){ libraryArtistsCache = []; }
+    await loadLibraryArtistsIfNeeded();
   }
   if(libraryActiveCategory !== 'artists') return;
   listEl.innerHTML = '';
@@ -10508,7 +10578,7 @@ function renderLibrary(){
   const titleEl = document.getElementById('lib-list-title');
   if(!listEl) return;
   listEl.innerHTML = '';
-  document.querySelectorAll('#lib-cards-row .lib-card').forEach(b=> b.classList.toggle('active', b.dataset.libCat === libraryActiveCategory));
+
 
   if(libraryActiveCategory === 'liked'){
     titleEl.textContent = 'Titres aimés';

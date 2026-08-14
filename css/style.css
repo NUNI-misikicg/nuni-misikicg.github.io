@@ -2361,27 +2361,47 @@ html.is-playing .fp-title{ font-weight:800; }
 .nuni-ic-err{ color:var(--rose-braise, #C9667A); }
 .nuni-ic-warn{ color:var(--jaune-nuni, #F0AC2E); }
 
-/* ============ BIBLIOTHÈQUE : cartes + liste filtrable ============ */
-.lib-cards-row{
-  display:flex; gap:12px; overflow-x:auto; padding:2px 2px 14px; margin-bottom:22px;
-  scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+/* ============ BIBLIOTHÈQUE — façon Apple Music : liste rapide + "Ajouts récents" ============ */
+/* ---- Liste rapide verticale (icône colorée + libellé + chevron), écran d'accueil ---- */
+.lib-quick-list{ display:flex; flex-direction:column; gap:1px; margin-bottom:32px; border-radius:14px; overflow:hidden; background:var(--border); }
+.lib-quick-item{
+  display:flex; align-items:center; gap:14px; background:var(--bg-card); border:none; cursor:pointer;
+  padding:13px 14px; color:var(--text); font-family:var(--font-body); text-align:left; transition:background .2s;
 }
-.lib-cards-row::-webkit-scrollbar{ display:none; }
-.lib-card{
-  flex:0 0 auto; scroll-snap-align:start; width:132px; height:84px; border-radius:16px;
-  border:2px solid transparent; cursor:pointer; position:relative; overflow:hidden;
-  display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-end;
-  padding:10px 12px; color:#fff; font-family:var(--font-display); font-weight:600; font-size:14px;
-  transition:transform .25s var(--ease), border-color .25s var(--ease);
+.lib-quick-item:hover{ background:var(--bg-elev); }
+.lib-quick-ic{
+  width:32px; height:32px; border-radius:8px; flex-shrink:0; display:flex; align-items:center;
+  justify-content:center; color:#fff;
 }
-.lib-card:hover{ transform:translateY(-2px); }
-.lib-card.active{ border-color:#fff; box-shadow:0 0 0 2px var(--accent); }
-.lib-card svg{ position:absolute; top:10px; right:10px; width:20px; height:20px; opacity:.85; }
-.lib-card span{ position:relative; z-index:1; }
-.lib-card-liked{ background:linear-gradient(135deg, var(--rose-braise) 0%, var(--violet) 100%); }
-.lib-card-playlists{ background:linear-gradient(135deg, var(--violet) 0%, var(--violet-2) 100%); }
-.lib-card-artists{ background:linear-gradient(135deg, var(--or) 0%, var(--rose-braise) 100%); }
-.lib-card-recent{ background:linear-gradient(135deg, var(--vert-nuni) 0%, var(--bleu-nuit) 100%); }
+.lib-quick-ic svg{ width:18px; height:18px; }
+.lib-quick-ic-liked{ background:linear-gradient(135deg, var(--rose-braise) 0%, var(--violet) 100%); }
+.lib-quick-ic-playlists{ background:linear-gradient(135deg, var(--violet) 0%, var(--violet-2) 100%); }
+.lib-quick-ic-artists{ background:linear-gradient(135deg, var(--or) 0%, var(--rose-braise) 100%); }
+.lib-quick-ic-recent{ background:linear-gradient(135deg, var(--vert-nuni) 0%, var(--bleu-nuit) 100%); }
+.lib-quick-label{ flex:1; font-size:14.5px; font-weight:600; }
+.lib-quick-chev{ width:16px; height:16px; color:var(--text-faint); flex-shrink:0; }
+
+/* ---- Grille "Ajouts récents" — 2 colonnes façon Apple Music, tuiles carrées ---- */
+.lib-recent-section{ margin-top:0; }
+.lib-recent-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.lib-recent-tile{ cursor:pointer; }
+.lib-recent-cov{
+  width:100%; aspect-ratio:1/1; border-radius:10px; background:var(--grad-envol);
+  background-size:cover; background-position:center; box-shadow:0 8px 20px -8px rgba(0,0,0,.5);
+  transition:transform .2s var(--ease);
+}
+.lib-recent-cov-round{ border-radius:50%; }
+.lib-recent-tile:hover .lib-recent-cov{ transform:scale(1.02); }
+.lib-recent-t{ font-size:13px; font-weight:600; margin-top:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lib-recent-s{ font-size:11.5px; color:var(--text-faint); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media(max-width:640px){ .lib-recent-grid{ gap:12px; } }
+
+/* ---- Écran détail : bouton retour façon Apple Music ("‹ Bibliothèque") ---- */
+.lib-back-btn{
+  display:flex; align-items:center; gap:4px; background:none; border:none; cursor:pointer;
+  color:var(--accent); font-size:14.5px; font-weight:600; padding:0 0 16px; font-family:var(--font-body);
+}
+.lib-back-btn svg{ width:18px; height:18px; }
 
 .lib-list-head{ position:relative; }
 #lib-sort-btn{ margin-left:auto; }
@@ -2399,10 +2419,6 @@ html.is-playing .fp-title{ font-weight:800; }
 .lib-track-row .lib-track-info{ min-width:0; flex:1; cursor:pointer; }
 .lib-track-menu-btn{ flex-shrink:0; margin-left:auto; }
 
-@media(max-width:640px){
-  .lib-card{ width:112px; height:76px; font-size:13px; }
-  .lib-cards-row{ margin-left:-4px; margin-right:-4px; padding-left:4px; padding-right:4px; }
-}
 .pi-lang-row{ display:flex; flex-direction:column; gap:10px; }
 .pi-lang-opt{
   display:flex; align-items:center; justify-content:space-between; background:var(--bg-card); border:1.5px solid var(--border);
