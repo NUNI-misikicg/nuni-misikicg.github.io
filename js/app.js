@@ -5647,6 +5647,21 @@ function refreshMiniPlayerMarquee(){
 window.addEventListener('resize', ()=> refreshMiniPlayerMarquee());
 
 function playTrack(tr){
+  // Avant : un vrai morceau (tr.isReal) sans lien audio (accès refusé côté serveur — voir
+  // stripAudioIfNoAccess dans server.js : visiteur non connecté ou Pass expiré) basculait
+  // silencieusement sur le mode "lecture simulée" des morceaux de démo — l'interface
+  // affichait une barre de progression qui avance normalement, sans jamais produire de son,
+  // sans jamais expliquer pourquoi. Maintenant : message clair, et jamais de fausse lecture.
+  if(tr.isReal && tr.realId && !tr.audioUrl){
+    if(!realAuthToken){
+      toast('Connectez-vous pour écouter ce morceau en entier.');
+      openLoginModal();
+    } else {
+      toast('Votre Pass a expiré — réactivez-le pour continuer à écouter.');
+      goTo('plans');
+    }
+    return;
+  }
   // Un morceau change (manuellement, ou via le crossfade lui-même) : on annule tout
   // fondu enchaîné encore en cours pour ne jamais superposer deux transitions.
   if(djFadeTimer){ clearInterval(djFadeTimer); djFadeTimer = null; }
