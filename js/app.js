@@ -4508,10 +4508,26 @@ async function loadArtistStats(){
     elArtist.textContent = fmt(s.artist_share_fcfa) + ' FCFA';
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
 }
-async function loadRealTracks(){
+// Avant : un seul essai fetch() sans retry — si ce tout premier essai tombait pendant un
+// cold start Render (jusqu'à ~55s de réveil) ou un simple hoquet réseau, l'erreur était
+// avalée en silence (catch vide) et RIEN ne relançait jamais le chargement : "Nouveautés",
+// "Top Congo" et toutes les sections dépendant des vrais morceaux restaient vides pour
+// toute la session, même un rechargement complet pouvant retomber dans la même fenêtre de
+// réveil. Maintenant : jusqu'à 5 essais, avec des délais croissants (3s, 6s, 10s, 15s —
+// soit ~34s de marge après le tout premier essai), avant d'abandonner silencieusement.
+async function loadRealTracks(attempt){
+  attempt = attempt || 0;
+  const maxAttempts = 5;
+  const retryDelays = [3000, 6000, 10000, 15000];
   try{
     const res = await fetch(NUNI_API_BASE + '/api/tracks');
-    if(!res.ok) return;
+    if(!res.ok){
+      if(attempt < maxAttempts - 1){
+        await new Promise(r=> setTimeout(r, retryDelays[attempt] || 15000));
+        return loadRealTracks(attempt + 1);
+      }
+      return;
+    }
     const data = await res.json();
     if(!data.tracks || !data.tracks.length) return;
     // retire les vrais morceaux déjà chargés avant de réinjecter (évite les doublons)
@@ -4552,7 +4568,13 @@ async function loadRealTracks(){
       syncFullPlayer();
     }
     handleSharedTrackLink();
-  }catch(e){ /* pas grave si le serveur est indisponible, le catalogue de démo reste affiché */ }
+  }catch(e){
+    if(attempt < maxAttempts - 1){
+      await new Promise(r=> setTimeout(r, retryDelays[attempt] || 15000));
+      return loadRealTracks(attempt + 1);
+    }
+    /* pas grave si le serveur reste indisponible après tous les essais, le catalogue de démo reste affiché */
+  }
 }
 // Avant : la bannière hero affichait toujours la même image statique (le logo NUNI en grand),
 // jamais liée au vrai contenu de la plateforme. Ici : la vraie pochette + le vrai titre/artiste
