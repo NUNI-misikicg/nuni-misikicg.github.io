@@ -2704,36 +2704,36 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
      de la pochette en cours (--nuni-aura-color, déjà calculée ailleurs) sans jamais nuire à
      la lisibilité du texte. */
   .player-bar{
-    height:70px; padding:0 14px; gap:12px; border-radius:22px;
+    height:58px; padding:0 12px; gap:10px; border-radius:18px;
     left:12px; right:12px; bottom:calc(8px + 78px + env(safe-area-inset-bottom,0));
     box-shadow:0 14px 34px -12px rgba(0,0,0,.5);
     background:
       radial-gradient(120% 140% at 0% 100%, color-mix(in srgb, var(--nuni-aura-color, transparent) 16%, transparent) 0%, transparent 60%),
       color-mix(in srgb, var(--bg-elev) 90%, transparent);
   }
-  .player-track{ width:auto; flex:1; min-width:0; gap:12px; cursor:pointer; }
-  .player-cover{ width:52px; height:52px; border-radius:11px; flex-shrink:0; transition:transform .3s var(--ease); }
+  .player-track{ width:auto; flex:1; min-width:0; gap:10px; cursor:pointer; }
+  .player-cover{ width:42px; height:42px; border-radius:9px; flex-shrink:0; transition:transform .3s var(--ease); }
   .player-track-info{ min-width:0; }
-  .player-track-info .t{ font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .player-track-info .a{ font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.75; }
+  .player-track-info .t{ font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .player-track-info .a{ font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.75; }
   .player-like{ display:none; }
-  .player-center{ flex:0 0 auto; max-width:none; flex-direction:row; align-items:center; gap:4px; }
-  .player-controls{ gap:4px; }
-  .player-controls button{ width:34px; height:34px; display:flex; align-items:center; justify-content:center; }
-  .player-controls button svg{ width:19px; height:19px; }
+  .player-center{ flex:0 0 auto; max-width:none; flex-direction:row; align-items:center; gap:2px; }
+  .player-controls{ gap:2px; }
+  .player-controls button{ width:30px; height:30px; display:flex; align-items:center; justify-content:center; }
+  .player-controls button svg{ width:17px; height:17px; }
   .player-controls button[onclick*="shuffleToggle"],
   .player-controls button[onclick*="repeatToggle"]{ display:none; }
   /* Précédent/Suivant réintroduits (retirés dans une version précédente, trop minimaliste) —
      le bouton Lecture/Pause reste le plus grand, comme le centre de gravité des commandes. */
   .player-controls button[onclick="prevTrack()"] svg,
-  .player-controls button[onclick="nextTrack()"] svg{ width:17px; height:17px; }
-  .player-bar .play-pause{ width:38px; height:38px; }
+  .player-controls button[onclick="nextTrack()"] svg{ width:15px; height:15px; }
+  .player-bar .play-pause{ width:34px; height:34px; }
   .player-bar .progress-row{ display:none; } /* remplacée par la barre pleine largeur ci-dessous, plus lisible dans l'espace disponible */
   .player-right{ display:none; }
   /* Barre de progression pleine largeur, fine et cliquable, en bas de la pilule — couleur
      d'accent NUNI, jamais de chiffres qui surchargeraient une hauteur aussi compacte. */
-  .player-bar-slim-progress{ height:3px; bottom:0; top:auto; border-radius:0 0 22px 22px; }
-  .demo-nav{ bottom:calc(170px + env(safe-area-inset-bottom,0)); }
+  .player-bar-slim-progress{ height:3px; bottom:0; top:auto; border-radius:0 0 18px 18px; }
+  .demo-nav{ bottom:calc(158px + env(safe-area-inset-bottom,0)); }
   .demo-nav.no-player{ bottom:calc(20px + env(safe-area-inset-bottom,0)); }
   .radio-banner, .talent-banner{ flex-direction:column; align-items:flex-start; }
 }
@@ -2782,7 +2782,7 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
   .home-title{ font-size:clamp(26px,5vw,40px); }
   .home-actions{ margin-top:20px; }
   .mobile-tabbar{ height:52px; }
-  .player-bar{ height:70px; }
+  .player-bar{ height:58px; }
 }
 @media(orientation:landscape) and (max-height:400px){
   .fp-cover-wrap, .fp-cover{ width:96px; height:96px; }
