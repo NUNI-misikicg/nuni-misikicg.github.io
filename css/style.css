@@ -1868,9 +1868,20 @@ html.is-playing .app-footer-wordmark{ animation:footerWordmarkPulse 1.1s ease-in
 .player-track{ display:flex; align-items:center; gap:14px; width:230px; flex-shrink:0; }
 .player-cover{ width:54px; height:54px; border-radius:10px; flex-shrink:0; position:relative; overflow:hidden; background-size:cover; background-position:center; }
 .player-cover.spinning{ animation:none; }
-.player-track-info .t{ font-size:13.5px; font-weight:600; letter-spacing:-0.01em; transition:opacity .35s var(--ease); }
-.player-track-info .a{ font-size:12px; font-weight:500; color:var(--text-faint); margin-top:2px; transition:opacity .35s var(--ease); }
-html.is-playing .player-track-info .t{ font-weight:700; }
+/* ---- Nom du morceau + artiste + featuring fusionnés sur une seule ligne, façon lecteur
+   immersif (CarPlay/Spotify) — voir updateMiniPlayerNowPlaying dans app.js. Défilement
+   automatique (marquee) uniquement si le texte déborde de l'espace disponible : jamais
+   d'animation superflue pour un titre court qui tient déjà très bien. ---- */
+.mp-marquee-viewport{ overflow:hidden; white-space:nowrap; min-width:0; -webkit-mask-image:linear-gradient(90deg, #000 92%, transparent 100%); mask-image:linear-gradient(90deg, #000 92%, transparent 100%); }
+.mp-marquee-track{ display:inline-block; white-space:nowrap; transition:opacity .35s var(--ease); }
+.mp-marquee-track .mp-title{ font-size:13.5px; font-weight:600; letter-spacing:-0.01em; }
+html.is-playing .mp-marquee-track .mp-title{ font-weight:700; }
+.mp-marquee-track .mp-sep{ font-size:12px; opacity:.5; margin:0 3px; }
+.mp-marquee-track .mp-artist{ font-size:12px; font-weight:500; color:var(--text-faint); }
+.mp-marquee-track .mp-feat{ font-size:11px; font-weight:500; color:var(--text-faint); opacity:.75; margin-left:4px; }
+.mp-marquee-track.is-marquee{ animation:mpMarquee var(--mp-marquee-duration, 10s) linear infinite alternate; }
+@keyframes mpMarquee{ 0%,12%{ transform:translateX(0); } 88%,100%{ transform:translateX(var(--mp-marquee-distance, 0)); } }
+@media(prefers-reduced-motion: reduce){ .mp-marquee-track.is-marquee{ animation:none; } .mp-marquee-viewport{ -webkit-mask-image:none; mask-image:none; } }
 .player-like{ width:30px; height:30px; flex-shrink:0; }
 .player-like svg{ width:16px; height:16px; transition:all .3s; }
 .player-like.liked svg, #fp-like-btn.liked svg{ fill:var(--rose-braise); color:var(--rose-braise); }
@@ -2745,8 +2756,9 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
   .player-track{ width:auto; flex:1; min-width:0; gap:10px; cursor:pointer; }
   .player-cover{ width:42px; height:42px; border-radius:9px; flex-shrink:0; transition:transform .3s var(--ease); }
   .player-track-info{ min-width:0; }
-  .player-track-info .t{ font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .player-track-info .a{ font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.75; }
+  .mp-marquee-track .mp-title{ font-size:12.5px; }
+  .mp-marquee-track .mp-sep, .mp-marquee-track .mp-artist{ font-size:11px; }
+  .mp-marquee-track .mp-feat{ font-size:10.5px; }
   .player-like{ display:none; }
   .player-center{ flex:0 0 auto; max-width:none; flex-direction:row; align-items:center; gap:2px; }
   .player-controls{ gap:2px; }

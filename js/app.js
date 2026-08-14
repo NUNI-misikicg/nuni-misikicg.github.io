@@ -4553,8 +4553,7 @@ async function loadRealTracks(){
     // chargés, et si rien n'a encore été lancé, on bascule le lecteur sur le premier vrai son.
     if(!playing && !usingRealAudio && !currentTrack.isReal && mapped.length){
       currentTrack = mapped[0];
-      document.getElementById('player-title').textContent = currentTrack.t;
-      document.getElementById('player-artist').textContent = currentTrack.a;
+      updateMiniPlayerNowPlaying(currentTrack);
       applyCoverTo(document.getElementById('player-cover'), currentTrack);
       syncFullPlayer();
     }
@@ -5607,6 +5606,44 @@ function setupMediaSessionHandlers(){
 }
 setupMediaSessionHandlers();
 
+// ---------- Mini-lecteur : titre + artiste + featuring fusionnés sur une seule ligne ----------
+// Avant : deux lignes séparées (titre en gras, artiste en dessous), et le featuring
+// n'apparaissait nulle part sur le mini-lecteur alors qu'il existe bien en base (tr.featuring,
+// renseigné par l'artiste lui-même). Maintenant : une seule ligne fluide "Titre · Artiste
+// feat. X", avec un vrai défilement automatique (marquee) quand le texte est plus long que
+// l'espace disponible — jamais de texte tronqué brutalement, jamais d'animation superflue
+// pour un titre déjà court.
+function updateMiniPlayerNowPlaying(tr){
+  const track = document.getElementById('player-title-track');
+  if(!track || !tr) return;
+  const feat = tr.featuring ? `<span class="mp-feat">feat. ${tr.featuring}</span>` : '';
+  track.innerHTML = `<span class="mp-title">${tr.t}</span><span class="mp-sep">·</span><span class="mp-artist">${tr.a}</span>${feat}`;
+  // Le calcul du débordement doit attendre que le nouveau texte soit bien rendu dans le DOM.
+  requestAnimationFrame(refreshMiniPlayerMarquee);
+}
+function refreshMiniPlayerMarquee(){
+  const viewport = document.querySelector('.mp-marquee-viewport');
+  const track = document.getElementById('player-title-track');
+  if(!viewport || !track) return;
+  // Toujours repartir de zéro pour ce nouveau texte — sinon le navigateur ne relance pas
+  // proprement l'animation si elle était déjà active pour le morceau précédent.
+  track.classList.remove('is-marquee');
+  void track.offsetWidth; // force le recalcul de mise en page avant de relancer
+  const overflow = track.scrollWidth > viewport.clientWidth + 2;
+  if(overflow){
+    // Vitesse de défilement constante quel que soit le débordement réel (texte plus long
+    // = trajet plus long = animation plus longue), plutôt qu'une durée fixe qui accélérerait
+    // artificiellement les titres très longs.
+    const distance = track.scrollWidth - viewport.clientWidth;
+    track.style.setProperty('--mp-marquee-distance', '-' + distance + 'px');
+    track.style.setProperty('--mp-marquee-duration', Math.max(6, distance / 28) + 's');
+    track.classList.add('is-marquee');
+  } else {
+    track.style.removeProperty('--mp-marquee-distance');
+  }
+}
+window.addEventListener('resize', ()=> refreshMiniPlayerMarquee());
+
 function playTrack(tr){
   // Un morceau change (manuellement, ou via le crossfade lui-même) : on annule tout
   // fondu enchaîné encore en cours pour ne jamais superposer deux transitions.
@@ -5615,8 +5652,7 @@ function playTrack(tr){
   djCrossfadeTriggered = false;
 
   currentTrack = tr;
-  document.getElementById('player-title').textContent = tr.t;
-  document.getElementById('player-artist').textContent = tr.a;
+  updateMiniPlayerNowPlaying(tr);
   applyCoverTo(document.getElementById('player-cover'), tr);
   syncLikeButtons(tr);
   updateMediaSession(tr);
@@ -8769,8 +8805,7 @@ async function startTunerPlayback(){
   realAudio.pause();
   realAudio.src = station.url;
   currentTrack = { t: s.name, a: `En direct — ${station.name}`, p: 'pal-4', audioUrl: station.url };
-  document.getElementById('player-title').textContent = currentTrack.t;
-  document.getElementById('player-artist').textContent = currentTrack.a;
+  updateMiniPlayerNowPlaying(currentTrack);
   applyCoverTo(document.getElementById('player-cover'), currentTrack);
   syncFullPlayer();
   realAudio.play().then(()=>{
