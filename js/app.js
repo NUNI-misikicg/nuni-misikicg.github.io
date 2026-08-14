@@ -13,6 +13,106 @@ function openWhatsApp(url){
   else{ window.open(url, '_blank'); }
 }
 
+/* ============ ÉCRAN PLEIN ÉCRAN — PASS EXPIRÉ ============
+   Façon plateforme premium (Spotify, Netflix...) : dès que l'abonnement d'un compte n'est
+   plus réellement actif (Pass Consommateur/Artiste expiré, ou essai Pass Découverte de 24h
+   terminé), TOUT le reste de l'app reste inaccessible derrière cet écran. Jamais fermable
+   par un clic extérieur ou la touche Échap — seule une vraie action (renouveler sur
+   WhatsApp, saisir un nouveau code d'accès, ou se déconnecter) permet d'en sortir. Se
+   déclenche à la connexion, à la restauration de session, ET en direct pendant une session
+   déjà ouverte si le Pass expire pendant que la personne est en train d'utiliser NUNI (voir
+   startAccountStatusWatcher, qui vérifie le vrai statut toutes les 2 minutes). */
+function ensurePassExpiredStyles(){
+  if(document.getElementById('pass-expired-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'pass-expired-styles';
+  style.textContent = `
+    #pass-expired-overlay{
+      position:fixed; inset:0; z-index:100000; background:#0A0A10;
+      display:flex; align-items:center; justify-content:center; padding:24px;
+      opacity:0; transition:opacity .3s ease;
+    }
+    #pass-expired-overlay.show{ opacity:1; }
+    #pass-expired-overlay::before{
+      content:''; position:absolute; inset:0;
+      background:radial-gradient(60% 50% at 50% 0%, rgba(212,175,106,.14) 0%, transparent 70%);
+      pointer-events:none;
+    }
+    .pex-card{ position:relative; max-width:420px; width:100%; text-align:center; animation:pexPopIn .4s cubic-bezier(.22,1,.36,1); }
+    @keyframes pexPopIn{ from{ opacity:0; transform:translateY(12px) scale(.97); } to{ opacity:1; transform:translateY(0) scale(1); } }
+    .pex-icon{ width:64px; height:64px; margin:0 auto 22px; border-radius:50%; background:linear-gradient(135deg,#C9667A,#6E45A8); display:flex; align-items:center; justify-content:center; box-shadow:0 12px 30px -10px rgba(201,102,122,.5); }
+    .pex-icon svg{ width:30px; height:30px; color:#fff; }
+    .pex-title{ font-family:var(--font-display); font-size:24px; font-weight:700; color:#fff; margin-bottom:10px; }
+    .pex-sub{ font-size:14px; color:#9a9aa5; line-height:1.6; margin-bottom:30px; }
+    .pex-sub b{ color:#D4AF6A; }
+    .pex-btn-primary{
+      width:100%; padding:14px; border-radius:999px; border:none; cursor:pointer;
+      background:linear-gradient(135deg,#25D366,#1DA851); color:#fff; font-weight:700; font-size:14.5px;
+      display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;
+      font-family:var(--font-body);
+    }
+    .pex-btn-primary:hover{ filter:brightness(1.08); }
+    .pex-btn-secondary{
+      width:100%; padding:13px; border-radius:999px; cursor:pointer;
+      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); color:#fff;
+      font-weight:600; font-size:13.5px; margin-bottom:22px; font-family:var(--font-body);
+    }
+    .pex-btn-secondary:hover{ background:rgba(255,255,255,.1); }
+    .pex-logout{ font-size:12.5px; color:#6a6a75; text-decoration:underline; cursor:pointer; background:none; border:none; font-family:var(--font-body); }
+    .pex-logout:hover{ color:#9a9aa5; }
+  `;
+  document.head.appendChild(style);
+}
+function showPassExpiredOverlay(){
+  if(!currentUser || document.getElementById('pass-expired-overlay')) return; // jamais dupliqué
+  ensurePassExpiredStyles();
+  stopAllPlayback(); // un Pass expiré bloque vraiment tout, y compris un son déjà en cours
+  const isDiscovery = currentUser.plan === 'discovery';
+  const planLabel = isDiscovery ? 'Votre essai gratuit' : (currentUser.plan === 'artist' ? 'Votre Pass Artiste' : 'Votre Pass Consommateur');
+  const expLabel = currentUser.subscription_expires_at
+    ? new Date(currentUser.subscription_expires_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'})
+    : null;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'pass-expired-overlay';
+  overlay.innerHTML = `
+    <div class="pex-card">
+      <div class="pex-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+      <div class="pex-title">${isDiscovery ? 'Votre essai gratuit est terminé' : 'Votre Pass a expiré'}</div>
+      <div class="pex-sub">${esc(planLabel)}${expLabel ? ` a expiré le <b>${expLabel}</b>` : " n'est plus actif"}. Réactivez-le pour continuer à profiter de NUNI en intégralité.</div>
+      <button class="pex-btn-primary" id="pex-renew-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A11 11 0 0 0 3 17L2 22l5.2-1.4A11 11 0 1 0 20.5 3.5z"/></svg>
+        Renouveler sur WhatsApp
+      </button>
+      <button class="pex-btn-secondary" id="pex-code-btn">J'ai déjà un code d'accès</button>
+      <button class="pex-logout" id="pex-logout-btn">Se déconnecter</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+
+  document.getElementById('pex-renew-btn').onclick = ()=>{
+    if(currentUser) choosePlan(currentUser.account_type === 'artist' ? 'artist' : 'consumer', isDiscovery);
+  };
+  document.getElementById('pex-code-btn').onclick = ()=>{
+    hidePassExpiredOverlay(); // laisse revenir taper un nouveau code déjà reçu par WhatsApp
+    goTo('plans');
+  };
+  document.getElementById('pex-logout-btn').onclick = ()=>{
+    hidePassExpiredOverlay();
+    logoutUser();
+  };
+  // Volontairement AUCUN moyen de fermer par un clic extérieur ou la touche Échap — un Pass
+  // expiré bloque vraiment tout, comme sur les plateformes premium (Spotify, Netflix...).
+}
+function hidePassExpiredOverlay(){
+  const overlay = document.getElementById('pass-expired-overlay');
+  if(!overlay) return;
+  overlay.classList.remove('show');
+  document.body.style.overflow = '';
+  setTimeout(()=> overlay.remove(), 300);
+}
+
 /* ============ POSITIONNEMENT RÉEL DE LA BULLE MIMI ============
    Avant : la distance du bas dépendait d'une classe CSS "no-player" à synchroniser
    manuellement à chaque endroit où la barre lecteur apparaît/disparaît — facile à
@@ -136,6 +236,25 @@ setInterval(()=>{
   el.style.opacity = 0;
   setTimeout(()=>{ el.textContent = messages[msgIndex]; el.style.opacity = 1; }, 400);
 }, 3200);
+
+/* ============ ÉCHAPPEMENT HTML — CORRECTIF SÉCURITÉ CRITIQUE ============
+   Avant : aucune donnée saisie par un compte (titre de morceau, nom d'artiste, bio,
+   description de playlist, nom de concert...) n'était jamais échappée avant d'être injectée
+   directement en HTML (innerHTML/insertAdjacentHTML) — visible par TOUS les visiteurs du
+   site, pas seulement l'admin. N'importe quel compte artiste pouvait donc placer un script
+   dans le titre d'un morceau ou sa bio, qui s'exécutait dans le navigateur de CHAQUE
+   personne consultant cette page (catalogue, recherche, page artiste...), avec accès à sa
+   session (realAuthToken en localStorage). Toute donnée venant d'un compte utilisateur doit
+   désormais passer par esc() avant d'être insérée dans un template HTML. */
+function esc(v){
+  if(v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /* ============ TOAST ============ */
 let toastTimer;
@@ -302,6 +421,12 @@ async function restoreSession(){
  toast(`Bon retour, ${currentUser.first_name} `);
       if(currentUser.plan === 'discovery') startDiscoveryFromServer();
       handleSharedTrackLink(); // reprend un lien partagé en attente, si la personne y était arrivée avant de se connecter
+    } else if(currentUser.subscription_status === 'expired'){
+      // Distinct d'un Pass jamais activé (branche suivante) : ici, la personne avait bien un
+      // vrai accès qui vient de se terminer — écran de blocage plein écran plutôt que le
+      // simple flux d'inscription, façon plateforme premium.
+      goTo('plans');
+      showPassExpiredOverlay();
     } else if(currentUser.plan && currentUser.plan !== 'discovery'){
       choosePlan(currentUser.plan); // Pass déjà connu : pas besoin de re-remplir l'inscription
       toast(`Bon retour, ${currentUser.first_name} — votre Pass n'est plus actif, réactivez-le.`);
@@ -379,12 +504,18 @@ function startAccountStatusWatcher(){
         const data = await res.json();
         const wasActive = currentUser && currentUser.subscription_status === 'active';
         const nowActive = data.user && data.user.subscription_status === 'active';
+        const nowExpired = data.user && data.user.subscription_status === 'expired';
         currentUser = data.user;
         demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
         saveSession(realAuthToken, currentUser, true);
         applyAccountType();
         if(!wasActive && nowActive){
  toast(' Votre Pass est maintenant actif — bienvenue sur NUNI en intégralité !');
+          hidePassExpiredOverlay(); // au cas où l'écran de blocage était encore affiché
+        } else if(nowExpired){
+          // Le Pass vient d'expirer PENDANT que la personne utilise déjà NUNI (pas
+          // seulement détecté à la connexion) — écran de blocage immédiat, où qu'elle soit.
+          showPassExpiredOverlay();
         }
       }
     }catch(e){ /* pas de réseau : on ne déconnecte pas sur un simple souci de connexion */ }
@@ -572,6 +703,9 @@ async function submitLogin(){
         enterApp('catalog');
         if(currentUser.plan === 'discovery') startDiscoveryFromServer();
       handleSharedTrackLink(); // reprend un lien partagé en attente, si la personne y était arrivée avant de se connecter
+      } else if(currentUser.subscription_status === 'expired'){
+        goTo('plans');
+        showPassExpiredOverlay();
       } else if(currentUser.plan && currentUser.plan !== 'discovery'){
         choosePlan(currentUser.plan);
       } else {
@@ -881,7 +1015,7 @@ async function loadLabelDashboardStatus(){
         <div style="display:flex; align-items:center; gap:12px;">
           ${label.logo_url ? `<div style="width:56px; height:56px; border-radius:12px; background:url(${label.logo_url}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : ''}
           <div>
-            <div style="font-weight:700; font-size:16px;">${label.label_name}</div>
+            <div style="font-weight:700; font-size:16px;">${esc(label.label_name)}</div>
             <div style="font-size:12.5px; color:var(--text-faint);">${label.legal_name || ''}</div>
           </div>
         </div>
@@ -951,7 +1085,7 @@ async function loadMyLabelInvites(){
     wrap.innerHTML = data.invites.map(inv => `
       <div class="card" style="display:flex; align-items:center; gap:14px; border-color:var(--accent);">
         ${inv.logo_url ? `<div style="width:44px; height:44px; border-radius:10px; background:url(${inv.logo_url}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : ''}
-        <div style="flex:1;"><b>${inv.label_name}</b> vous invite à rejoindre son label sur NUNI.</div>
+        <div style="flex:1;"><b>${esc(inv.label_name)}</b> vous invite à rejoindre son label sur NUNI.</div>
         <button class="btn btn-primary btn-sm" onclick="respondLabelInvite(${inv.id}, true)">Accepter</button>
         <button class="btn btn-ghost btn-sm" onclick="respondLabelInvite(${inv.id}, false)">Refuser</button>
       </div>`).join('');
@@ -981,7 +1115,7 @@ async function loadMyLabelTeamInvites(){
     wrap.innerHTML = data.invites.map(inv => `
       <div class="card" style="display:flex; align-items:center; gap:14px; border-color:var(--accent);">
         ${inv.logo_url ? `<div style="width:44px; height:44px; border-radius:10px; background:url(${inv.logo_url}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : ''}
-        <div style="flex:1;"><b>${inv.label_name}</b> vous invite à rejoindre son équipe en tant que <b>${roleLabels[inv.role]||inv.role}</b>.</div>
+        <div style="flex:1;"><b>${esc(inv.label_name)}</b> vous invite à rejoindre son équipe en tant que <b>${roleLabels[inv.role]||inv.role}</b>.</div>
         <button class="btn btn-primary btn-sm" onclick="respondLabelTeamInvite(${inv.id}, true)">Accepter</button>
         <button class="btn btn-ghost btn-sm" onclick="respondLabelTeamInvite(${inv.id}, false)">Refuser</button>
       </div>`).join('');
@@ -1011,12 +1145,12 @@ async function loadLabelTeam(){
     if(inviteForm) inviteForm.style.display = canManage ? 'flex' : 'none';
     const roleLabels = { owner:'Propriétaire', admin:'Admin', manager:'Manager', assistant:'Assistant' };
     const statusLabels = { active:'Actif', invited:'Invitation envoyée' };
-    let html = `<div class="label-artist-row"><div class="av">${(data.owner.first_name||'?').charAt(0)}</div><div class="info"><div class="name">${data.owner.first_name} ${data.owner.last_name}</div><div class="meta">${data.owner.email}</div></div><span class="label-artist-status active">Propriétaire</span></div>`;
+    let html = `<div class="label-artist-row"><div class="av">${esc((data.owner.first_name||'?').charAt(0))}</div><div class="info"><div class="name">${esc(data.owner.first_name)} ${esc(data.owner.last_name)}</div><div class="meta">${esc(data.owner.email)}</div></div><span class="label-artist-status active">Propriétaire</span></div>`;
     data.members.forEach(m=>{
-      const name = m.first_name ? `${m.first_name} ${m.last_name}` : m.email;
+      const name = m.first_name ? `${esc(m.first_name)} ${esc(m.last_name)}` : esc(m.email);
       html += `<div class="label-artist-row">
         <div class="av">${name.charAt(0).toUpperCase()}</div>
-        <div class="info"><div class="name">${name}</div><div class="meta">${m.email} · ${roleLabels[m.role]||m.role}</div></div>
+        <div class="info"><div class="name">${esc(name)}</div><div class="meta">${esc(m.email)} · ${esc(roleLabels[m.role]||m.role)}</div></div>
         <span class="label-artist-status ${m.status}">${statusLabels[m.status]||m.status}</span>
         ${canManage ? `<button class="btn-icon" title="Retirer" onclick="removeLabelTeamMember(${m.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>` : ''}
       </div>`;
@@ -1139,12 +1273,12 @@ function renderLabelCatalogList(){
     const cover = it.cover_url || it.thumb_url;
     const coverStyle = cover ? `background-image:url(${cover});` : '';
     let metaLine;
-    if(it.kind === 'clip') metaLine = `${it.artist_name} · Clip · ${Number(it.views||0).toLocaleString('fr-FR')} vues`;
-    else if(it.kind === 'scheduled') metaLine = `${it.artist_name} · ${it.release_type||'Single'} · Programmé le ${new Date(it.scheduled_release_at).toLocaleDateString('fr-FR')}`;
-    else metaLine = `${it.artist_name} · ${it.release_type||'Single'} · ${Number(it.streams||0).toLocaleString('fr-FR')} streams`;
+    if(it.kind === 'clip') metaLine = `${esc(it.artist_name)} · Clip · ${Number(it.views||0).toLocaleString('fr-FR')} vues`;
+    else if(it.kind === 'scheduled') metaLine = `${esc(it.artist_name)} · ${esc(it.release_type||'Single')} · Programmé le ${new Date(it.scheduled_release_at).toLocaleDateString('fr-FR')}`;
+    else metaLine = `${esc(it.artist_name)} · ${esc(it.release_type||'Single')} · ${Number(it.streams||0).toLocaleString('fr-FR')} streams`;
     return `<div class="label-artist-row">
       <div class="av" style="border-radius:8px; ${coverStyle}"></div>
-      <div class="info"><div class="name">${it.title}</div><div class="meta">${metaLine}</div></div>
+      <div class="info"><div class="name">${esc(it.title)}</div><div class="meta">${metaLine}</div></div>
     </div>`;
   }).join('');
 }
@@ -1188,7 +1322,7 @@ async function loadLabelOverview(){
       { num: s.topArtist ? s.topArtist.artist_name : '—', lbl: 'Top artiste du label' },
       { num: s.topTrack ? s.topTrack.title : '—', lbl: 'Top morceau du label' },
     ];
-    box.innerHTML = cards.map(c=> `<div class="dash-stat-card"><div class="num">${c.num}</div><div class="lbl">${c.lbl}</div></div>`).join('');
+    box.innerHTML = cards.map(c=> `<div class="dash-stat-card"><div class="num">${esc(c.num)}</div><div class="lbl">${esc(c.lbl)}</div></div>`).join('');
   }catch(e){
     box.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>';
   }
@@ -1208,16 +1342,16 @@ async function loadLabelArtists(){
     list.innerHTML = '';
     data.artists.forEach(a=>{
       const initials = (a.artist_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      const avatarStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
+      const avatarStyle = a.avatar_url ? `background-image:url(${esc(a.avatar_url)});` : '';
       const row = document.createElement('div');
       row.className = 'label-artist-row';
       row.innerHTML = `
         <div class="av" style="${avatarStyle}">${avatarStyle ? '' : initials}</div>
         <div class="info">
-          <div class="name">${a.artist_name}${a.is_verified ? ' ✓' : ''}</div>
+          <div class="name">${esc(a.artist_name)}${a.is_verified ? ' ✓' : ''}</div>
           <div class="meta">${a.track_count} titre${a.track_count>1?'s':''} · ${Number(a.total_streams).toLocaleString('fr-FR')} streams</div>
         </div>
-        <span class="label-artist-status ${a.affiliation_status}">${statusLabels[a.affiliation_status] || a.affiliation_status}</span>
+        <span class="label-artist-status ${a.affiliation_status}">${esc(statusLabels[a.affiliation_status] || a.affiliation_status)}</span>
         <div style="display:flex; gap:6px;">
           ${a.affiliation_status === 'active' ? `<button class="btn-icon" title="Suspendre" onclick="suspendLabelArtist(${a.affiliation_id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>` : ''}
           ${a.affiliation_status === 'suspended' ? `<button class="btn-icon" title="Réactiver" onclick="reactivateLabelArtist(${a.affiliation_id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg></button>` : ''}
@@ -1313,7 +1447,7 @@ async function loadLabelPayments(){
     byArtistBox.innerHTML = `<div style="font-weight:700; font-size:15px; margin-bottom:10px;">Total versé à tous vos artistes : ${fmt(data.totalPaidFcfa)} FCFA</div>` +
       data.byArtist.map(a => `
         <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;">
-          <span>${a.artist_name}</span>
+          <span>${esc(a.artist_name)}</span>
           <span style="color:var(--text-dim);">${fmt(a.total_paid_fcfa)} FCFA · ${a.payment_count} versement${a.payment_count>1?'s':''}</span>
         </div>`).join('');
     if(tbody){
@@ -1323,10 +1457,10 @@ async function loadLabelPayments(){
         tbody.innerHTML = data.history.map(p => `
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:8px 6px;">${new Date(p.created_at).toLocaleDateString('fr-FR')}</td>
-            <td style="padding:8px 6px;">${p.artist_name}</td>
+            <td style="padding:8px 6px;">${esc(p.artist_name)}</td>
             <td style="padding:8px 6px;">${fmt(p.amount_fcfa)} FCFA</td>
             <td style="padding:8px 6px;">${fmt(p.streams_covered)}</td>
-            <td style="padding:8px 6px;">${p.method || '—'}</td>
+            <td style="padding:8px 6px;">${esc(p.method || '—')}</td>
           </tr>`).join('');
       }
     }
@@ -1920,7 +2054,7 @@ async function mimiAnswerRecommendLive(botMsgEl, question){
     // une vraie chance à plusieurs vrais artistes qui performent bien, pas seulement au n°1.
     const shuffled = [...pool].sort(()=> Math.random()-0.5);
     const picks = shuffled.slice(0, Math.min(3, shuffled.length));
- const names = picks.map(a=> ` ${a.artist_name || a.first_name}${a.is_verified ? ' ' : ''} — ${(a.total_streams||0).toLocaleString('fr-FR')} streams`).join('<br>');
+ const names = picks.map(a=> ` ${esc(a.artist_name || a.first_name)}${a.is_verified ? ' ' : ''} — ${(a.total_streams||0).toLocaleString('fr-FR')} streams`).join('<br>');
     botMsgEl.innerHTML = `${genreMatch ? `En ${genreMatch}, ` : ''}voici de vrais artistes qui performent bien en ce moment :<br>${names}<br><span style="opacity:.7; font-size:12px;">Demandez-moi encore et je vous en proposerai d'autres.</span>`;
   }catch(e){ /* pas grave, le message d'attente reste affiché */ }
 }
@@ -2816,17 +2950,17 @@ async function openSupportArtistModal(artistId, artistName){
     const data = await res.json();
     if(!res.ok){ body.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
     if(!data.momo_number){
-      body.innerHTML = `<p style="color:var(--text-faint); font-size:13px; line-height:1.6;">${data.artist_name} n'a pas encore activé le soutien direct Mobile Money sur son profil.</p>`;
+      body.innerHTML = `<p style="color:var(--text-faint); font-size:13px; line-height:1.6;">${esc(data.artist_name)} n'a pas encore activé le soutien direct Mobile Money sur son profil.</p>`;
       return;
     }
     body.innerHTML = `
       <div class="pi-sub-card" style="text-align:center; margin-bottom:14px;">
         <div style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Numéro Mobile Money</div>
-        <div style="font-size:22px; font-weight:700; letter-spacing:1px; color:var(--accent);">${data.momo_number}</div>
+        <div style="font-size:22px; font-weight:700; letter-spacing:1px; color:var(--accent);">${esc(data.momo_number)}</div>
       </div>
       <p style="font-size:12.5px; color:var(--text-dim); line-height:1.65;">
         Envoyez le montant de votre choix directement à ce numéro depuis votre application MTN Mobile Money ou Airtel Money, comme un envoi d'argent classique.
-        <br><b>NUNI ne traite pas ce paiement et n'y prélève aucune commission</b> — c'est un don direct, volontaire, entre vous et ${data.artist_name}.
+        <br><b>NUNI ne traite pas ce paiement et n'y prélève aucune commission</b> — c'est un don direct, volontaire, entre vous et ${esc(data.artist_name)}.
       </p>`;
   }catch(e){
     body.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">Impossible de contacter le serveur NUNI.</p>`;
@@ -3736,7 +3870,7 @@ async function loadArtistFollowedArtists(artistId){
       const photoStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
       return `<div class="av-followed-card" data-id="${a.id}" data-name="${(a.artist_name||'').replace(/"/g,'&quot;')}">
         <div class="av-followed-photo ${a.avatar_url ? '' : 'pal-1'}" style="${photoStyle}"></div>
-        <div class="av-followed-name">${a.artist_name||''}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+        <div class="av-followed-name">${esc(a.artist_name||'')}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:11px;height:11px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
       </div>`;
     }).join('');
     row.querySelectorAll('.av-followed-card').forEach(card=>{
@@ -3774,7 +3908,7 @@ function openAlbumView(tr){
         <div class="av-title">${tr.album}</div>
         <div class="av-artist-row av-artist-link">
           <div class="av-artist-avatar" style="${artistAvatarStyle}">${artistAvatarStyle ? '' : artistInitial}</div>
-          <span class="av-artist-name">${tr.a}</span>
+          <span class="av-artist-name">${esc(tr.a)}</span>
         </div>
         <div class="av-meta">${tr.releaseType || 'Album'} · ${albumTracks.length} titre${albumTracks.length>1?'s':''}${releaseYear ? ' · ' + releaseYear : ''}</div>
       </div>
@@ -3796,7 +3930,7 @@ function openAlbumView(tr){
       <div class="av-total-duration" id="av-total-duration">Calcul de la durée totale…</div>
     </div>
     <div class="av-followed-section" id="av-followed-section" style="display:none;">
-      <div class="av-followed-title">Artistes suivis par ${tr.a}</div>
+      <div class="av-followed-title">Artistes suivis par ${esc(tr.a)}</div>
       <div class="av-followed-row" id="av-followed-row"></div>
     </div>
   `;
@@ -3977,8 +4111,8 @@ function trackCard(tr){
         <span class="eq play-fab-eq"><i></i><i></i><i></i></span>
       </div>
     </div>
-    <div class="ttl">${tr.t}</div>
-    <div class="art" style="cursor:pointer;">${tr.a}</div>
+    <div class="ttl">${esc(tr.t)}</div>
+    <div class="art" style="cursor:pointer;">${esc(tr.a)}</div>
     ${tr.isReal ? `<div class="stream-count-line"><svg class="nuni-ic" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> ${formatStreams(tr.streams||0)} écoutes</div>` : ''}
     <div class="likes">${currentUser && currentUser.account_type === 'artist' ? `<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> <span class="streams-count">${tr.streams||0}</span> · ` : ''}<svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> <span class="likes-count">${formatLikes(tr.likes||0)}</span></div>`;
   card.querySelector('.cover').onclick = ()=> handleTrackCardClick(tr);
@@ -3991,7 +4125,7 @@ function trackCard(tr){
   // carte devient un vrai arrêt de tabulation, activable au clavier comme à la souris.
   card.tabIndex = 0;
   card.setAttribute('role', 'button');
-  card.setAttribute('aria-label', `${tr.t} — ${tr.a}`);
+  card.setAttribute('aria-label', `${esc(tr.t)} — ${esc(tr.a)}`);
   card.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); handleTrackCardClick(tr); }
   });
@@ -4048,7 +4182,7 @@ function openTrackCardMenu(tr, anchorEl){
   sheet.id = 'tcm-sheet';
   sheet.innerHTML = `
     <button id="tcm-close" aria-label="Fermer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-    <div class="tcm-title">${tr.t} — ${tr.a}</div>
+    <div class="tcm-title">${esc(tr.t)} — ${esc(tr.a)}</div>
     <button id="tcm-queue"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> <span>Ajouter à la file d'attente</span></button>
     <button id="tcm-fav" class="${isLiked ? 'liked' : ''}">${isLiked ? '<svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> <span>Retirer des favoris</span>' : '<svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> <span>Ajouter aux favoris</span>'}</button>
     <button id="tcm-addlist"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="14" height="14" rx="2"/><path d="M17 9v5M14.5 11.5h5"/></svg> <span>Ajouter à une playlist</span></button>
@@ -4378,8 +4512,8 @@ async function renderResumeListening(){
       card.innerHTML = `
         <div class="resume-cover ${tr.cover ? '' : (tr.p||'')}" style="${coverStyle}"></div>
         <div class="resume-info">
-          <div class="t">${tr.t}</div>
-          <div class="a">${tr.a}</div>
+          <div class="t">${esc(tr.t)}</div>
+          <div class="a">${esc(tr.a)}</div>
           <div class="resume-progress-track"><div class="resume-progress-fill"></div></div>
         </div>
         <button class="resume-play-btn" aria-label="Reprendre"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
@@ -4742,7 +4876,7 @@ function renderRecapBody(month){
         <div class="recap-artist-scrim"></div>
         <div class="recap-artist-rank">${i+1}</div>
         <div class="recap-artist-info">
-          <div class="recap-artist-name">${a.artist_name||''}</div>
+          <div class="recap-artist-name">${esc(a.artist_name||'')}</div>
           <div class="recap-artist-plays">${a.plays} écoute${a.plays>1?'s':''}</div>
         </div>
       </div>`;
@@ -4755,7 +4889,7 @@ function renderRecapBody(month){
       const cover = t.cover_url ? `background-image:url(${t.cover_url});` : '';
       return `<div class="recap-track-row">
         <div class="recap-track-cover" style="${cover}"></div>
-        <div class="recap-track-info"><div class="recap-track-title">${t.title}</div><div class="recap-track-artist">${t.artist_name||''}</div></div>
+        <div class="recap-track-info"><div class="recap-track-title">${esc(t.title)}</div><div class="recap-track-artist">${esc(t.artist_name||'')}</div></div>
         <div class="recap-track-plays">${t.plays} écoute${t.plays>1?'s':''}</div>
       </div>`;
     }).join('');
@@ -5619,7 +5753,7 @@ function updateMiniPlayerNowPlaying(tr){
   const track = document.getElementById('player-title-track');
   if(!track || !tr) return;
   const feat = tr.featuring ? `<span class="mp-feat">feat. ${tr.featuring}</span>` : '';
-  track.innerHTML = `<span class="mp-title">${tr.t}</span><span class="mp-sep">·</span><span class="mp-artist">${tr.a}</span>${feat}`;
+  track.innerHTML = `<span class="mp-title">${esc(tr.t)}</span><span class="mp-sep">·</span><span class="mp-artist">${esc(tr.a)}</span>${feat}`;
   // Le calcul du débordement doit attendre que le nouveau texte soit bien rendu dans le DOM.
   requestAnimationFrame(refreshMiniPlayerMarquee);
 }
@@ -6276,7 +6410,7 @@ function handleClipVideo(e){
   pendingClipVideoFile = file;
   const status = document.getElementById('clip-upload-status');
   const sizeMb = (file.size / (1024*1024)).toFixed(1);
-  status.innerHTML = `<div class="upload-item"><div class="ui-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l5-3v10l-5-3M4 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/></svg></div><div class="ui-info"><div class="ui-name">${file.name} (${sizeMb} Mo)</div></div><div class="ui-status" style="color:var(--accent)">Prêt à publier</div></div>`;
+  status.innerHTML = `<div class="upload-item"><div class="ui-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l5-3v10l-5-3M4 6h11a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/></svg></div><div class="ui-info"><div class="ui-name">${esc(file.name)} (${sizeMb} Mo)</div></div><div class="ui-status" style="color:var(--accent)">Prêt à publier</div></div>`;
   if(!document.getElementById('clip-title-input').value) document.getElementById('clip-title-input').value = file.name.replace(/\.[^/.]+$/, '');
 }
 async function publishClip(){
@@ -6427,12 +6561,12 @@ function openClipWatchPage(clip){
     <div class="cw-wrap">
       <div class="cw-main">
         <div class="cw-video-wrap">${videoInner}</div>
-        <div class="cw-title">${clip.title}</div>
+        <div class="cw-title">${esc(clip.title)}</div>
         <div class="cw-meta">${formatLikes(clip.views)} vues · ${clip.date || "aujourd'hui"}</div>
         <div class="cw-subrow">
           <div class="cw-artist-block">
             <div class="cw-avatar" ${avatarInner}>${clip.artistAvatarUrl ? '' : initials}</div>
-            <div class="cw-artist-name">${clip.artist}</div>
+            <div class="cw-artist-name">${esc(clip.artist)}</div>
             <button class="cw-follow-btn">Suivre</button>
           </div>
           <div class="cw-actions">
@@ -6568,7 +6702,7 @@ function openClipWatchPage(clip){
     const thumbStyle = rc.thumb ? `background-image:url(${rc.thumb});` : `background:linear-gradient(135deg,#6E45A8,#141A38);`;
     item.innerHTML = `
       <div class="cw-related-thumb" style="${thumbStyle}"><span class="dur">${rc.dur||'—:—'}</span></div>
-      <div class="cw-related-info"><div class="t">${rc.title}</div><div class="a">${rc.artist} · ${formatLikes(rc.views)} vues</div></div>`;
+      <div class="cw-related-info"><div class="t">${esc(rc.title)}</div><div class="a">${esc(rc.artist)} · ${formatLikes(rc.views)} vues</div></div>`;
     item.onclick = ()=> openClipWatchPage(rc);
     relatedList.appendChild(item);
   });
@@ -6673,7 +6807,7 @@ function openStoriesViewer(startIndex){
     const avatarStyle = clip.artistAvatarUrl ? `background-image:url(${clip.artistAvatarUrl}); background-size:cover; background-position:center;` : '';
     overlay.querySelector('#stories-header').innerHTML = `
       <div class="stories-avatar" style="${avatarStyle}">${clip.artistAvatarUrl ? '' : initials}</div>
-      <div class="stories-artist-name">${clip.artist}</div>
+      <div class="stories-artist-name">${esc(clip.artist)}</div>
       <button class="stories-follow-btn">Suivre</button>`;
     overlay.querySelector('#stories-header .stories-avatar').onclick = ()=>{ closeOverlay(); openArtistPage(clip.artist, clip.artistId); };
     const followBtn = overlay.querySelector('.stories-follow-btn');
@@ -6695,7 +6829,7 @@ function openStoriesViewer(startIndex){
     };
     overlay.querySelector('#stories-footer').innerHTML = `
       <div>
-        <div class="stories-title">${clip.title}</div>
+        <div class="stories-title">${esc(clip.title)}</div>
         <div class="stories-meta">${formatLikes(clip.views||0)} vues</div>
       </div>
       <button class="stories-like-btn" aria-label="J'aime">
@@ -6770,11 +6904,11 @@ function clipCard(clip){
     <div class="clip-thumb ${palClass}" style="${thumbStyle}; position:relative;">
       <div class="play-fab"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
       <span class="dur">${clip.dur||'—:—'}</span>
-      <div class="clip-artist-avatar" title="Voir le profil de ${clip.artist}" style="position:absolute; bottom:8px; left:8px; width:30px; height:30px; border-radius:50%; border:2px solid rgba(255,255,255,.85); box-shadow:0 2px 8px rgba(0,0,0,.4); cursor:pointer; z-index:2; ${avatarStyle}">${clip.artistAvatarUrl ? '' : initials}</div>
+      <div class="clip-artist-avatar" title="Voir le profil de ${esc(clip.artist)}" style="position:absolute; bottom:8px; left:8px; width:30px; height:30px; border-radius:50%; border:2px solid rgba(255,255,255,.85); box-shadow:0 2px 8px rgba(0,0,0,.4); cursor:pointer; z-index:2; ${avatarStyle}">${clip.artistAvatarUrl ? '' : initials}</div>
     </div>
     <div class="clip-info">
-      <div class="t">${clip.title}</div>
-      <div class="a">${clip.artist}</div>
+      <div class="t">${esc(clip.title)}</div>
+      <div class="a">${esc(clip.artist)}</div>
       <div class="meta"><span><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg> ${formatLikes(clip.views)} vues</span><span><svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> ${formatLikes(clip.likes)}</span></div>
     </div>`;
   card.querySelector('.clip-artist-avatar').onclick = (e)=>{ e.stopPropagation(); openArtistPage(clip.artist, clip.artistId); };
@@ -7375,7 +7509,7 @@ async function loadDashboardConcerts(){
       row.innerHTML = `
         <div style="width:48px; height:60px; border-radius:6px; background:${c.flyer_url ? `url(${c.flyer_url})` : 'var(--grad-envol)'}; background-size:cover; background-position:center; flex-shrink:0;"></div>
         <div style="flex:1; min-width:0;">
-          <div style="font-weight:600; font-size:13.5px;">${c.title}</div>
+          <div style="font-weight:600; font-size:13.5px;">${esc(c.title)}</div>
           <div style="font-size:11.5px; color:var(--text-faint);">${dateLabel} · ${c.city}, ${c.country}${c.places_restantes != null ? ' · ' + c.places_restantes + ' places restantes' : ''}</div>
         </div>
         <button class="btn-icon" title="Supprimer" onclick="deleteConcert(${c.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg></button>`;
@@ -7424,12 +7558,12 @@ function concertCardHtml(c){
       <div class="concert-body">
         <div class="concert-artist-row">
           <div class="concert-artist-av" style="${avatarStyle}">${avatarStyle ? '' : initials}</div>
-          <span>${c.artist_name}${c.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</span>
+          <span>${esc(c.artist_name)}${c.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:12px;height:12px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</span>
         </div>
-        <h3 class="concert-title">${c.title}</h3>
+        <h3 class="concert-title">${esc(c.title)}</h3>
         <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> ${dateLabel}${timeLabel ? ' · ' + timeLabel : ''}</div>
         <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg> ${[c.venue, c.city, c.country].filter(Boolean).join(', ')}</div>
-        ${c.description ? `<p class="concert-desc">${c.description}</p>` : ''}
+        ${c.description ? `<p class="concert-desc">${esc(c.description)}</p>` : ''}
         ${(c.ticket_price_vip || c.ticket_price_standard) ? `<div class="concert-tiers">
           ${c.ticket_price_vip ? `<span class="concert-tier is-vip"><svg class="nuni-ic filled" viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:-2px;margin-right:3px;"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.9L5.7 21l1.7-7L2 9.2l7.1-.6z"/></svg>VIP — ${c.ticket_price_vip}</span>` : ''}
           ${c.ticket_price_standard ? `<span class="concert-tier">Standard — ${c.ticket_price_standard}</span>` : ''}
@@ -7500,7 +7634,7 @@ async function openTicketInfoModal(concertId){
       if(info.email){
         html += `<div class="pi-sub-card" style="margin-bottom:12px;">
           <div style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Email</div>
-          <div style="font-size:14px; color:var(--text);">${info.email}</div>
+          <div style="font-size:14px; color:var(--text);">${esc(info.email)}</div>
         </div>`;
       }
     } else {
@@ -7715,7 +7849,7 @@ function renderConcertsList(concerts){
     dates.sort((a,b)=> new Date(a.event_date) - new Date(b.event_date));
     const first = dates[0];
     html += `<div class="concert-tour-block">
-      <h3 class="concert-tour-title"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> ${first.tour_name} — ${first.artist_name}</h3>
+      <h3 class="concert-tour-title"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg> ${esc(first.tour_name)} — ${esc(first.artist_name)}</h3>
       <div class="concert-timeline">
         ${dates.map(c=>{
           const dateLabel = new Date(c.event_date).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
@@ -7759,10 +7893,10 @@ function nuniEventCardHtml(ev){
         <span class="concert-type-badge">${ev.category}</span>
       </div>
       <div class="concert-body">
-        <h3 class="concert-title">${ev.title}</h3>
+        <h3 class="concert-title">${esc(ev.title)}</h3>
         <div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> ${dateLabel}${ev.start_time ? ' · ' + ev.start_time : ''}</div>
         ${ev.venue || ev.address ? `<div class="concert-meta-row"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg> ${[ev.venue, ev.address].filter(Boolean).join(', ')}</div>` : ''}
-        ${ev.description ? `<p class="concert-desc">${ev.description}</p>` : ''}
+        ${ev.description ? `<p class="concert-desc">${esc(ev.description)}</p>` : ''}
         ${gallery.length ? `<div class="ev-gallery-row">${gallery.slice(0,4).map(u=> `<img class="ev-gallery-thumb" src="${u}" alt="" loading="lazy" decoding="async">`).join('')}</div>` : ''}
         ${ev.promo_video_url ? `<video class="ev-promo-video" src="${ev.promo_video_url}" controls preload="metadata"></video>` : ''}
         <div class="concert-foot-row">
@@ -8354,7 +8488,7 @@ function updateFpRemainingPill(){
    de repenser toute la logique de rotation Radio/DJ NUNI — proposé comme chantier à part si voulu. */
 function queueRowHtml(tr, extra){
   const cov = tr.cover ? `style="background-image:url(${tr.cover})"` : `style="background:${palGradients[tr.p]||palGradients['pal-1']}"`;
-  return `<div class="fp-queue-cov" ${cov}></div><div class="fp-queue-info"><div class="t">${tr.t}</div><div class="a">${tr.a}</div></div>${extra||''}`;
+  return `<div class="fp-queue-cov" ${cov}></div><div class="fp-queue-info"><div class="t">${esc(tr.t)}</div><div class="a">${esc(tr.a)}</div></div>${extra||''}`;
 }
 let fpQueueUpcoming = [];
 let fpQueueHistoryList = [];
@@ -8451,7 +8585,7 @@ function openFpCredits(){
   const body = document.getElementById('credits-body');
   body.innerHTML = `
     <div class="pi-sub-card">
-      <div class="pi-sub-row"><span>Artiste principal</span><b>${tr.a}</b></div>
+      <div class="pi-sub-row"><span>Artiste principal</span><b>${esc(tr.a)}</b></div>
       <div class="pi-sub-row"><span>Featuring</span><b>${tr.featuring || '—'}</b></div>
       <div class="pi-sub-row"><span>Compositeur / Auteur</span><b>${tr.composer || '—'}</b></div>
       <div class="pi-sub-row"><span>Studio d'enregistrement</span><b>${tr.studio || '—'}</b></div>
@@ -8461,7 +8595,7 @@ function openFpCredits(){
       <div class="pi-sub-row"><span>Type de sortie</span><b>${tr.releaseType || 'Single'}</b></div>
       <div class="pi-sub-row"><span>Distribution</span><b>NUNI</b></div>
     </div>
-    ${tr.description ? `<p style="color:var(--text-dim); font-size:13px; margin-top:14px; line-height:1.5;">${tr.description}</p>` : ''}`;
+    ${tr.description ? `<p style="color:var(--text-dim); font-size:13px; margin-top:14px; line-height:1.5;">${esc(tr.description)}</p>` : ''}`;
   document.getElementById('credits-modal-overlay').classList.add('show');
 }
 function closeFpCredits(){
@@ -9382,7 +9516,7 @@ async function loadLeaderboardInner(){
         <div class="leaderboard-row${r.rank <= 3 ? ' is-medal' : ''}">
           <div class="lb-rank">${medals[r.rank] || '#' + r.rank}</div>
           ${avatar}
-          <div class="lb-name">${r.name}</div>
+          <div class="lb-name">${esc(r.name)}</div>
           <div class="lb-xp">${r.xp} XP</div>
         </div>`;
     }).join('');
@@ -9422,7 +9556,7 @@ async function loadChallenges(){
           <span class="cc-tag">${c.period === 'weekly' ? 'Hebdo' : 'Quotidien'}</span>
           <span class="cc-xp">+${c.xp} XP</span>
         </div>
-        <div class="cc-title">${c.title}</div>
+        <div class="cc-title">${esc(c.title)}</div>
         <div class="cc-bar-track"><div class="cc-bar-fill" style="width:${pct}%;"></div></div>
         <div class="cc-foot">
           <span>${c.progress}/${c.target}</span>
@@ -9688,7 +9822,7 @@ function renderCategoryGrid(getList, shuffle){
     const coverStyle = tr.cover ? `background-image:url(${tr.cover});` : '';
     row.innerHTML = `
       <div class="thumb ${tr.cover ? '' : (tr.p||'')}" style="${coverStyle}"></div>
-      <div class="info"><div class="t">${tr.t}</div><div class="s">${tr.a}</div></div>
+      <div class="info"><div class="t">${esc(tr.t)}</div><div class="s">${esc(tr.a)}</div></div>
       <button class="menu-btn" aria-label="Options"><svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>`;
     row.querySelector('.info').onclick = ()=> handleTrackCardClick(tr);
     row.querySelector('.thumb').onclick = ()=> handleTrackCardClick(tr);
@@ -9804,7 +9938,7 @@ function playlistCard(p){
       <button class="poster-play-fab" aria-label="Écouter"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
       <div class="poster-content">
         <span class="poster-badge">NUNI</span>
-        <div class="poster-title">${p.title}</div>
+        <div class="poster-title">${esc(p.title)}</div>
         <div class="poster-meta">${p.track_count} titre${p.track_count>1?'s':''}</div>
       </div>
     </div>`;
@@ -9913,7 +10047,7 @@ async function openPlaylistPage(id){
     overlay.querySelector('.plv-cover').style.backgroundImage = cover ? `url(${cover})` : 'linear-gradient(135deg,#1E8449,#0E3D2C)';
     overlay.querySelector('.plv-title').textContent = data.playlist.title;
     const updatedDate = data.playlist.updated_at ? new Date(data.playlist.updated_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'}) : null;
-    overlay.querySelector('.plv-meta').innerHTML = `${data.playlist.description || 'Sélection curée par l\'équipe NUNI'} · ${mapped.length} titre${mapped.length>1?'s':''}<br><span style="font-size:12px; opacity:.8;"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg> Créateur : NUNI${updatedDate ? ` · <svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg> Mis à jour le ${updatedDate}` : ''}</span>`;
+    overlay.querySelector('.plv-meta').innerHTML = `${esc(data.playlist.description) || 'Sélection curée par l\'équipe NUNI'} · ${mapped.length} titre${mapped.length>1?'s':''}<br><span style="font-size:12px; opacity:.8;"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg> Créateur : NUNI${updatedDate ? ` · <svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg> Mis à jour le ${updatedDate}` : ''}</span>`;
     // Teinte de fond biaisée selon le vrai genre dominant réellement présent dans la
     // playlist (Rumba → or/ivoire, Amapiano → bleu/violet, sinon la couleur réelle de la
     // pochette prend le dessus) — jamais un genre inventé, toujours calculé depuis les
@@ -9952,7 +10086,7 @@ async function openPlaylistPage(id){
         row.style.animationDelay = (i*0.04) + 's';
         row.innerHTML = `
           <div class="plv-row-thumb" style="${tr.cover ? `background-image:url(${tr.cover})` : ''}"></div>
-          <div class="plv-row-info"><div class="plv-row-title">${tr.t}</div><div class="plv-row-artist">${tr.a}</div></div>
+          <div class="plv-row-info"><div class="plv-row-title">${esc(tr.t)}</div><div class="plv-row-artist">${esc(tr.a)}</div></div>
           ${isPlaying ? '<span class="eq"><i></i><i></i><i></i></span>' : ''}`;
         row.onclick = ()=>{ playTrack(tr); refreshPlvRowHighlights(); };
         list.appendChild(row);
@@ -10015,7 +10149,7 @@ async function openMyPlaylistPage(id){
           row.style.animationDelay = (i*0.04) + 's';
           row.innerHTML = `
             <div class="plv-row-thumb" style="${tr.cover ? `background-image:url(${tr.cover})` : ''}"></div>
-            <div class="plv-row-info"><div class="plv-row-title">${tr.t}</div><div class="plv-row-artist">${tr.a}</div></div>
+            <div class="plv-row-info"><div class="plv-row-title">${esc(tr.t)}</div><div class="plv-row-artist">${esc(tr.a)}</div></div>
             ${isPlaying ? '<span class="eq"><i></i><i></i><i></i></span>' : ''}
             <button class="plv-row-remove" title="Retirer de la playlist"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
           row.querySelector('.plv-row-thumb').onclick = ()=> playTrack(tr);
@@ -10075,7 +10209,7 @@ async function openAddToPlaylistPicker(tr){
   if(!tr.isReal || !tr.realId){ toast("Ce morceau de démonstration ne peut pas être ajouté à une playlist."); return; }
   ensureAddToPlaylistStyles();
   const overlay = document.createElement('div'); overlay.id = 'atp-overlay';
-  overlay.innerHTML = `<div id="atp-card"><h4>Ajouter « ${tr.t} » à…</h4><div id="atp-list">Chargement…</div></div>`;
+  overlay.innerHTML = `<div id="atp-card"><h4>Ajouter « ${esc(tr.t)} » à…</h4><div id="atp-list">Chargement…</div></div>`;
   document.body.appendChild(overlay);
   requestAnimationFrame(()=> overlay.classList.add('show'));
   const close = ()=>{ overlay.classList.remove('show'); setTimeout(()=> overlay.remove(), 180); };
@@ -10117,7 +10251,7 @@ async function openAddToPlaylistPicker(tr){
   mine.forEach(pl=>{
     const row = document.createElement('div'); row.className = 'atp-row';
     const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url}); background-size:cover; background-position:center;` : '';
-    row.innerHTML = `<div class="atp-row-ic" style="${covStyle}">${pl.cover_url ? '' : '<svg viewBox=\"0 0 24 24\" fill=\"currentColor\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"14\" rx=\"2\"/></svg>'}</div><div><div class="atp-row-t">${pl.title}</div><div class="atp-row-s">${pl.track_count || 0} titre${(pl.track_count||0)>1?'s':''}</div></div>`;
+    row.innerHTML = `<div class="atp-row-ic" style="${covStyle}">${pl.cover_url ? '' : '<svg viewBox=\"0 0 24 24\" fill=\"currentColor\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"14\" rx=\"2\"/></svg>'}</div><div><div class="atp-row-t">${esc(pl.title)}</div><div class="atp-row-s">${pl.track_count || 0} titre${(pl.track_count||0)>1?'s':''}</div></div>`;
     row.onclick = async ()=>{
       try{
         await fetch(NUNI_API_BASE + '/api/me/playlists/' + pl.id + '/tracks', {
@@ -10146,7 +10280,7 @@ function renderLeSuggestionCard(overlay, playlistData, mapped){
     <div class="plv-lep-avatar"><img src="assets/mimi-avatar.png" alt="Le P"></div>
     <div class="plv-lep-body">
       <div class="plv-lep-name">Le P</div>
-      <div class="plv-lep-msg">Mbote moninga <svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></svg> « ${playlistData.title} »${topGenre ? `, plutôt dans l'ambiance ${topGenre}` : ''} — envie de découvrir des artistes dans le même esprit ?</div>
+      <div class="plv-lep-msg">Mbote moninga <svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></svg> « ${esc(playlistData.title)} »${topGenre ? `, plutôt dans l'ambiance ${topGenre}` : ''} — envie de découvrir des artistes dans le même esprit ?</div>
       <button class="plv-lep-btn">Me suggérer des artistes</button>
     </div>`;
   overlay.querySelector('.plv-list').insertAdjacentElement('afterend', card);
@@ -10178,7 +10312,7 @@ async function renderSimilarPlaylistsRow(overlay, currentId, mapped){
       card.className = 'plv-similar-card';
       card.innerHTML = `
         <div class="plv-similar-cover" style="${p.cover_url ? `background-image:url(${p.cover_url})` : ''}"></div>
-        <div class="plv-similar-name">${p.title}</div>
+        <div class="plv-similar-name">${esc(p.title)}</div>
         <div class="plv-similar-count">${p.track_count || 0} titre${p.track_count>1?'s':''}</div>`;
       card.onclick = ()=> openPlaylistPage(p.id);
       row.appendChild(card);
@@ -10516,7 +10650,7 @@ function runSearchView(q){
       const coverStyle = c.thumb ? `background-image:url(${c.thumb});` : '';
       return `<div class="asv-row" data-kind="clip" data-idx="${clips.indexOf(c)}">
         <div class="asv-row-cover ${c.thumb ? '' : (c.pal||'pal-1')}" style="${coverStyle}"></div>
-        <div><div class="asv-row-title">${c.title}</div><div class="asv-row-sub">${c.artist}</div></div>
+        <div><div class="asv-row-title">${esc(c.title)}</div><div class="asv-row-sub">${esc(c.artist)}</div></div>
       </div>`;
     }).join('')}</div>`;
   }
@@ -10697,8 +10831,8 @@ async function renderLibraryRecentGrid(){
       const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
       tile.innerHTML = `
         <div class="lib-recent-cov ${tr.cover?'':tr.p}" style="${covStyle}"></div>
-        <div class="lib-recent-t">${tr.t}</div>
-        <div class="lib-recent-s">Titre · ${tr.a}</div>`;
+        <div class="lib-recent-t">${esc(tr.t)}</div>
+        <div class="lib-recent-s">Titre · ${esc(tr.a)}</div>`;
       tile.onclick = ()=> handleTrackCardClick(tr);
       coverForGlow = tr.cover;
     } else {
@@ -10758,7 +10892,7 @@ function buildLibraryTrackRow(tr, subtitleSuffix){
   const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
   item.innerHTML = `
     <div class="cov ${tr.cover?'':tr.p}" style="${covStyle}"></div>
-    <div class="lib-track-info"><div class="t">${tr.t}</div><div class="s">${tr.a}${subtitleSuffix||''}</div></div>
+    <div class="lib-track-info"><div class="t">${esc(tr.t)}</div><div class="s">${esc(tr.a)}${subtitleSuffix||''}</div></div>
     <button class="btn-icon lib-track-menu-btn" aria-label="Options">
       <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
     </button>`;
@@ -10862,7 +10996,7 @@ async function renderLibraryPlaylists(listEl){
     libraryMyPlaylistsCache.forEach(pl=>{
       const item = document.createElement('div'); item.className = 'pi-item';
       const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url})` : '';
-      item.innerHTML = `<div class="cov pal-2" style="${covStyle}"></div><div><div class="t">${pl.title}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''} · Ma playlist</div></div>`;
+      item.innerHTML = `<div class="cov pal-2" style="${covStyle}"></div><div><div class="t">${esc(pl.title)}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''} · Ma playlist</div></div>`;
       item.onclick = ()=> openMyPlaylistPage(pl.id);
       if(pl.cover_url) applyCoverGlow(item.querySelector('.cov'), pl.cover_url);
       listEl.appendChild(item);
@@ -10874,7 +11008,7 @@ async function renderLibraryPlaylists(listEl){
     libraryPlaylistsCache.forEach(pl=>{
       const item = document.createElement('div'); item.className = 'pi-item';
       const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url})` : '';
-      item.innerHTML = `<div class="cov pal-1" style="${covStyle}"></div><div><div class="t">${pl.title}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''}</div></div>`;
+      item.innerHTML = `<div class="cov pal-1" style="${covStyle}"></div><div><div class="t">${esc(pl.title)}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''}</div></div>`;
       item.onclick = ()=> openPlaylistPage(pl.id);
       if(pl.cover_url) applyCoverGlow(item.querySelector('.cov'), pl.cover_url);
       listEl.appendChild(item);
@@ -11224,7 +11358,7 @@ function openProfileInfo(type){
       favoritesPlaylist.forEach(tr=>{
         const item = document.createElement('div'); item.className = 'pi-item';
         const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
-        item.innerHTML = `<div class="cov ${tr.cover?'':tr.p}" style="${covStyle}"></div><div><div class="t">${tr.t}</div><div class="s">${tr.a}</div></div>`;
+        item.innerHTML = `<div class="cov ${tr.cover?'':tr.p}" style="${covStyle}"></div><div><div class="t">${esc(tr.t)}</div><div class="s">${esc(tr.a)}</div></div>`;
         item.onclick = ()=>{ playTrack(tr); closeProfileInfo(); };
         list.appendChild(item);
       });
@@ -11246,7 +11380,7 @@ function openProfileInfo(type){
         const mins = Math.max(0, Math.round((Date.now()-h.at)/60000));
         const item = document.createElement('div'); item.className = 'pi-item';
         const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
-        item.innerHTML = `<div class="cov ${tr.cover?'':tr.p}" style="${covStyle}"></div><div><div class="t">${tr.t}</div><div class="s">${tr.a} · il y a ${mins==0?'moins d\'1 min':mins+' min'}</div></div>`;
+        item.innerHTML = `<div class="cov ${tr.cover?'':tr.p}" style="${covStyle}"></div><div><div class="t">${esc(tr.t)}</div><div class="s">${esc(tr.a)} · il y a ${mins==0?'moins d\'1 min':mins+' min'}</div></div>`;
         item.onclick = ()=>{ playTrack(tr); closeProfileInfo(); };
         list.appendChild(item);
       });
@@ -11315,7 +11449,7 @@ function openProfileInfo(type){
         myCodes.forEach(c=>{
           html += `<div class="pi-promo-counter" style="margin-bottom:10px;">
             <div class="n" style="letter-spacing:2px;">${c.code}</div>
-            <div class="l">-${c.discount_pct}% sur votre prochain Pass${c.note ? ' — ' + c.note : ''}</div>
+            <div class="l">-${c.discount_pct}% sur votre prochain Pass${c.note ? ' — ' + esc(c.note) : ''}</div>
           </div>`;
         });
         html += `<button class="btn btn-primary" style="width:100%; margin-bottom:18px;" onclick="closeProfileInfo(); goTo('plans');">Utiliser mon code</button>`;
@@ -11423,7 +11557,7 @@ async function loadNotifications(){
       panel.insertAdjacentHTML('beforeend', `<div class="notif-item"><div><p style="margin:0;">Aucune notification pour l'instant.</p></div></div>`);
     } else {
       data.notifications.forEach(n=>{
-        head.insertAdjacentHTML('afterend', `<div class="notif-item" data-link="${n.link||''}" style="${n.link ? 'cursor:pointer;' : ''}"><span class="ic">${notifIcons[n.type]||'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>'}</span><div><b>${n.title}</b><p>${n.body} · ${timeAgoFr(n.created_at)}</p></div></div>`);
+        head.insertAdjacentHTML('afterend', `<div class="notif-item" data-link="${n.link||''}" style="${n.link ? 'cursor:pointer;' : ''}"><span class="ic">${notifIcons[n.type]||'<svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>'}</span><div><b>${esc(n.title)}</b><p>${esc(n.body)} · ${timeAgoFr(n.created_at)}</p></div></div>`);
       });
       // Avant : le lien enregistré avec chaque notification (n.link) n'était jamais
       // utilisé — cliquer dessus ne faisait littéralement rien. Maintenant, un clic amène
