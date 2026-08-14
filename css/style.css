@@ -2403,6 +2403,29 @@ html.is-playing .fp-title{ font-weight:800; }
 }
 .lib-back-btn svg{ width:18px; height:18px; }
 
+/* ---- Sous-étiquette de section dans une liste détail ("Mes playlists" / "Playlists NUNI" /
+   "Suggestions") — sépare visuellement deux groupes dans la même liste sans nouvelle carte. ---- */
+.lib-sub-label{
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+  color:var(--text-faint); margin:18px 4px 8px; }
+.lib-sub-label:first-child{ margin-top:2px; }
+
+/* ---- Ligne "Créer une playlist" — même gabarit qu'un .pi-item mais pochette en pointillés,
+   pour signaler tout de suite une action plutôt qu'un contenu existant. ---- */
+.lib-create-playlist-row .lib-create-playlist-ic{
+  display:flex; align-items:center; justify-content:center; color:var(--accent);
+  border:1.5px dashed var(--border-strong, var(--border)); background:transparent;
+}
+.lib-create-playlist-row .lib-create-playlist-ic svg{ width:20px; height:20px; }
+
+/* ---- Bouton "Suivre" inline dans les suggestions d'artistes (état vide de "Artistes suivis") ---- */
+.lib-suggest-follow-btn{
+  flex-shrink:0; background:var(--grad-envol); border:none; color:#241708; font-weight:700;
+  font-size:12px; padding:7px 14px; border-radius:999px; cursor:pointer; margin-left:auto;
+}
+.lib-suggest-follow-btn:disabled{ opacity:.6; cursor:default; }
+.pi-info-flex{ min-width:0; flex:1; cursor:pointer; }
+
 .lib-list-head{ position:relative; }
 #lib-sort-btn{ margin-left:auto; }
 .lib-sort-menu{

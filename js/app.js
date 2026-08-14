@@ -4049,6 +4049,7 @@ function openTrackCardMenu(tr, anchorEl){
     <div class="tcm-title">${tr.t} — ${tr.a}</div>
     <button id="tcm-queue"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> <span>Ajouter à la file d'attente</span></button>
     <button id="tcm-fav" class="${isLiked ? 'liked' : ''}">${isLiked ? '<svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> <span>Retirer des favoris</span>' : '<svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> <span>Ajouter aux favoris</span>'}</button>
+    <button id="tcm-addlist"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="14" height="14" rx="2"/><path d="M17 9v5M14.5 11.5h5"/></svg> <span>Ajouter à une playlist</span></button>
     <button id="tcm-artist"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg> <span>Voir l'artiste</span></button>
     ${isOwner ? `<button id="tcm-delete" class="danger"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg> <span>Supprimer ce morceau</span></button>` : ''}
   `;
@@ -4084,6 +4085,7 @@ function openTrackCardMenu(tr, anchorEl){
   document.getElementById('tcm-close').onclick = closeTrackCardMenu;
   document.getElementById('tcm-queue').onclick = ()=>{ addToQueue(tr); closeTrackCardMenu(); };
   document.getElementById('tcm-fav').onclick = (e)=>{ toggleLike(e.currentTarget, tr); closeTrackCardMenu(); };
+  document.getElementById('tcm-addlist').onclick = ()=>{ closeTrackCardMenu(); openAddToPlaylistPicker(tr); };
   document.getElementById('tcm-artist').onclick = ()=>{ openArtistPage(tr.a, tr.artistId); closeTrackCardMenu(); };
   const deleteBtn = document.getElementById('tcm-delete');
   if(deleteBtn) deleteBtn.onclick = ()=>{ closeTrackCardMenu(); confirmDeleteTrack(tr); };
@@ -9913,6 +9915,169 @@ async function openPlaylistPage(id){
  }catch(e){ toast(' Impossible de contacter le serveur NUNI.'); closeOverlay(); }
 }
 
+// ---------- Détail d'une playlist PERSONNELLE — même habillage que les playlists NUNI
+// officielles (openPlaylistPage ci-dessus), mais avec retrait de morceau et suppression de
+// la playlist, réservés au propriétaire (déjà vérifié côté serveur à chaque appel). ----------
+async function openMyPlaylistPage(id){
+  ensurePlaylistViewStyles();
+  let overlay = document.getElementById('plv-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'plv-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+  overlay.innerHTML = `<button class="plv-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><div class="plv-hero"><div class="plv-hero-fade"></div><div class="plv-hero-content"><div class="plv-cover"></div><div><span class="plv-badge"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg> Ma playlist</span><h2 class="plv-title">Chargement…</h2><div class="plv-meta"></div></div></div></div><div class="plv-actions"><button class="plv-play-all"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Tout écouter</button><button class="plv-shuffle-btn" title="Aléatoire"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h3.5a3 3 0 0 1 2.4 1.2L15 15a3 3 0 0 0 2.4 1.2H20M4 18h3.5a3 3 0 0 0 2.4-1.2l1-1.3M16.5 6H20M16.5 18H20"/><path d="M18 3l3 3-3 3M18 15l3 3-3 3"/></svg></button><button class="plv-delete-btn" title="Supprimer la playlist"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0-1 13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 7"/></svg></button></div><div class="plv-list"></div>`;
+  overlay.querySelector('.plv-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  async function loadAndRender(){
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/me/playlists/' + id, { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+      const data = await res.json();
+      if(!res.ok){ toast(' ' + (data.error || 'Playlist introuvable.')); closeOverlay(); return; }
+      const mapped = (data.tracks || []).map(mapPlaylistTrack).map((tr,i)=>{ tr.realId = data.tracks[i].id; return tr; });
+      const cover = mapped.find(t=>t.cover) ? mapped.find(t=>t.cover).cover : null;
+
+      const heroBg = overlay.querySelector('.plv-hero');
+      const existingBg = overlay.querySelector('.plv-hero-bg');
+      if(existingBg) existingBg.remove();
+      if(cover) heroBg.insertAdjacentHTML('afterbegin', `<div class="plv-hero-bg" style="background-image:url(${cover})"></div>`);
+      overlay.querySelector('.plv-cover').style.backgroundImage = cover ? `url(${cover})` : 'linear-gradient(135deg,#5E54C4,#241C6B)';
+      overlay.querySelector('.plv-title').textContent = data.playlist.title;
+      overlay.querySelector('.plv-meta').innerHTML = `Playlist personnelle · ${mapped.length} titre${mapped.length>1?'s':''}`;
+
+      const list = overlay.querySelector('.plv-list');
+      list.innerHTML = '';
+      if(!mapped.length){
+        list.innerHTML = `<div class="plv-empty">Cette playlist est vide.<br>Depuis le menu « ⋮ » d'un morceau, choisissez « Ajouter à une playlist » pour la remplir.</div>`;
+      } else {
+        mapped.forEach((tr,i)=>{
+          const row = document.createElement('div');
+          const isPlaying = playing && currentTrack && currentTrack.t === tr.t;
+          row.className = 'plv-row' + (isPlaying ? ' is-playing' : '');
+          row.style.animationDelay = (i*0.04) + 's';
+          row.innerHTML = `
+            <div class="plv-row-thumb" style="${tr.cover ? `background-image:url(${tr.cover})` : ''}"></div>
+            <div class="plv-row-info"><div class="plv-row-title">${tr.t}</div><div class="plv-row-artist">${tr.a}</div></div>
+            ${isPlaying ? '<span class="eq"><i></i><i></i><i></i></span>' : ''}
+            <button class="plv-row-remove" title="Retirer de la playlist"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
+          row.querySelector('.plv-row-thumb').onclick = ()=> playTrack(tr);
+          row.querySelector('.plv-row-info').onclick = ()=> playTrack(tr);
+          row.querySelector('.plv-row-remove').onclick = async (e)=>{
+            e.stopPropagation();
+            try{
+              await fetch(NUNI_API_BASE + '/api/me/playlists/' + id + '/tracks/' + tr.realId, { method:'DELETE', headers:{ 'Authorization':'Bearer '+realAuthToken } });
+              libraryMyPlaylistsCache = null;
+              toast('Retiré de « ' + data.playlist.title + ' ».');
+              loadAndRender();
+            }catch(err){ toast(' Impossible de contacter le serveur NUNI.'); }
+          };
+          list.appendChild(row);
+        });
+      }
+      overlay.querySelector('.plv-play-all').onclick = ()=>{ if(mapped.length) playTrack(mapped[0]); };
+      overlay.querySelector('.plv-shuffle-btn').onclick = ()=>{
+        if(!mapped.length) return;
+        playTrack(mapped[Math.floor(Math.random()*mapped.length)]);
+        toast('Lecture aléatoire de « ' + data.playlist.title + ' »');
+      };
+      overlay.querySelector('.plv-delete-btn').onclick = async ()=>{
+        try{
+          await fetch(NUNI_API_BASE + '/api/me/playlists/' + id, { method:'DELETE', headers:{ 'Authorization':'Bearer '+realAuthToken } });
+          libraryMyPlaylistsCache = null;
+          toast('Playlist supprimée.');
+          closeOverlay();
+        }catch(e){ toast(' Impossible de contacter le serveur NUNI.'); }
+      };
+    }catch(e){ toast(' Impossible de contacter le serveur NUNI.'); closeOverlay(); }
+  }
+  loadAndRender();
+}
+
+// ---------- "Ajouter à une playlist" — picker ouvert depuis le menu "⋮" d'un morceau ----------
+function ensureAddToPlaylistStyles(){
+  if(document.getElementById('atp-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'atp-styles';
+  style.textContent = `
+    #atp-overlay{position:fixed; inset:0; z-index:10050; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); display:flex; align-items:flex-end; justify-content:center; opacity:0; transition:opacity .2s ease;}
+    #atp-overlay.show{opacity:1;}
+    #atp-card{width:100%; max-width:440px; max-height:70vh; overflow-y:auto; background:var(--bg-elev); border-radius:20px 20px 0 0; padding:18px; box-shadow:0 -20px 50px -12px rgba(0,0,0,.5);}
+    #atp-card h4{font-size:15px; font-weight:700; margin:0 0 14px;}
+    .atp-row{display:flex; align-items:center; gap:12px; padding:11px 6px; border-radius:12px; cursor:pointer;}
+    .atp-row:hover{ background:var(--bg-card); }
+    .atp-row-ic{width:36px; height:36px; border-radius:9px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--bg-card); color:var(--accent);}
+    .atp-row-ic svg{width:18px; height:18px;}
+    .atp-row-t{font-size:13.5px; font-weight:600;}
+    .atp-row-s{font-size:11.5px; color:var(--text-faint); margin-top:1px;}
+  `;
+  document.head.appendChild(style);
+}
+async function openAddToPlaylistPicker(tr){
+  if(!realAuthToken){ toast('Connectez-vous pour ajouter un morceau à une playlist.'); return; }
+  if(!tr.isReal || !tr.realId){ toast("Ce morceau de démonstration ne peut pas être ajouté à une playlist."); return; }
+  ensureAddToPlaylistStyles();
+  const overlay = document.createElement('div'); overlay.id = 'atp-overlay';
+  overlay.innerHTML = `<div id="atp-card"><h4>Ajouter « ${tr.t} » à…</h4><div id="atp-list">Chargement…</div></div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  const close = ()=>{ overlay.classList.remove('show'); setTimeout(()=> overlay.remove(), 180); };
+  overlay.onclick = (e)=>{ if(e.target === overlay) close(); };
+
+  const list = overlay.querySelector('#atp-list');
+  const mine = await loadLibraryMyPlaylistsIfNeeded(true);
+  list.innerHTML = '';
+
+  const newRow = document.createElement('div'); newRow.className = 'atp-row';
+  newRow.innerHTML = `<div class="atp-row-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div><div><div class="atp-row-t">Nouvelle playlist</div></div>`;
+  newRow.onclick = async ()=>{
+    const title = await askForPlaylistName();
+    if(!title) return;
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/me/playlists', {
+        method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+realAuthToken },
+        body: JSON.stringify({ title }),
+      });
+      const data = await res.json();
+      if(!res.ok){ toast(' ' + (data.error || 'Erreur.')); return; }
+      await fetch(NUNI_API_BASE + '/api/me/playlists/' + data.playlist.id + '/tracks', {
+        method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+realAuthToken },
+        body: JSON.stringify({ trackId: tr.realId }),
+      });
+      libraryMyPlaylistsCache = null;
+      toast('« ' + tr.t + ' » ajouté à « ' + title + ' ».');
+      close();
+    }catch(e){ toast(' Impossible de contacter le serveur NUNI.'); }
+  };
+  list.appendChild(newRow);
+
+  if(!mine.length){
+    const empty = document.createElement('div'); empty.className = 'atp-row-s'; empty.style.padding = '8px 6px';
+    empty.textContent = "Vous n'avez pas encore de playlist personnelle — créez-en une ci-dessus.";
+    list.appendChild(empty);
+    return;
+  }
+  mine.forEach(pl=>{
+    const row = document.createElement('div'); row.className = 'atp-row';
+    const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url}); background-size:cover; background-position:center;` : '';
+    row.innerHTML = `<div class="atp-row-ic" style="${covStyle}">${pl.cover_url ? '' : '<svg viewBox=\"0 0 24 24\" fill=\"currentColor\"><rect x=\"3\" y=\"4\" width=\"14\" height=\"14\" rx=\"2\"/></svg>'}</div><div><div class="atp-row-t">${pl.title}</div><div class="atp-row-s">${pl.track_count || 0} titre${(pl.track_count||0)>1?'s':''}</div></div>`;
+    row.onclick = async ()=>{
+      try{
+        await fetch(NUNI_API_BASE + '/api/me/playlists/' + pl.id + '/tracks', {
+          method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+realAuthToken },
+          body: JSON.stringify({ trackId: tr.realId }),
+        });
+        libraryMyPlaylistsCache = null;
+        toast('« ' + tr.t + ' » ajouté à « ' + pl.title + ' ».');
+        close();
+      }catch(e){ toast(' Impossible de contacter le serveur NUNI.'); }
+    };
+    list.appendChild(row);
+  });
+}
+
 /* Vraie suggestion contextuelle "Le P" — pas un message inventé et figé : s'appuie sur les
    vrais genres réellement présents dans CETTE playlist (comptés depuis les vrais morceaux). */
 function renderLeSuggestionCard(overlay, playlistData, mapped){
@@ -10409,6 +10574,9 @@ let libraryActiveCategory = 'liked';
 let libraryActiveSort = 'recent';
 let libraryPlaylistsCache = null; // vraies playlists NUNI (curées, /api/playlists)
 let libraryArtistsCache = null;   // vrais artistes suivis (/api/me/following)
+let libraryMyPlaylistsCache = null; // vraies playlists personnelles créées par l'utilisateur (/api/me/playlists)
+let libraryRecentlyPlayedCache = null; // vrai historique d'écoute persistant côté serveur (/api/me/recently-played)
+let libraryRecentPollTimer = null; // actualise "Écoutés récemment" tant que cette catégorie reste ouverte
 
 function setLibraryCategory(cat){
   libraryActiveCategory = cat;
@@ -10419,6 +10587,7 @@ function setLibraryCategory(cat){
   if(home) home.style.display = 'none';
   if(detail) detail.style.display = '';
   renderLibrary();
+  if(cat === 'recent') startLibraryRecentPolling(); else stopLibraryRecentPolling();
 }
 // Retour à l'écran d'accueil de la Bibliothèque (liste rapide + Ajouts récents), façon
 // bouton "‹ Bibliothèque" d'Apple Music en haut d'une liste ouverte.
@@ -10427,6 +10596,7 @@ function closeLibraryDetail(){
   const detail = document.getElementById('lib-detail');
   if(detail) detail.style.display = 'none';
   if(home) home.style.display = '';
+  stopLibraryRecentPolling();
   renderLibraryRecentGrid(); // au cas où un like/suivi a eu lieu pendant qu'on était dans le détail
 }
 // Réinitialise sur l'écran d'accueil à chaque entrée dans l'onglet Bibliothèque (appelé
@@ -10436,6 +10606,7 @@ function openLibraryHome(){
   const detail = document.getElementById('lib-detail');
   if(detail) detail.style.display = 'none';
   if(home) home.style.display = '';
+  stopLibraryRecentPolling();
   renderLibraryRecentGrid();
 }
 // ---------- "Ajouts récents" — vraie fusion des titres aimés et artistes suivis, triée par
@@ -10516,28 +10687,116 @@ function buildLibraryTrackRow(tr, subtitleSuffix){
   item.querySelector('.lib-track-menu-btn').onclick = (e)=>{ e.stopPropagation(); openTrackCardMenu(tr, e.currentTarget); };
   return item;
 }
+async function loadLibraryMyPlaylistsIfNeeded(force){
+  if(libraryMyPlaylistsCache && !force) return libraryMyPlaylistsCache;
+  if(!realAuthToken){ libraryMyPlaylistsCache = []; return libraryMyPlaylistsCache; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/playlists', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    const data = await res.json();
+    libraryMyPlaylistsCache = data.playlists || [];
+  }catch(e){ libraryMyPlaylistsCache = []; }
+  return libraryMyPlaylistsCache;
+}
+// Petite modale légère (construite à la volée, comme le menu "..." d'un morceau) pour
+// nommer une nouvelle playlist personnelle — pas de saisie native window.prompt(), pour
+// rester cohérent avec le reste de l'habillage NUNI.
+function ensureSimplePromptStyles(){
+  if(document.getElementById('simple-prompt-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'simple-prompt-styles';
+  style.textContent = `
+    #simple-prompt-overlay{position:fixed; inset:0; z-index:10050; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:20px; opacity:0; transition:opacity .2s ease;}
+    #simple-prompt-overlay.show{opacity:1;}
+    #simple-prompt-card{width:100%; max-width:340px; background:var(--bg-elev); border:1px solid var(--border); border-radius:18px; padding:20px; box-shadow:0 20px 50px -12px rgba(0,0,0,.5);}
+    #simple-prompt-card h4{font-size:15px; font-weight:700; margin:0 0 12px;}
+    #simple-prompt-card input{width:100%; box-sizing:border-box; padding:11px 13px; border-radius:11px; border:1px solid var(--border); background:var(--bg-card); color:var(--text); font-size:14px; margin-bottom:14px;}
+    #simple-prompt-card input:focus{ outline:none; border-color:var(--accent); }
+    #simple-prompt-actions{display:flex; gap:10px; justify-content:flex-end;}
+    #simple-prompt-actions button{padding:9px 16px; border-radius:999px; border:none; font-size:13px; font-weight:600; cursor:pointer;}
+    #simple-prompt-cancel{background:var(--bg-card); color:var(--text-dim);}
+    #simple-prompt-confirm{background:var(--grad-envol); color:#241708;}
+  `;
+  document.head.appendChild(style);
+}
+// Renvoie une Promise résolue avec le texte saisi, ou null si annulé — permet à l'appelant
+// d'utiliser await comme avec window.prompt(), mais avec l'habillage visuel de NUNI.
+function askForPlaylistName(defaultVal){
+  ensureSimplePromptStyles();
+  return new Promise(resolve=>{
+    const overlay = document.createElement('div');
+    overlay.id = 'simple-prompt-overlay';
+    overlay.innerHTML = `
+      <div id="simple-prompt-card">
+        <h4>Nom de la playlist</h4>
+        <input id="simple-prompt-input" type="text" maxlength="100" placeholder="Ex. Ambiance Rumba" value="${defaultVal||''}">
+        <div id="simple-prompt-actions">
+          <button id="simple-prompt-cancel">Annuler</button>
+          <button id="simple-prompt-confirm">Créer</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    requestAnimationFrame(()=> overlay.classList.add('show'));
+    const input = overlay.querySelector('#simple-prompt-input');
+    input.focus();
+    const finish = (val)=>{ overlay.classList.remove('show'); setTimeout(()=> overlay.remove(), 150); resolve(val); };
+    overlay.querySelector('#simple-prompt-cancel').onclick = ()=> finish(null);
+    overlay.querySelector('#simple-prompt-confirm').onclick = ()=> finish(input.value.trim() || null);
+    input.onkeydown = (e)=>{ if(e.key === 'Enter') finish(input.value.trim() || null); if(e.key === 'Escape') finish(null); };
+  });
+}
+async function createPlaylistPrompt(){
+  if(!realAuthToken){ toast('Connectez-vous pour créer une playlist.'); return; }
+  const title = await askForPlaylistName();
+  if(!title) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/playlists', {
+      method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+realAuthToken },
+      body: JSON.stringify({ title }),
+    });
+    const data = await res.json();
+    if(!res.ok){ toast(' ' + (data.error || 'Erreur.')); return; }
+    libraryMyPlaylistsCache = null; // resynchronisation propre depuis le serveur au prochain rendu
+    toast('Playlist « ' + title + ' » créée.');
+    renderLibrary();
+  }catch(e){ toast(' Impossible de contacter le serveur NUNI.'); }
+}
 async function renderLibraryPlaylists(listEl){
-  if(!libraryPlaylistsCache){
-    listEl.innerHTML = `<div class="pi-empty">Chargement…</div>`;
-    try{
-      const res = await fetch(NUNI_API_BASE + '/api/playlists');
-      const data = await res.json();
-      libraryPlaylistsCache = data.playlists || [];
-    }catch(e){ libraryPlaylistsCache = []; }
-  }
+  listEl.innerHTML = `<div class="pi-empty">Chargement…</div>`;
+  const [official] = await Promise.all([
+    (async ()=>{ if(!libraryPlaylistsCache){ try{ const res = await fetch(NUNI_API_BASE + '/api/playlists'); const data = await res.json(); libraryPlaylistsCache = data.playlists || []; }catch(e){ libraryPlaylistsCache = []; } } return libraryPlaylistsCache; })(),
+    loadLibraryMyPlaylistsIfNeeded(),
+  ]);
   if(libraryActiveCategory !== 'playlists') return; // la catégorie a pu changer pendant le chargement
   listEl.innerHTML = '';
-  if(!libraryPlaylistsCache.length){
-    listEl.innerHTML = `<div class="pi-empty">Aucune playlist NUNI disponible pour l'instant.</div>`;
-    return;
+
+  // Toujours visible en premier — jamais de cul-de-sac vide même sans playlist existante.
+  const createRow = document.createElement('div'); createRow.className = 'pi-item lib-create-playlist-row';
+  createRow.innerHTML = `<div class="cov lib-create-playlist-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div><div><div class="t">Créer une playlist</div><div class="s">Ajoutez-y vos morceaux préférés</div></div>`;
+  createRow.onclick = createPlaylistPrompt;
+  listEl.appendChild(createRow);
+
+  if(libraryMyPlaylistsCache.length){
+    const label = document.createElement('div'); label.className = 'lib-sub-label'; label.textContent = 'Mes playlists';
+    listEl.appendChild(label);
+    libraryMyPlaylistsCache.forEach(pl=>{
+      const item = document.createElement('div'); item.className = 'pi-item';
+      const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url})` : '';
+      item.innerHTML = `<div class="cov pal-2" style="${covStyle}"></div><div><div class="t">${pl.title}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''} · Ma playlist</div></div>`;
+      item.onclick = ()=> openMyPlaylistPage(pl.id);
+      listEl.appendChild(item);
+    });
   }
-  libraryPlaylistsCache.forEach(pl=>{
-    const item = document.createElement('div'); item.className = 'pi-item';
-    const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url})` : '';
-    item.innerHTML = `<div class="cov pal-1" style="${covStyle}"></div><div><div class="t">${pl.title}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''}</div></div>`;
-    item.onclick = ()=> openPlaylistPage(pl.id);
-    listEl.appendChild(item);
-  });
+  if(libraryPlaylistsCache.length){
+    const label = document.createElement('div'); label.className = 'lib-sub-label'; label.textContent = 'Playlists NUNI';
+    listEl.appendChild(label);
+    libraryPlaylistsCache.forEach(pl=>{
+      const item = document.createElement('div'); item.className = 'pi-item';
+      const covStyle = pl.cover_url ? `background-image:url(${pl.cover_url})` : '';
+      item.innerHTML = `<div class="cov pal-1" style="${covStyle}"></div><div><div class="t">${pl.title}</div><div class="s">${pl.track_count || 0} titre${(pl.track_count||0) > 1 ? 's' : ''}</div></div>`;
+      item.onclick = ()=> openPlaylistPage(pl.id);
+      listEl.appendChild(item);
+    });
+  }
 }
 // Réutilisée par le détail "Artistes" ET par la grille "Ajouts récents" — un seul point de
 // chargement, pour ne jamais afficher deux versions différentes de la même vraie liste.
@@ -10561,7 +10820,7 @@ async function renderLibraryArtists(listEl){
   if(libraryActiveCategory !== 'artists') return;
   listEl.innerHTML = '';
   if(!libraryArtistsCache.length){
-    listEl.innerHTML = `<div class="pi-empty">Vous ne suivez encore aucun artiste.<br>Le bouton "Suivre" sur une page artiste l'ajoutera ici.</div>`;
+    await renderLibrarySuggestedArtists(listEl);
     return;
   }
   libraryArtistsCache.forEach(ar=>{
@@ -10572,6 +10831,54 @@ async function renderLibraryArtists(listEl){
     item.onclick = ()=> openArtistPage(name, ar.id);
     listEl.appendChild(item);
   });
+}
+// Vraies suggestions d'artistes à suivre (même source que la section homepage "Artistes à
+// suivre", /api/artists/featured) — jamais un message vide sans action possible : dès que
+// l'utilisateur ne suit encore personne, on lui propose tout de suite de vrais comptes à
+// découvrir, avec un vrai bouton Suivre qui appelle le serveur.
+async function renderLibrarySuggestedArtists(listEl){
+  listEl.innerHTML = `<div class="pi-empty">Vous ne suivez encore aucun artiste — voici quelques suggestions :</div>`;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/artists/featured');
+    const data = await res.json();
+    const list = data.artists || [];
+    if(libraryActiveCategory !== 'artists') return;
+    if(!list.length) return; // le message d'accroche ci-dessus suffit s'il n'y a vraiment aucun artiste actif
+    const label = document.createElement('div'); label.className = 'lib-sub-label'; label.textContent = 'Suggestions';
+    listEl.appendChild(label);
+    list.forEach(ar=>{
+      const name = ar.artist_name || ar.first_name;
+      const item = document.createElement('div'); item.className = 'pi-item';
+      const covStyle = ar.avatar_url ? `background-image:url(${ar.avatar_url})` : '';
+      item.innerHTML = `
+        <div class="cov pal-1" style="${covStyle}; border-radius:50%;"></div>
+        <div class="pi-info-flex"><div class="t">${name}${ar.is_verified?' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>':''}</div><div class="s">${ar.top_genre || 'Artiste NUNI'}</div></div>
+        <button class="lib-suggest-follow-btn">Suivre</button>`;
+      item.querySelector('.cov').onclick = ()=> openArtistPage(name, ar.id);
+      item.querySelector('.pi-info-flex').onclick = ()=> openArtistPage(name, ar.id);
+      const followBtn = item.querySelector('.lib-suggest-follow-btn');
+      followBtn.onclick = async (e)=>{
+        e.stopPropagation();
+        if(!realAuthToken){ toast('Connectez-vous pour suivre un artiste.'); return; }
+        followBtn.disabled = true;
+        try{
+          const res2 = await fetch(NUNI_API_BASE + '/api/follow', {
+            method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+            body: JSON.stringify({ artistId: ar.id })
+          });
+          const data2 = await res2.json();
+          followBtn.disabled = false;
+          if(!data2.error && data2.following){
+            libraryArtistsCache = null; // resynchronisation propre — l'artiste va maintenant apparaître dans la vraie liste "suivis"
+            toast(`Vous suivez maintenant ${name}.`);
+            renderLibrary();
+            renderLibraryRecentGrid();
+          } else if(data2.error){ toast(' ' + data2.error); }
+        }catch(err){ followBtn.disabled = false; toast(' Impossible de contacter le serveur NUNI.'); }
+      };
+      listEl.appendChild(item);
+    });
+  }catch(e){ /* le message d'accroche suffit si les suggestions sont indisponibles */ }
 }
 function renderLibrary(){
   const listEl = document.getElementById('library-list');
@@ -10589,19 +10896,7 @@ function renderLibrary(){
     sortTrackList(favoritesPlaylist).forEach(tr=> listEl.appendChild(buildLibraryTrackRow(tr)));
   } else if(libraryActiveCategory === 'recent'){
     titleEl.textContent = 'Écoutés récemment';
-    if(!listeningHistory.length){
-      listEl.innerHTML = `<div class="pi-empty">Rien écouté durant cette session pour l'instant.</div>`;
-      return;
-    }
-    // 'recent' = ordre déjà chronologique naturel (le plus récent en premier) ; pour les
-    // autres tris, on trie une copie sur le morceau lui-même en gardant son horodatage.
-    const entries = libraryActiveSort === 'recent'
-      ? listeningHistory
-      : sortTrackList(listeningHistory.map(h=>h.track)).map(t=> listeningHistory.find(h=>h.track===t));
-    entries.forEach(h=>{
-      const mins = Math.max(0, Math.round((Date.now()-h.at)/60000));
-      listEl.appendChild(buildLibraryTrackRow(h.track, ' · il y a ' + (mins===0 ? "moins d'1 min" : mins+' min')));
-    });
+    renderLibraryRecent(listEl);
   } else if(libraryActiveCategory === 'playlists'){
     titleEl.textContent = 'Playlists NUNI';
     renderLibraryPlaylists(listEl);
@@ -10609,6 +10904,71 @@ function renderLibrary(){
     titleEl.textContent = 'Artistes suivis';
     renderLibraryArtists(listEl);
   }
+}
+// ---------- "Écoutés récemment" — avant : basé UNIQUEMENT sur listeningHistory, une mémoire
+// de session remise à zéro à chaque rechargement de page (invisible dès qu'on revenait sur
+// NUNI). Maintenant : le vrai historique persistant côté serveur (/api/me/recently-played,
+// déjà utilisé sur l'accueil), fusionné avec les écoutes de LA session en cours pour un
+// affichage immédiat sans attendre un aller-retour serveur — puis actualisé périodiquement
+// (toutes les 20s tant que cette catégorie reste ouverte) pour rester synchronisé.
+async function loadLibraryRecentlyPlayedIfNeeded(force){
+  if(libraryRecentlyPlayedCache && !force) return libraryRecentlyPlayedCache;
+  if(!realAuthToken){ libraryRecentlyPlayedCache = []; return libraryRecentlyPlayedCache; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/recently-played?limit=60', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    if(!res.ok){ libraryRecentlyPlayedCache = libraryRecentlyPlayedCache || []; return libraryRecentlyPlayedCache; }
+    const data = await res.json();
+    libraryRecentlyPlayedCache = (data.tracks || [])
+      .map(r => ({ track: tracks.find(t => t.isReal && t.realId === r.id), at: new Date(r.last_played_at).getTime() }))
+      .filter(e => e.track);
+  }catch(e){ libraryRecentlyPlayedCache = libraryRecentlyPlayedCache || []; }
+  return libraryRecentlyPlayedCache;
+}
+function buildMergedRecentlyPlayed(){
+  // Fusionne le vrai historique serveur (persistant) avec les écoutes de la session en cours
+  // (instantané, avant même que le serveur ait fini d'enregistrer le stream) — un même
+  // morceau garde son horodatage le PLUS RÉCENT entre les deux sources.
+  const byKey = new Map();
+  (libraryRecentlyPlayedCache || []).forEach(e=>{
+    const key = e.track.realId != null ? 'r'+e.track.realId : e.track.t;
+    byKey.set(key, { track: e.track, at: e.at });
+  });
+  listeningHistory.forEach(h=>{
+    const key = h.track.realId != null ? 'r'+h.track.realId : h.track.t;
+    const existing = byKey.get(key);
+    if(!existing || h.at > existing.at) byKey.set(key, { track: h.track, at: h.at });
+  });
+  return [...byKey.values()].sort((a,b)=> b.at - a.at);
+}
+async function renderLibraryRecent(listEl){
+  await loadLibraryRecentlyPlayedIfNeeded();
+  if(libraryActiveCategory !== 'recent') return;
+  const merged = buildMergedRecentlyPlayed();
+  if(!merged.length){
+    listEl.innerHTML = `<div class="pi-empty">Rien écouté pour l'instant.<br>Votre historique réel apparaîtra ici dès votre première écoute.</div>`;
+    return;
+  }
+  listEl.innerHTML = '';
+  const entries = libraryActiveSort === 'recent'
+    ? merged
+    : sortTrackList(merged.map(e=>e.track)).map(t=> merged.find(e=>e.track===t));
+  entries.forEach(e=>{
+    const mins = Math.max(0, Math.round((Date.now()-e.at)/60000));
+    const label = mins === 0 ? "à l'instant" : mins < 60 ? 'il y a ' + mins + ' min' : 'il y a ' + Math.round(mins/60) + 'h';
+    listEl.appendChild(buildLibraryTrackRow(e.track, ' · ' + label));
+  });
+}
+function startLibraryRecentPolling(){
+  stopLibraryRecentPolling();
+  libraryRecentPollTimer = setInterval(async ()=>{
+    if(libraryActiveCategory !== 'recent') { stopLibraryRecentPolling(); return; }
+    await loadLibraryRecentlyPlayedIfNeeded(true);
+    const listEl = document.getElementById('library-list');
+    if(listEl && libraryActiveCategory === 'recent') renderLibraryRecent(listEl);
+  }, 20000);
+}
+function stopLibraryRecentPolling(){
+  if(libraryRecentPollTimer){ clearInterval(libraryRecentPollTimer); libraryRecentPollTimer = null; }
 }
 
 /* ============ MENU PROFIL ============ */
