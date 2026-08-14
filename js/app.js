@@ -152,6 +152,7 @@ function goTo(screen){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('app-shell').classList.remove('active');
   document.getElementById('player-bar').style.display = 'none';
+  document.documentElement.classList.remove('has-player-bar');
   document.getElementById('mobile-tabbar').style.display = 'none';
   document.getElementById('demo-nav').classList.add('no-player');
   document.getElementById('mimi-widget').classList.add('no-player');
@@ -331,6 +332,7 @@ function stopAllPlayback(){
     if(fpIcon) fpIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
     const playerBar = document.getElementById('player-bar');
     if(playerBar) playerBar.style.display = 'none';
+    document.documentElement.classList.remove('has-player-bar');
     closeFullPlayer();
     // Le mode DJ/Radio (et sa file de lecture) ne s'arrêtait pas ici — un compte qui se
     // connectait juste après quelqu'un resté en mode DJ héritait silencieusement de sa file
@@ -5724,7 +5726,10 @@ function togglePlay(){
   playing = !playing;
   // Le mini-lecteur n'existe pas tant qu'aucun son n'a été lancé. Dès la première vraie
   // lecture, il apparaît (et le reste jusqu'à la déconnexion — voir stopAllPlayback()).
-  if(playing) document.getElementById('player-bar').style.display = 'flex';
+  if(playing){
+    document.getElementById('player-bar').style.display = 'flex';
+    document.documentElement.classList.add('has-player-bar'); // reflète sa vraie présence à l'écran, pas juste l'état play/pause — sert à ajuster le padding bas du contenu (voir style.css)
+  }
   document.documentElement.classList.toggle('is-playing', playing);
   updateNowPlayingCards();
   if('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
