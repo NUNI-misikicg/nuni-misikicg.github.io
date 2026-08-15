@@ -297,15 +297,27 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-/* ============ THEME ============
-   Avant : le choix clair/sombre repartait toujours en mode sombre à chaque rechargement,
-   même après l'avoir explicitement changé — jamais mémorisé nulle part. */
+/* ============ THEME — automatique selon l'heure de l'appareil ============
+   Avant : bascule manuelle clair/sombre choisie une fois par la personne, mémorisée en
+   localStorage, jamais réévaluée ensuite. Maintenant : entièrement automatique — clair le
+   jour (6h-18h, heure de l'appareil), sombre la nuit, réévalué toutes les 5 minutes pour
+   suivre le vrai passage jour/nuit si l'app reste ouverte longtemps. Le bouton de bascule
+   manuelle reste dans le DOM (au cas où) mais est masqué en CSS — plus aucune action de la
+   personne n'est nécessaire ni possible pour changer le thème. */
 const NUNI_THEME_KEY = 'nuni_theme';
 let theme = 'dark';
-try{
-  const saved = localStorage.getItem(NUNI_THEME_KEY);
-  if(saved === 'light' || saved === 'dark') theme = saved;
-}catch(e){ /* stockage indisponible : reste en mode sombre par défaut, pas bloquant */ }
+function computeAutoTheme(){
+  const hour = new Date().getHours();
+  return (hour >= 6 && hour < 18) ? 'light' : 'dark';
+}
+function applyAutoTheme(){
+  const next = computeAutoTheme();
+  if(next === theme) return;
+  theme = next;
+  document.documentElement.setAttribute('data-theme', theme);
+  applyThemeIcon();
+}
+theme = computeAutoTheme();
 document.documentElement.setAttribute('data-theme', theme);
 function applyThemeIcon(){
   const isDark = theme === 'dark';
@@ -315,15 +327,8 @@ function applyThemeIcon(){
       : '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
   });
 }
-function toggleTheme(){
-  theme = theme === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', theme);
-  try{ localStorage.setItem(NUNI_THEME_KEY, theme); }catch(e){ /* pas bloquant */ }
-  applyThemeIcon();
-}
-document.getElementById('theme-toggle-home').addEventListener('click', toggleTheme);
-document.getElementById('theme-toggle-app').addEventListener('click', toggleTheme);
 applyThemeIcon();
+setInterval(applyAutoTheme, 5 * 60 * 1000);
 
 /* ============ ROTATING MESSAGES ============ */
 const messages = [
@@ -4723,10 +4728,43 @@ function refreshMainShelves(){
   if(row) row.innerHTML = '';
   fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
   renderTopCongo();
+  renderTrendingRegion();
   renderForYouShelf();
   renderContinueListening();
   renderResumeListening();
   renderNuniSelection();
+}
+// ---------- "Tendance dans votre région" — vraies écoutes de vrais auditeurs du même pays
+// que la personne connectée (voir /api/tracks/trending-region côté serveur). Jamais affichée
+// s'il n'existe pas encore de vraies données pour ce pays — pas de contenu générique ou
+// dupliqué du Top Congo pour remplir l'espace. Prépare l'arrivée de futurs auditeurs hors
+// Congo : chacun verra sa propre tendance réelle, pas un contenu identique pour tout le monde.
+async function renderTrendingRegion(){
+  const wrap = document.getElementById('shelf-trending-region-wrap');
+  const row = document.getElementById('shelf-trending-region');
+  if(!wrap || !row) return;
+  if(!currentUser || !currentUser.country){ wrap.style.display = 'none'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/tracks/trending-region?country=' + encodeURIComponent(currentUser.country), {
+      headers: realAuthToken ? { 'Authorization': 'Bearer ' + realAuthToken } : {},
+    });
+    if(!res.ok){ wrap.style.display = 'none'; return; }
+    const data = await res.json();
+    if(!data.tracks || !data.tracks.length){ wrap.style.display = 'none'; return; }
+    // Ne montre jamais un doublon strict du Top Congo : si le pays du visiteur est "Congo"
+    // et que le classement régional est identique au Top Congo global (cas fréquent tant
+    // que la quasi-totalité des auditeurs sont congolais), inutile d'afficher deux fois la
+    // même chose — cette section ne prend tout son sens qu'une fois de vrais auditeurs
+    // d'autres pays présents.
+    const mapped = data.tracks.map(mapPlaylistTrack).map((tr,i)=>{ tr.realId = data.tracks[i].id; return tr; });
+    const topIds = new Set(getTopStreamedTracks(12).map(t=>t.realId));
+    const isDuplicateOfTopCongo = mapped.every(tr => topIds.has(tr.realId));
+    if(isDuplicateOfTopCongo){ wrap.style.display = 'none'; return; }
+    document.getElementById('shelf-trending-region-title').textContent = `Tendance en ce moment — ${esc(currentUser.country)}`;
+    wrap.style.display = 'block';
+    row.innerHTML = '';
+    fillShelf('shelf-trending-region', mapped);
+  }catch(e){ wrap.style.display = 'none'; }
 }
 // ---------- "Reprendre l'écoute" — vraie position de lecture sauvegardée côté serveur.
 // La progression affichée vient de la vraie durée du fichier (chargée via les métadonnées
