@@ -1717,7 +1717,19 @@
     <button class="btn-icon" onclick="closeFullPlayer()" aria-label="Fermer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
     </button>
-    <span class="fp-eyebrow">Lecture en cours</span>
+    <span class="fp-eyebrow" id="fp-eyebrow-label">Lecture en cours</span>
+    <!-- Mini-infos révélées progressivement au défilement — même morceau que la pochette
+         principale, toujours synchronisées (titre/artiste/pochette/lecture). -->
+    <div class="fp-mini-info" id="fp-mini-info">
+      <div class="fp-mini-cover" id="fp-mini-cover"></div>
+      <div class="fp-mini-text">
+        <div class="fp-mini-title" id="fp-mini-title">—</div>
+        <div class="fp-mini-artist" id="fp-mini-artist">—</div>
+      </div>
+      <button class="fp-mini-play" onclick="togglePlay()" aria-label="Lecture / pause">
+        <svg viewBox="0 0 24 24" fill="currentColor" id="fp-mini-play-icon"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+    </div>
     <button class="btn-icon" id="immersion-btn" onclick="toggleImmersion()" aria-label="Mode immersion">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
     </button>
@@ -1725,14 +1737,11 @@
 
   <div class="fp-scroll" id="fp-scroll">
     <div class="fp-hero">
-      <div class="fp-cover-wrap" id="fp-cover-wrap" onclick="toggleVibeMode()" title="Cliquez pour activer le Mode Vibe NUNI">
-        <div class="fp-halo" id="fp-halo"></div>
-        <div class="fp-ring" id="fp-ring"></div>
-        <div class="fp-circular-eq" id="fp-circular-eq"></div>
-        <div class="cover fp-cover" id="fp-cover"><div class="cover-glyph pal-pattern"></div></div>
-        <div class="fp-vibe-particles" id="fp-vibe-particles"></div>
+      <div class="fp-cover-wrap" id="fp-cover-wrap">
+        <div class="cover fp-cover" id="fp-cover">
+          <div class="fp-cover-placeholder" id="fp-cover-placeholder"><div class="fp-cover-mark">NUNI</div></div>
+        </div>
       </div>
-      <p class="fp-vibe-hint" id="fp-vibe-hint"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg> Touchez la pochette pour le Mode Vibe NUNI</p>
 
       <div class="fp-visualizer" id="fp-visualizer"></div>
 

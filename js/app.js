@@ -8461,8 +8461,9 @@ function openFullPlayer(showLyrics){
   initFpScrollCollapse();
 }
 // Le bandeau du haut du lecteur plein écran passe d'un fond transparent à un fond flouté
-// dès qu'on défile un peu la page — même principe que le mini-lecteur mobile. Un seul
-// écouteur posé une fois (pas à chaque ouverture), réutilisé pour toute la durée de la session.
+// dès qu'on défile un peu la page, avec les mini-infos (pochette/titre/artiste/lecture) qui
+// se révèlent progressivement — même principe que le mini-lecteur en bas de l'app, mais
+// propre au lecteur plein écran. Un seul écouteur posé une fois (pas à chaque ouverture).
 let fpScrollCollapseInit = false;
 function initFpScrollCollapse(){
   if(fpScrollCollapseInit) return;
@@ -8470,9 +8471,45 @@ function initFpScrollCollapse(){
   const scrollEl = document.getElementById('fp-scroll');
   const topbar = document.querySelector('.fp-topbar');
   if(!scrollEl || !topbar) return;
+  let ticking = false;
+  const coverWrap = document.getElementById('fp-cover-wrap');
+  const titleEl = document.getElementById('fp-title');
+  const COLLAPSE_DISTANCE = 200;
   scrollEl.addEventListener('scroll', ()=>{
-    topbar.classList.toggle('fp2-scrolled', scrollEl.scrollTop > 40);
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(()=>{
+      const y = scrollEl.scrollTop;
+      const scrolled = y > 40;
+      topbar.classList.toggle('fp2-scrolled', scrolled);
+      if(scrolled) syncFpMiniInfo();
+      // Pochette qui rétrécit et remonte progressivement — uniquement transform/opacity,
+      // jamais de recalcul de mise en page à chaque frame, pour un geste fluide même sur
+      // un téléphone modeste.
+      if(coverWrap){
+        const p = Math.min(1, Math.max(0, y / COLLAPSE_DISTANCE));
+        coverWrap.style.transform = `scale(${1 - 0.45*p}) translateY(${-p*12}px)`;
+        coverWrap.style.opacity = 1 - p*0.1;
+        if(titleEl) titleEl.style.fontSize = `${22 - p*3}px`;
+      }
+      ticking = false;
+    });
   }, { passive:true });
+}
+// Recopie l'état réel du lecteur principal (pochette/titre/artiste/icône lecture) dans les
+// mini-infos du bandeau — jamais une info différente ou périmée par rapport à ce qui joue
+// vraiment, puisque c'est une simple recopie du DOM déjà à jour, pas une donnée séparée.
+function syncFpMiniInfo(){
+  const mainCover = document.getElementById('fp-cover');
+  const miniCover = document.getElementById('fp-mini-cover');
+  const miniTitle = document.getElementById('fp-mini-title');
+  const miniArtist = document.getElementById('fp-mini-artist');
+  const mainIcon = document.getElementById('fp-play-icon');
+  const miniIcon = document.getElementById('fp-mini-play-icon');
+  if(mainCover && miniCover) miniCover.style.backgroundImage = mainCover.style.backgroundImage || '';
+  if(miniTitle && currentTrack) miniTitle.textContent = currentTrack.t;
+  if(miniArtist && currentTrack) miniArtist.textContent = currentTrack.a;
+  if(mainIcon && miniIcon) miniIcon.innerHTML = mainIcon.innerHTML;
 }
 function closeFullPlayer(){
   document.getElementById('full-player').classList.remove('open');
@@ -8914,7 +8951,7 @@ function applyPlayerVisuals(tr){
     } else {
       coverEl.style.backgroundImage = '';
       coverEl.className = 'cover fp-cover ' + tr.p;
-      coverEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>';
+      coverEl.innerHTML = '<div class="fp-cover-placeholder"><div class="fp-cover-mark">NUNI</div></div>';
     }
   };
   if(isSameVisual){
