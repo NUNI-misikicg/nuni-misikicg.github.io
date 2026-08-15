@@ -2793,7 +2793,12 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
   }
   .player-track{ width:auto; flex:1; min-width:0; gap:10px; cursor:pointer; }
   .player-cover{ width:42px; height:42px; border-radius:9px; flex-shrink:0; transition:transform .3s var(--ease); }
-  .player-track-info{ min-width:0; }
+  /* FIX : ce conteneur était mis en display:none par une règle plus large (@media
+     max-width:880px, juste au-dessus dans ce fichier) datant d'avant le système de titre/
+     artiste fusionné (mp-marquee) — jamais réactivé depuis pour le mini-lecteur mobile.
+     Résultat : le titre ET l'artiste étaient invisibles sur tous les téléphones, alors que
+     le HTML/JS censé les afficher fonctionnait parfaitement. */
+  .player-track-info{ display:block; min-width:0; }
   .mp-marquee-track .mp-title{ font-size:12.5px; }
   .mp-marquee-track .mp-sep, .mp-marquee-track .mp-artist{ font-size:11px; }
   .mp-marquee-track .mp-feat{ font-size:10.5px; }
