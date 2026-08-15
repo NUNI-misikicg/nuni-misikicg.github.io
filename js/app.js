@@ -2951,7 +2951,7 @@ function openArtistPage(name, artistId){
             genre: r.genre || 'Afro', streams: String(r.streams||0), likes: r.likes||0,
             cover: r.cover_url || null, audioUrl: r.audio_url || null, isReal:true,
             releaseType: r.release_type || 'Single', realId: r.id, artistId: currentArtistPageRealId,
-          })).forEach(tr=> featuredRow.appendChild(trackCard(tr)));
+          })).forEach(tr=>{ try{ featuredRow.appendChild(trackCard(tr)); }catch(e){ console.error('[artist featured] carte ignorée:', e); } });
           featuredSection.style.display = '';
         }).catch(()=>{ featuredSection.style.display = 'none'; });
     } else {
@@ -3752,21 +3752,27 @@ function filterCatalogByGenre(genreName){
   }
   filtered = dedupeAlbums(filtered);
   filtered.forEach((tr,i)=>{
-    const card = trackCard(tr);
-    card.style.animationDelay = (i*0.05) + 's';
-    card.classList.add('reveal-in');
-    // ---- Top Congo est un vrai classement (déjà trié par vrais streams) — un badge de
-    // rang donne le sentiment de trophée demandé, sans rien changer pour les autres genres
-    // qui n'ont pas de notion d'ordre. ----
-    if(genreName === 'Top Congo'){
-      const rank = i + 1;
-      const badge = document.createElement('div');
-      badge.className = 'tc-rank-badge' + (rank <= 3 ? ` tc-rank-${rank}` : '');
-      badge.innerHTML = rank <= 3 ? '<svg class="nuni-ic nuni-ic-gold filled" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M9 21h6M12 15v6"/></svg>' : `#${rank}`;
-      const cover = card.querySelector('.cover');
-      if(cover) cover.appendChild(badge);
-    }
-    row.appendChild(card);
+    // FIX : même protection que fillShelf()/renderTopCongo() — avant, la moindre carte à
+    // problème dans ce genre précis faisait planter tout le forEach, laissant la page
+    // (Top Congo, Nouveautés, ou n'importe quel genre — Rap, Rumba, Gospel...) partiellement
+    // ou totalement vide sans aucune raison visible à l'écran.
+    try{
+      const card = trackCard(tr);
+      card.style.animationDelay = (i*0.05) + 's';
+      card.classList.add('reveal-in');
+      // ---- Top Congo est un vrai classement (déjà trié par vrais streams) — un badge de
+      // rang donne le sentiment de trophée demandé, sans rien changer pour les autres genres
+      // qui n'ont pas de notion d'ordre. ----
+      if(genreName === 'Top Congo'){
+        const rank = i + 1;
+        const badge = document.createElement('div');
+        badge.className = 'tc-rank-badge' + (rank <= 3 ? ` tc-rank-${rank}` : '');
+        badge.innerHTML = rank <= 3 ? '<svg class="nuni-ic nuni-ic-gold filled" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M9 21h6M12 15v6"/></svg>' : `#${rank}`;
+        const cover = card.querySelector('.cover');
+        if(cover) cover.appendChild(badge);
+      }
+      row.appendChild(card);
+    }catch(e){ console.error('[filterCatalogByGenre] carte ignorée après erreur :', e); }
   });
 
   // ---- Artistes de ce genre — uniquement pour un genre précis (pas Nouveautés/Top Congo,
@@ -4741,7 +4747,12 @@ function renderTopCongo(){
     row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez d'écoutes réelles pour établir un classement — revenez bientôt !</p>`;
     return;
   }
-  top.forEach(tr=> row.appendChild(trackCard(tr)));
+  // FIX : même protection que fillShelf() — avant, un appendChild(trackCard(tr)) direct sans
+  // try/catch faisait planter TOUT le forEach dès la première carte à problème, laissant le
+  // classement partiellement ou totalement vide sans aucune raison visible.
+  top.forEach(tr=>{
+    try{ row.appendChild(trackCard(tr)); }catch(e){ console.error('[renderTopCongo] carte ignorée après erreur :', e); }
+  });
 }
 fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
 renderTopCongo();
@@ -4919,7 +4930,7 @@ async function renderForYouShelf(){
     wrap.style.display = 'block';
     const row = document.getElementById('shelf-for-you');
     row.innerHTML = '';
-    picks.forEach(tr=> row.appendChild(trackCard(tr)));
+    picks.forEach(tr=>{ try{ row.appendChild(trackCard(tr)); }catch(e){ console.error('[renderForYouShelf] carte ignorée:', e); } });
   }catch(e){ wrap.style.display = 'none'; }
 }
 /* ============ RESYNCHRONISATION DES LIKES APRÈS CONNEXION ============
@@ -7453,11 +7464,13 @@ async function publishRelease(){
     ['shelf-artist','shelf-artist-trending','shelf-new'].forEach(id=>{
       const row = document.getElementById(id);
       if(!row) return;
-      if(isGroupedRelease){
-        row.prepend(trackCard(newTracks[0])); // une seule pochette représente tout l'album/EP/mixtape
-      } else {
-        newTracks.slice().reverse().forEach(tr=> row.prepend(trackCard(tr)));
-      }
+      try{
+        if(isGroupedRelease){
+          row.prepend(trackCard(newTracks[0])); // une seule pochette représente tout l'album/EP/mixtape
+        } else {
+          newTracks.slice().reverse().forEach(tr=> row.prepend(trackCard(tr)));
+        }
+      }catch(e){ console.error('[publishTrack] carte ignorée:', e); }
     });
     toast(`"${titre}" (${currentReleaseType}) publié — disponible dans votre discographie. Lecture en cours…`);
   }
@@ -8578,8 +8591,8 @@ function syncFullPlayer(){
   // suggestions
   const similar = document.getElementById('fp-suggest-similar');
   const sameArtist = document.getElementById('fp-suggest-artist');
-  if(similar){ similar.innerHTML=''; tracks.filter(t=>t.genre===tr.genre && t.t!==tr.t).slice(0,5).forEach(t=> similar.appendChild(trackCard(t))); if(!similar.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,5).forEach(t=> similar.appendChild(trackCard(t))); }
-  if(sameArtist){ sameArtist.innerHTML=''; tracks.filter(t=>t.a===tr.a && t.t!==tr.t).forEach(t=> sameArtist.appendChild(trackCard(t))); if(!sameArtist.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,4).forEach(t=> sameArtist.appendChild(trackCard(t))); }
+  if(similar){ similar.innerHTML=''; tracks.filter(t=>t.genre===tr.genre && t.t!==tr.t).slice(0,5).forEach(t=>{ try{ similar.appendChild(trackCard(t)); }catch(e){ console.error('[fp similar] carte ignorée:', e); } }); if(!similar.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,5).forEach(t=>{ try{ similar.appendChild(trackCard(t)); }catch(e){} }); }
+  if(sameArtist){ sameArtist.innerHTML=''; tracks.filter(t=>t.a===tr.a && t.t!==tr.t).forEach(t=>{ try{ sameArtist.appendChild(trackCard(t)); }catch(e){ console.error('[fp sameArtist] carte ignorée:', e); } }); if(!sameArtist.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,4).forEach(t=>{ try{ sameArtist.appendChild(trackCard(t)); }catch(e){} }); }
 }
 
 /* ============ INFOS TECHNIQUES RÉELLES DU FICHIER ============
