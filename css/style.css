@@ -2157,6 +2157,17 @@ html.is-playing .fp-title{ font-weight:800; }
 }
 .ai-assistant-btn:hover{ transform:translateY(-3px); }
 .ai-assistant-btn svg{ width:18px; height:18px; color:var(--accent); flex-shrink:0; }
+@media(max-width:640px){
+  /* Avant : position fixe à 28px du bas, jamais ajustée pour mobile — sur un écran étroit,
+     ce bouton se retrouvait exactement à la même hauteur que les vrais boutons play/pause/
+     suivant du lecteur plein écran, les recouvrant complètement et bloquant leur clic.
+     Réduit à une simple icône ronde, remontée nettement au-dessus de cette zone. */
+  .ai-assistant-btn{
+    bottom:calc(104px + env(safe-area-inset-bottom,0)); right:16px;
+    padding:12px; max-width:none;
+  }
+  .ai-assistant-btn span{ display:none; }
+}
 
 /* Immersion mode */
 .full-player.immersion .fp-lyrics-lines p:not(.is-current){ opacity:.35; }
