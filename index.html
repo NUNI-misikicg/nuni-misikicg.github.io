@@ -118,7 +118,7 @@
       <div class="field"><label>Prénom *</label><input type="text" id="rr-first"></div>
       <div class="field"><label>Nom *</label><input type="text" id="rr-last"></div>
     </div>
-    <div class="field full"><label>Email *</label><input type="email" id="rr-email"></div>
+    <div class="field full"><label>Email *</label><input type="email" id="rr-email" onblur="checkEmailDomainLive('rr-email', 'rr-email-feedback')"><div id="rr-email-feedback" class="email-live-feedback"></div></div>
     <div class="field full"><label>Mot de passe * (8 caractères min.)</label>
       <div class="field-password-wrap">
         <input type="password" id="rr-password">
@@ -171,7 +171,7 @@
     <div class="field full"><label>Adresse *</label><input type="text" id="lr-address"></div>
     <div class="field-row">
       <div class="field"><label>Téléphone professionnel *</label><input type="text" id="lr-pro-phone"></div>
-      <div class="field"><label>Email professionnel *</label><input type="email" id="lr-pro-email"></div>
+      <div class="field"><label>Email professionnel *</label><input type="email" id="lr-pro-email" onblur="checkEmailDomainLive('lr-pro-email', 'lr-pro-email-feedback')"><div id="lr-pro-email-feedback" class="email-live-feedback"></div></div>
     </div>
     <div class="field-row">
       <div class="field"><label>Site web (optionnel)</label><input type="text" id="lr-website" placeholder="https://..."></div>
@@ -209,7 +209,7 @@
       <div class="field"><label>Prénom *</label><input type="text" id="lr-first"></div>
       <div class="field"><label>Nom *</label><input type="text" id="lr-last"></div>
     </div>
-    <div class="field full"><label>Email de connexion *</label><input type="email" id="lr-email"></div>
+    <div class="field full"><label>Email de connexion *</label><input type="email" id="lr-email" onblur="checkEmailDomainLive('lr-email', 'lr-email-feedback')"><div id="lr-email-feedback" class="email-live-feedback"></div></div>
     <div class="field full"><label>Mot de passe * (8 caractères min.)</label>
       <div class="field-password-wrap">
         <input type="password" id="lr-password">

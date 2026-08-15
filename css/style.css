@@ -1771,6 +1771,7 @@ html.is-playing .app-footer-wordmark{ animation:footerWordmarkPulse 1.1s ease-in
 .field textarea{ resize:vertical; }
 .field.full{ grid-column:1/-1; }
 .field-password-wrap{ position:relative; }
+.email-live-feedback{ font-size:12px; margin-top:5px; min-height:15px; transition:color .2s ease; }
 .field-password-wrap input{ padding-right:42px; width:100%; }
 .field-eye-btn{
   position:absolute; right:6px; top:50%; transform:translateY(-50%); width:28px; height:28px; border-radius:8px;

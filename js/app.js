@@ -886,14 +886,50 @@ async function choosePlan(type, isDiscovery){
 function closeRealRegister(){
   document.getElementById('real-register-overlay').classList.remove('show');
 }
+// ---------- Vérification en direct du domaine email (au blur du champ) ----------
+// Avant : seul le format était vérifié côté client (input type="email"), rien ne détectait
+// une adresse avec un domaine bidon ou mal orthographié avant la soumission finale. Retour
+// immédiat ici — mais la vraie vérification reste toujours refaite côté serveur à la
+// soumission (voir emailDomainCanReceiveMail dans server.js), ce contrôle n'est qu'un confort.
+async function checkEmailDomainLive(inputId, feedbackId){
+  const input = document.getElementById(inputId);
+  const feedback = document.getElementById(feedbackId);
+  if(!input || !feedback) return;
+  const email = input.value.trim();
+  input.dataset.emailInvalid = ''; // toujours repartir de zéro à chaque nouvelle vérification
+  if(!email){ feedback.textContent = ''; return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ feedback.textContent = ''; return; } // format invalide : le navigateur l'affiche déjà, inutile de dupliquer
+  feedback.style.color = 'var(--text-faint)';
+  feedback.textContent = 'Vérification…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/auth/check-email-domain?email=' + encodeURIComponent(email));
+    const data = await res.json();
+    if(data.valid){
+      feedback.style.color = '#7FC79A';
+      feedback.textContent = '✓ Adresse valide';
+    } else {
+      feedback.style.color = 'var(--rose-braise)';
+      feedback.textContent = "Cette adresse email n'existe pas — vérifiez l'orthographe.";
+      input.dataset.emailInvalid = '1';
+    }
+  }catch(e){ feedback.textContent = ''; } // souci réseau : on ne bloque jamais sur un simple aléa de connexion
+}
+
 async function submitRealRegistration(){
   const feedback = document.getElementById('rr-feedback');
   const btn = document.getElementById('rr-submit-btn');
+  const rrEmailInput = document.getElementById('rr-email');
+  if(rrEmailInput.dataset.emailInvalid === '1'){
+    feedback.style.color = 'var(--rose-braise)';
+    feedback.textContent = "Corrigez votre adresse email avant de continuer.";
+    rrEmailInput.focus();
+    return;
+  }
   const body = {
     accountType: pendingPlanType,
     firstName: document.getElementById('rr-first').value.trim(),
     lastName: document.getElementById('rr-last').value.trim(),
-    email: document.getElementById('rr-email').value.trim(),
+    email: rrEmailInput.value.trim(),
     password: document.getElementById('rr-password').value,
     age: document.getElementById('rr-age').value,
     phone: document.getElementById('rr-phone').value.trim(),
@@ -1045,6 +1081,11 @@ async function submitLabelRegistration(){
   if(!labelName || !legalName || !country || !city || !address || !proPhone || !proEmail || !firstName || !lastName || !email || !password){
     feedback.style.color = 'var(--rose-braise)';
  feedback.textContent = ' Merci de remplir tous les champs obligatoires (*).';
+    return;
+  }
+  if(document.getElementById('lr-email').dataset.emailInvalid === '1' || document.getElementById('lr-pro-email').dataset.emailInvalid === '1'){
+    feedback.style.color = 'var(--rose-braise)';
+    feedback.textContent = 'Corrigez la ou les adresses email signalées avant de continuer.';
     return;
   }
   feedback.style.color = 'var(--text-dim)';
