@@ -8527,12 +8527,48 @@ function toggleLyrics(){
   document.getElementById('lyrics-toggle-btn').classList.toggle('is-active', lyricsOpen);
   document.getElementById('fp-sheet-backdrop').classList.toggle('show', lyricsOpen);
 }
-// Ferme n'importe quelle feuille du lecteur actuellement ouverte (Paroles ou File) — appelé
-// au clic sur le fond assombri, ou en fermant le lecteur plein écran lui-même.
+// ---------- Diffusion — interface prête à connecter, pas encore de vraie fonctionnalité de
+// cast chez NUNI. Seul "Cet appareil" (l'appareil réel sur lequel la personne navigue) est
+// marqué sélectionné — jamais un faux statut "connecté" pour un appareil qui ne l'est pas
+// réellement ; les autres types d'appareils sont clairement étiquetés "Bientôt".
+function renderCastDevices(){
+  const list = document.getElementById('fp-cast-list');
+  if(!list) return;
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const thisDeviceLabel = isMobile ? 'Cet appareil (mobile)' : 'Cet appareil (ordinateur)';
+  const devices = [
+    { name: thisDeviceLabel, selected: true, soon: false, icon: '<rect x="4" y="2" width="16" height="20" rx="3"/><path d="M9 18h6"/>' },
+    { name: 'TV du salon', selected: false, soon: true, icon: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>' },
+    { name: 'Enceinte', selected: false, soon: true, icon: '<rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="14" r="4"/><circle cx="12" cy="6" r="1"/>' },
+    { name: 'Casque', selected: false, soon: true, icon: '<path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>' },
+  ];
+  list.innerHTML = devices.map(d => `
+    <div class="fp-cast-device ${d.selected ? 'is-selected' : ''} ${d.soon ? 'is-disabled' : ''}">
+      <div class="fp-cast-device-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d.icon}</svg>
+        ${esc(d.name)}
+      </div>
+      ${d.soon ? '<span class="fp-cast-soon-tag">Bientôt</span>' : '<div class="fp-cast-device-dot"></div>'}
+    </div>
+  `).join('');
+}
+function toggleCastPanel(){
+  const panel = document.getElementById('fp-cast');
+  const btn = document.getElementById('fp-cast-btn');
+  const willOpen = !panel.classList.contains('open');
+  panel.classList.toggle('open', willOpen);
+  if(btn) btn.classList.toggle('is-active', willOpen);
+  document.getElementById('fp-sheet-backdrop').classList.toggle('show', willOpen);
+  if(willOpen) renderCastDevices();
+}
+// Ferme n'importe quelle feuille du lecteur actuellement ouverte (Paroles, Diffusion ou
+// File) — appelé au clic sur le fond assombri, ou en fermant le lecteur plein écran lui-même.
 function closeFpSheets(){
   if(lyricsOpen) toggleLyrics();
   const queuePanel = document.getElementById('fp-queue');
   if(queuePanel && queuePanel.classList.contains('open')) toggleQueuePanel();
+  const castPanel = document.getElementById('fp-cast');
+  if(castPanel && castPanel.classList.contains('open')) toggleCastPanel();
 }
 let currentLyricLines = [];
 /* Construit les lignes de paroles du morceau en cours.

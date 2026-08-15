@@ -2285,7 +2285,7 @@ html.is-playing .fp-title{ font-weight:800; }
    (bottom sheets) — même contenu et logique JS qu'avant (toggleLyrics/
    toggleQueuePanel), juste une présentation glissée depuis le bas au lieu d'un
    simple changement de visibilité en ligne. ---- */
-.fp-lyrics, .fp-queue{
+.fp-lyrics, .fp-queue, .fp-cast{
   position:fixed; left:0; right:0; bottom:0; z-index:70;
   max-height:74vh; background:rgba(18,15,11,.94); backdrop-filter:blur(24px);
   border-top:1px solid rgba(255,255,255,.12); border-radius:22px 22px 0 0;
@@ -2293,18 +2293,34 @@ html.is-playing .fp-title{ font-weight:800; }
   transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.9,.36,1);
   overflow-y:auto; display:block !important; visibility:visible !important;
 }
-.fp-lyrics.open, .fp-queue.open{ transform:translateY(0); }
-.fp-lyrics::before, .fp-queue::before{
+.fp-lyrics.open, .fp-queue.open, .fp-cast.open{ transform:translateY(0); }
+.fp-lyrics::before, .fp-queue::before, .fp-cast::before{
   content:''; display:block; width:34px; height:4px; border-radius:4px;
   background:rgba(255,255,255,.25); margin:0 auto 14px;
 }
-/* Fond assombri derrière la feuille — un seul élément partagé par Paroles et File
-   (jamais les deux ouvertes en même temps dans l'usage réel de l'app). */
+/* Fond assombri derrière la feuille — un seul élément partagé par Paroles, Diffusion et
+   File (jamais deux feuilles ouvertes en même temps dans l'usage réel de l'app). */
 .fp-sheet-backdrop{
   position:fixed; inset:0; z-index:69; background:rgba(0,0,0,.55);
   opacity:0; pointer-events:none; transition:opacity .25s ease;
 }
 .fp-sheet-backdrop.show{ opacity:1; pointer-events:auto; }
+
+/* ---- Liste d'appareils du panneau Diffusion — interface prête à connecter, jamais un
+   faux statut "connecté" pour un appareil qui ne l'est pas réellement : seul "Cet appareil"
+   (l'appareil sur lequel la personne navigue actuellement) est marqué sélectionné par
+   défaut, les autres sont visuellement inactifs avec une étiquette "Bientôt". ---- */
+.fp-cast-device{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:13px 2px; border-bottom:1px solid rgba(255,255,255,.06);
+}
+.fp-cast-device:last-child{ border-bottom:none; }
+.fp-cast-device-left{ display:flex; align-items:center; gap:12px; font-size:14.5px; color:#fff; }
+.fp-cast-device.is-disabled .fp-cast-device-left{ color:rgba(255,255,255,.4); }
+.fp-cast-device svg{ width:18px; height:18px; color:rgba(255,255,255,.55); flex-shrink:0; }
+.fp-cast-device-dot{ width:9px; height:9px; border-radius:50%; border:1.5px solid rgba(255,255,255,.4); }
+.fp-cast-device.is-selected .fp-cast-device-dot{ background:var(--accent); border-color:var(--accent); }
+.fp-cast-soon-tag{ font-family:var(--font-data); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:rgba(255,255,255,.4); background:rgba(255,255,255,.08); padding:3px 8px; border-radius:999px; }
 
 .ai-assistant-btn{
   position:fixed; right:24px; bottom:28px; z-index:65; display:flex; align-items:center; gap:9px;
