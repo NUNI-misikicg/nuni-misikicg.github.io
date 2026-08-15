@@ -505,6 +505,11 @@ async function restoreSession(){
     startAccountStatusWatcher();
     syncLikedTracksFromServer();
     loadProgress();
+    // Le tout premier loadRealTracks() (déclenché au chargement du script, avant que cette
+    // restauration de session asynchrone n'ait fini) tournait sans jeton — le catalogue
+    // affichait donc des liens audio vides même pour un compte réellement actif, jusqu'à un
+    // rechargement manuel. On le relance maintenant que realAuthToken est confirmé.
+    loadRealTracks();
     // Avant : loadFeaturedArtists() se lançait au tout premier chargement du script, bien
     // avant que cette reconnexion automatique n'ait fini de vérifier qui est connecté —
     // realAuthToken valait encore null à ce moment-là, donc le vrai statut "déjà suivi ?"
@@ -623,6 +628,7 @@ function startAccountStatusWatcher(){
         else if(!wasActive && nowActive){
  toast(' Votre Pass est maintenant actif — bienvenue sur NUNI en intégralité !');
           hidePassExpiredOverlay(); // au cas où l'écran de blocage était encore affiché
+          loadRealTracks(); // même raison qu'après validation d'un code : les liens audio doivent apparaître sans rechargement manuel
         } else if(nowExpired){
           // Le Pass vient d'expirer PENDANT que la personne utilise déjà NUNI (pas
           // seulement détecté à la connexion) — écran de blocage immédiat, où qu'elle soit.
@@ -793,6 +799,7 @@ async function submitLogin(){
     loadProgress();
     startAccountStatusWatcher();
     syncLikedTracksFromServer();
+    loadRealTracks(); // recharge avec le jeton maintenant disponible — sinon liens audio vides malgré la connexion
     realUserId = data.user.id;
     currentUser = data.user;
     demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
@@ -1836,6 +1843,11 @@ async function submitRedeem(){
     currentUser = data.user;
     demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
     applyAccountType();
+    // Moment le plus important pour ce rechargement : c'est exactement ici que le compte
+    // passe d'inactif à actif — le catalogue chargé avant (sans lien audio, voir
+    // stripAudioIfNoAccess côté serveur) doit être rafraîchi maintenant pour que l'écoute
+    // devienne enfin possible, sans attendre un rechargement manuel de la page.
+    loadRealTracks();
     setTimeout(()=>{
       closeRedeemModal();
       if(currentUser.account_type === 'artist' && !currentUser.has_seen_artist_contract){
@@ -4866,7 +4878,15 @@ async function loadArtistStats(){
 }
 async function loadRealTracks(){
   try{
-    const res = await fetch(NUNI_API_BASE + '/api/tracks');
+    // FIX CRITIQUE : avant, ce fetch n'envoyait jamais le jeton de connexion — cet endpoint
+    // était historiquement public, donc jamais besoin d'authentification. Depuis que le
+    // serveur ne renvoie le vrai lien audio qu'aux comptes réellement actifs (voir
+    // hasStreamingAccess dans server.js), l'absence d'en-tête Authorization faisait passer
+    // TOUT LE MONDE pour anonyme aux yeux du serveur — même un Pass payant et actif se
+    // voyait donc refuser l'écoute, malgré un abonnement parfaitement valide.
+    const res = await fetch(NUNI_API_BASE + '/api/tracks', {
+      headers: realAuthToken ? { 'Authorization': 'Bearer ' + realAuthToken } : {},
+    });
     if(!res.ok) return;
     const data = await res.json();
     if(!data.tracks || !data.tracks.length) return;
@@ -10252,7 +10272,9 @@ async function openPlaylistPage(id){
   attachSwipeDownToClose(overlay, closeOverlay);
 
   try{
-    const res = await fetch(NUNI_API_BASE + '/api/playlists/' + id);
+    const res = await fetch(NUNI_API_BASE + '/api/playlists/' + id, {
+      headers: realAuthToken ? { 'Authorization': 'Bearer ' + realAuthToken } : {},
+    });
     const data = await res.json();
  if(!res.ok){ toast(' ' + (data.error || 'Playlist introuvable.')); closeOverlay(); return; }
     const mapped = (data.tracks || []).map(mapPlaylistTrack);
