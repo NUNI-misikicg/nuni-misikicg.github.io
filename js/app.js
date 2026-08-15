@@ -50,7 +50,10 @@ function ensureEmailVerifyStyles(){
   document.head.appendChild(style);
 }
 function openEmailVerifyModal(){
-  if(!currentUser || currentUser.email_verified) return;
+  // Garde explicite : les comptes Label n'ont pas de Pass Découverte au sens
+  // Consommateur/Artiste — cette modale ne les concerne jamais, même si un enchaînement de
+  // conditions ailleurs venait à changer.
+  if(!currentUser || currentUser.email_verified || currentUser.account_type === 'label') return;
   ensureEmailVerifyStyles();
   let overlay = document.getElementById('email-verify-overlay');
   if(overlay) overlay.remove();
@@ -161,7 +164,10 @@ function ensurePassExpiredStyles(){
   document.head.appendChild(style);
 }
 function showPassExpiredOverlay(){
-  if(!currentUser || document.getElementById('pass-expired-overlay')) return; // jamais dupliqué
+  // Garde explicite : un compte Label suit son abonnement via labels.subscription_expires_at
+  // (colonne à part, gérée par l'admin) — pas via users.subscription_status comme
+  // Consommateur/Artiste. Cet écran ne les concerne jamais, même par accident.
+  if(!currentUser || currentUser.account_type === 'label' || document.getElementById('pass-expired-overlay')) return; // jamais dupliqué
   ensurePassExpiredStyles();
   stopAllPlayback(); // un Pass expiré bloque vraiment tout, y compris un son déjà en cours
   const isDiscovery = currentUser.plan === 'discovery';
@@ -602,6 +608,7 @@ function startAccountStatusWatcher(){
         // active son Pass ne voyait jamais son compte passer "actif" tout seul, même après
         // plusieurs minutes — il fallait se déconnecter/reconnecter pour que ça se mette à jour.
         const data = await res.json();
+        const isLabelAccount = data.user && data.user.account_type === 'label';
         const wasActive = currentUser && currentUser.subscription_status === 'active';
         const nowActive = data.user && data.user.subscription_status === 'active';
         const nowExpired = data.user && data.user.subscription_status === 'expired';
@@ -609,7 +616,11 @@ function startAccountStatusWatcher(){
         demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
         saveSession(realAuthToken, currentUser, true);
         applyAccountType();
-        if(!wasActive && nowActive){
+        // Un compte Label suit son abonnement via labels.subscription_expires_at (colonne à
+        // part, gérée par l'admin) — jamais via users.subscription_status comme
+        // Consommateur/Artiste. On ignore volontairement cette donnée non pertinente pour lui.
+        if(isLabelAccount){ /* rien à faire ici — voir loadLabelDashboardStatus pour son propre polling dédié */ }
+        else if(!wasActive && nowActive){
  toast(' Votre Pass est maintenant actif — bienvenue sur NUNI en intégralité !');
           hidePassExpiredOverlay(); // au cas où l'écran de blocage était encore affiché
         } else if(nowExpired){
@@ -1120,7 +1131,7 @@ async function loadLabelDashboardStatus(){
           ${label.logo_url ? `<div style="width:56px; height:56px; border-radius:12px; background:url(${label.logo_url}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : ''}
           <div>
             <div style="font-weight:700; font-size:16px;">${esc(label.label_name)}</div>
-            <div style="font-size:12.5px; color:var(--text-faint);">${label.legal_name || ''}</div>
+            <div style="font-size:12.5px; color:var(--text-faint);">${esc(label.legal_name || '')}</div>
           </div>
         </div>
         <button class="btn-icon" title="Actualiser le statut" onclick="loadLabelDashboardStatus()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
