@@ -1258,6 +1258,34 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .shelf-head a{ font-size:12.5px; color:var(--text-faint); }
 .shelf-row{ display:flex; gap:18px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 
+/* ---- "Nouveautés" façon Apple Music : pochettes énormes et verticales — même vraie
+   pochette carrée uploadée par l'artiste, simplement recadrée en format "affiche" pour un
+   rendu plus premium/éditorial, comme les cartes vedettes d'Apple Music. Jamais une image
+   inventée : juste un cadrage différent de la même vraie image. ---- */
+#shelf-new{ gap:22px; }
+#shelf-new .track-card{ width:230px; }
+#shelf-new .track-card .cover{ width:230px; height:300px; border-radius:20px; padding:18px; }
+#shelf-new .track-card::before{ height:300px; }
+#shelf-new .track-card .ttl{ font-size:15.5px; font-weight:700; margin-top:14px; }
+#shelf-new .track-card .art{ font-size:13px; }
+@media(max-width:680px){
+  #shelf-new .track-card{ width:168px; }
+  #shelf-new .track-card .cover{ width:168px; height:220px; border-radius:16px; padding:12px; }
+  #shelf-new .track-card::before{ height:220px; }
+}
+
+/* ---- "Écoutés récemment" : même gabarit de carte que le reste du catalogue, mais un vrai
+   repère temporel "il y a X" (voir renderContinueListening) posé en médaillon sur la
+   pochette — donne un vrai sentiment de continuité/immersion plutôt qu'une simple rangée
+   de morceaux sans contexte. ---- */
+.recent-play-badge{
+  position:absolute; top:10px; left:10px; z-index:4;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(6px); color:#fff;
+  font-size:10.5px; font-weight:600; letter-spacing:.2px;
+  padding:4px 9px; border-radius:999px; pointer-events:none;
+}
+#shelf-continue .track-card .ttl{ font-weight:700; }
+
 .cover{
   width:172px; height:172px; border-radius:var(--radius-m); flex-shrink:0; position:relative; overflow:hidden;
   display:flex; align-items:flex-end; justify-content:flex-end; padding:14px;

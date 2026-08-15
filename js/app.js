@@ -2511,14 +2511,29 @@ async function renderContinueListening(){
     const data = await res.json();
     // On réutilise les objets déjà chargés dans `tracks` (même vraie pochette, mêmes vrais
     // streams déjà en mémoire) plutôt que de tout re-mapper depuis zéro — évite deux sources
-    // de vérité différentes pour le même morceau.
+    // de vérité différentes pour le même morceau. La vraie date d'écoute (last_played_at,
+    // déjà renvoyée par le serveur mais jamais exploitée jusqu'ici) est conservée pour
+    // afficher un repère "il y a X" réel sur chaque carte, plus immersif.
     const recent = (data.tracks || [])
-      .map(r => tracks.find(t => t.isReal && t.realId === r.id))
+      .map(r => { const tr = tracks.find(t => t.isReal && t.realId === r.id); return tr ? { tr, lastPlayedAt: r.last_played_at } : null; })
       .filter(Boolean);
     if(!recent.length){ wrap.style.display = 'none'; return; }
     wrap.style.display = 'block';
     row.innerHTML = '';
-    fillShelf('shelf-continue', recent);
+    fillShelf('shelf-continue', recent.map(x=>x.tr));
+    // Badge "il y a X" ajouté après coup sur chaque carte fraîchement créée, dans le même
+    // ordre — plus simple que d'étendre trackCard() pour un seul shelf parmi tous les autres.
+    const cards = row.querySelectorAll('.track-card');
+    recent.forEach((x, i)=>{
+      const cover = cards[i] && cards[i].querySelector('.cover');
+      if(!cover || !x.lastPlayedAt) return;
+      const mins = Math.max(0, Math.round((Date.now() - new Date(x.lastPlayedAt).getTime())/60000));
+      const label = mins < 1 ? "à l'instant" : mins < 60 ? `il y a ${mins} min` : mins < 1440 ? `il y a ${Math.round(mins/60)} h` : `il y a ${Math.round(mins/1440)} j`;
+      const badge = document.createElement('span');
+      badge.className = 'recent-play-badge';
+      badge.textContent = label;
+      cover.appendChild(badge);
+    });
   }catch(e){ wrap.style.display = 'none'; }
 }
 // ---------- "Tout voir" de l'historique d'écoute — réutilise openCategoryPage (même
@@ -4579,11 +4594,18 @@ function renderArtistTopTracksList(artistTracks){
 
 function fillShelf(id, list){
   const row = document.getElementById(id);
+  // Avant : une seule carte malformée (donnée inattendue) faisait planter tout le forEach —
+  // silencieusement avalé par le catch() englobant de loadRealTracks(), ce qui coupait aussi
+  // net tous les rendus suivants dans la même chaîne (Top Congo, tendance régionale,
+  // Découvertes...). Chaque carte est maintenant isolée : une erreur sur l'une n'empêche
+  // jamais les autres de s'afficher.
   dedupeAlbums(list).forEach((tr,i) => {
-    const card = trackCard(tr);
-    card.style.animationDelay = (i*0.06) + 's';
-    card.classList.add('reveal-in');
-    row.appendChild(card);
+    try{
+      const card = trackCard(tr);
+      card.style.animationDelay = (i*0.06) + 's';
+      card.classList.add('reveal-in');
+      row.appendChild(card);
+    }catch(e){ console.error('[fillShelf] carte ignorée après erreur :', e); }
   });
 }
 function parseStreamsCount(v){
