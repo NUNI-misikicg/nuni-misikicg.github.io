@@ -4364,9 +4364,17 @@ function trackCard(tr){
   card.className = 'track-card';
   if(tr.realId) card.dataset.trackId = tr.realId;
   card.dataset.trackKey = trackKeyOf(tr);
-  const coverInner = tr.cover
-    ? `<div class="cover" style="background-image:url(${tr.cover}); background-size:cover; background-position:center;">`
-    : `<div class="cover ${tr.p}"><div class="cover-glyph pal-pattern"></div>`;
+  // CORRECTIF DÉFINITIF : avant, l'URL de la pochette était injectée directement dans une
+  // chaîne de caractères formant l'attribut style="background-image:url(...)" via
+  // innerHTML. Une pochette dont l'URL Cloudinary contient un caractère spécial hérité du
+  // TITRE du morceau (crochets "[FREE]", underscores "__", point médian "·", apostrophe,
+  // guillemet...) pouvait casser l'attribut HTML en plein milieu — l'image ne s'appliquait
+  // alors jamais, silencieusement, sans erreur visible. Les photos d'artistes (noms plus
+  // simples) échappaient au problème par simple chance de contenu, pas par une vraie
+  // protection. Ici : la pochette n'est plus jamais dans la chaîne HTML — juste une div
+  // vide, son image est assignée juste après via la propriété DOM .style.backgroundImage,
+  // qui gère nativement n'importe quel caractère dans l'URL sans échappement manuel.
+  const coverInner = `<div class="cover ${tr.cover ? '' : tr.p}">${tr.cover ? '' : '<div class="cover-glyph pal-pattern"></div>'}`;
   const isMultiTrack = tr.releaseType && tr.releaseType !== 'Single';
   card.innerHTML = `
     ${coverInner}
@@ -4386,6 +4394,20 @@ function trackCard(tr){
   card.querySelector('.ttl').onclick = ()=> handleTrackCardClick(tr);
   card.querySelector('.art').onclick = (e)=>{ e.stopPropagation(); openArtistPage(tr.a, tr.artistId); };
   card.querySelector('.track-card-menu-btn').onclick = (e)=>{ e.stopPropagation(); openTrackCardMenu(tr, e.currentTarget); };
+  // CORRECTIF DÉFINITIF (suite) : assignation via l'API DOM, jamais via une chaîne HTML —
+  // gère nativement n'importe quel caractère spécial dans l'URL (crochets, underscores,
+  // point médian, apostrophe, guillemet...) sans jamais avoir besoin de les échapper à la
+  // main. Un vrai filet de repli visuel est en place si le fichier échoue quand même à
+  // charger (URL cassée, image supprimée côté Cloudinary...) — jamais un cadre vide et
+  // silencieux : on retombe sur le motif de couleur générique déjà utilisé pour les
+  // morceaux sans pochette du tout.
+  if(tr.cover){
+    const coverEl = card.querySelector('.cover');
+    const probe = new Image();
+    probe.onload = ()=>{ coverEl.style.backgroundImage = `url("${tr.cover}")`; coverEl.style.backgroundSize = 'cover'; coverEl.style.backgroundPosition = 'center'; };
+    probe.onerror = ()=>{ coverEl.classList.add(tr.p || 'pal-1'); coverEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>' + coverEl.innerHTML; };
+    probe.src = tr.cover;
+  }
   if(currentTrack && playing && trackKeyOf(currentTrack) === trackKeyOf(tr)) card.classList.add('is-now-playing');
   // ---- Accessibilité clavier — avant, cette carte n'était activable qu'à la souris (les
   // gestionnaires de clic vivaient sur des <div> internes, jamais focusables). Toute la
@@ -5668,6 +5690,50 @@ function applyHeroTrack(top, hero, titleEl, subEl, playBtn, coverEl, liveCountEl
   if(top.cover && typeof NuniAura !== 'undefined') NuniAura.applyRestingHero(top.cover);
 }
 loadRealTracks();
+
+// ---------- Filet de sécurité permanent — sections jamais vides si de vraies données
+// existent ---------- Après plusieurs incidents différents ayant chacun vidé une section
+// pour une raison distincte (course entre appels, aléa réseau, bug ponctuel dans un ajout
+// cosmétique...), ce filet vérifie en continu, indépendamment de la cause exacte : si de
+// vrais morceaux sont bien chargés en mémoire (tracks) mais qu'une section censée les
+// afficher est visuellement vide, elle est automatiquement repeuplée. Tourne toutes les 4
+// secondes pendant les 90 premières secondes (couvre largement un réveil Render, jusqu'à
+// ~55s dans les pires cas), puis s'arrête tout seul — inutile de continuer à vérifier
+// indéfiniment une fois la page stabilisée.
+(function watchNeverEmptyShelves(){
+  let elapsed = 0;
+  const intervalMs = 4000;
+  const maxDurationMs = 90000;
+  const check = ()=>{
+    elapsed += intervalMs;
+    const realCount = tracks.filter(t=>t.isReal).length;
+    if(realCount > 0){
+      const newRow = document.getElementById('shelf-new');
+      if(newRow && newRow.children.length === 0){
+        try{ fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5)); }
+        catch(e){ console.error('[watchNeverEmptyShelves] shelf-new:', e); }
+      }
+      const topRow = document.getElementById('shelf-top');
+      if(topRow && topRow.children.length === 0){
+        try{ renderTopCongo(); }
+        catch(e){ console.error('[watchNeverEmptyShelves] shelf-top:', e); }
+      }
+    }
+    // "Écoutés récemment" dépend de son propre appel serveur (pas seulement de tracks) —
+    // si la section est censée être affichée (wrap visible) mais que sa rangée est vide,
+    // on relance simplement son propre chargement plutôt que de deviner pourquoi.
+    if(realAuthToken){
+      const continueWrap = document.getElementById('shelf-continue-wrap');
+      const continueRow = document.getElementById('shelf-continue');
+      if(continueWrap && continueRow && continueWrap.style.display !== 'none' && continueRow.children.length === 0){
+        try{ renderContinueListening(); }
+        catch(e){ console.error('[watchNeverEmptyShelves] shelf-continue:', e); }
+      }
+    }
+    if(elapsed < maxDurationMs) setTimeout(check, intervalMs);
+  };
+  setTimeout(check, intervalMs);
+})();
 
 /* ============ PHASE 2 DA — tilt 3D des pochettes au survol ============
    Un seul listener délégué sur tout le document plutôt qu'un par carte : la souris peut
