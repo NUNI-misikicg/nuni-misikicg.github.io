@@ -15,7 +15,7 @@ function openWhatsApp(url){
 
 /* ============ ÉCRAN PLEIN ÉCRAN — PASS EXPIRÉ ============
    Façon plateforme premium (Spotify, Netflix...) : dès que l'abonnement d'un compte n'est
-   plus réellement actif (Pass Consommateur/Artiste expiré, ou essai Pass Découverte de 24h
+   plus réellement actif (Pass Auditeur/Artiste expiré, ou essai Pass Découverte de 24h
    terminé), TOUT le reste de l'app reste inaccessible derrière cet écran. Jamais fermable
    par un clic extérieur ou la touche Échap — seule une vraie action (renouveler sur
    WhatsApp, saisir un nouveau code d'accès, ou se déconnecter) permet d'en sortir. Se
@@ -171,7 +171,7 @@ function showPassExpiredOverlay(){
   ensurePassExpiredStyles();
   stopAllPlayback(); // un Pass expiré bloque vraiment tout, y compris un son déjà en cours
   const isDiscovery = currentUser.plan === 'discovery';
-  const planLabel = isDiscovery ? 'Votre essai gratuit' : (currentUser.plan === 'artist' ? 'Votre Pass Artiste' : 'Votre Pass Consommateur');
+  const planLabel = isDiscovery ? 'Votre essai gratuit' : (currentUser.plan === 'artist' ? 'Votre Pass Artiste' : 'Votre Pass Auditeur');
   const expLabel = currentUser.subscription_expires_at
     ? new Date(currentUser.subscription_expires_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'})
     : null;
@@ -394,7 +394,7 @@ function goTo(screen){
 let pendingPlanType = null;
 
 /* ============ SYSTÈME DE CODES PROMO (vraie vérification côté serveur) ============ */
-const BASE_PRICE_TRIM = 650; // Pass Consommateur trimestriel
+const BASE_PRICE_TRIM = 650; // Pass Auditeur trimestriel
 let appliedPromo = null;
 
 async function applyPromoCode(){
@@ -805,7 +805,7 @@ async function submitLogin(){
     applyAccountType();
     setTimeout(()=>{
       closeLoginModal();
-      // Un compte Label n'a ni subscription_status ni plan au sens Pass Consommateur/Artiste
+      // Un compte Label n'a ni subscription_status ni plan au sens Pass Auditeur/Artiste
       // (il a son propre système : labels.verification_status) — le router en premier, avant
       // toute logique ci-dessous qui ne concerne que les comptes consumer/artist.
       if(currentUser.account_type === 'label'){
@@ -834,6 +834,8 @@ async function submitLogin(){
 }
 
 let pendingIsDiscovery = false;
+let pendingDurationDays = null;
+let pendingAmountFcfa = null;
 async function choosePlan(type, isDiscovery){
   pendingPlanType = type;
   pendingIsDiscovery = !!isDiscovery;
@@ -841,10 +843,15 @@ async function choosePlan(type, isDiscovery){
   // complet — on redemande juste le Pass, puis on l'envoie directement sur WhatsApp payer,
   // et il n'aura plus qu'à saisir son nouveau code d'accès une fois le paiement confirmé.
   // IMPORTANT : uniquement si le compte connecté est bien du MÊME type que le Pass choisi —
-  // un Label (ou un Artiste cliquant sur Pass Consommateur, etc.) qui clique sur un Pass qui
+  // un Label (ou un Artiste cliquant sur Pass Auditeur, etc.) qui clique sur un Pass qui
   // ne correspond pas à son propre compte ne doit jamais atterrir sur WhatsApp sans
   // explication : il faut d'abord clairement lui dire qu'il doit se déconnecter.
   if(currentUser && realAuthToken && currentUser.account_type === type){
+    // Ce chemin ne passe jamais par renderDurationOptions() (pas de formulaire ici) — on
+    // efface toute durée choisie lors d'une inscription précédente pour ne jamais la laisser
+    // apparaître à tort dans CE message-ci (renouvellement, pas nouvelle inscription).
+    pendingDurationDays = null;
+    pendingAmountFcfa = null;
     try{
       await fetch(NUNI_API_BASE + '/api/subscribe/request', {
         method:'POST',
@@ -878,10 +885,52 @@ async function choosePlan(type, isDiscovery){
 
   document.getElementById('rr-title').textContent = pendingIsDiscovery
     ? (type === 'artist' ? 'Créer mon compte Découverte (Artiste)' : 'Créer mon compte Découverte (Auditeur)')
-    : (type === 'artist' ? 'Créer mon compte Artiste' : 'Créer mon compte Consommateur');
+    : (type === 'artist' ? 'Créer mon compte Artiste' : 'Créer mon compte Auditeur');
   document.getElementById('rr-artist-fields').style.display = type === 'artist' ? 'block' : 'none';
+  renderDurationOptions(type);
   document.getElementById('rr-feedback').innerHTML = '';
   document.getElementById('real-register-overlay').classList.add('show');
+}
+// ---------- Sélecteur de durée/montant à l'inscription ----------
+// Avant : la durée souhaitée n'était jamais demandée au client — l'équipe WhatsApp devait
+// systématiquement lui redemander une fois sur place, avant même de pouvoir démarrer le
+// paiement. Maintenant : la personne choisit directement dans le formulaire, et ce choix
+// est repris tel quel dans le message WhatsApp pré-rempli (voir confirmPlanViaWhatsApp) —
+// l'opérateur voit déjà le Pass, la durée ET le montant dès l'ouverture de la conversation.
+const RR_DURATION_OPTIONS = {
+  consumer: [
+    { days:30, label:'1 mois', price:750 },
+    { days:90, label:'3 mois', price:650, badge:'Le plus économique' },
+    { days:365, label:'1 an', price:1250 },
+  ],
+  artist: [
+    { days:90, label:'3 mois', price:5000 },
+    { days:365, label:'1 an', price:10000, badge:'Meilleure valeur' },
+  ],
+};
+function renderDurationOptions(type){
+  const wrap = document.getElementById('rr-duration-fields');
+  const grid = document.getElementById('rr-duration-options');
+  if(pendingIsDiscovery){ wrap.style.display = 'none'; pendingDurationDays = null; pendingAmountFcfa = null; return; }
+  wrap.style.display = 'block';
+  const opts = RR_DURATION_OPTIONS[type] || RR_DURATION_OPTIONS.consumer;
+  grid.innerHTML = '';
+  opts.forEach((opt, i)=>{
+    const el = document.createElement('div');
+    el.className = 'rr-duration-opt' + (i === 0 ? ' selected' : '');
+    el.innerHTML = `<div class="rd-label">${opt.label}</div><div class="rd-price">${opt.price.toLocaleString('fr-FR')} FCFA</div>${opt.badge ? `<div class="rd-badge">${opt.badge}</div>` : ''}`;
+    el.onclick = ()=>{
+      grid.querySelectorAll('.rr-duration-opt').forEach(o=> o.classList.remove('selected'));
+      el.classList.add('selected');
+      pendingDurationDays = opt.days;
+      pendingAmountFcfa = opt.price;
+    };
+    grid.appendChild(el);
+  });
+  // Première option sélectionnée par défaut, sans attendre un clic — évite qu'une personne
+  // pressée valide sans jamais avoir vraiment choisi.
+  pendingDurationDays = opts[0].days;
+  pendingAmountFcfa = opts[0].price;
 }
 function closeRealRegister(){
   document.getElementById('real-register-overlay').classList.remove('show');
@@ -985,7 +1034,7 @@ async function submitRealRegistration(){
     const subRes = await fetch(NUNI_API_BASE + '/api/subscribe/request', {
       method:'POST',
       headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
-      body: JSON.stringify({plan: pendingPlanType})
+      body: JSON.stringify({plan: pendingPlanType, durationDays: pendingDurationDays})
     });
     await subRes.json();
 
@@ -1669,14 +1718,22 @@ function confirmPlanViaWhatsApp(){
     return;
   }
   const type = pendingPlanType;
-  const planLabel = type === 'artist' ? 'Pass Artiste' : 'Pass Consommateur';
+  const planLabel = type === 'artist' ? 'Pass Artiste' : 'Pass Auditeur';
   const idNote = realUserId ? ` (mon identifiant NUNI : ${realUserId})` : '';
   // Avant : seul l'identifiant numérique était transmis — l'équipe devait le rechercher
   // manuellement dans l'admin pour retrouver le compte et pouvoir envoyer le code d'accès.
   // Le vrai email saisi à l'inscription est maintenant inclus directement, exploitable
   // immédiatement pour l'envoi du code.
   const emailNote = (currentUser && currentUser.email) ? ` — mon email : ${currentUser.email}` : '';
-  const msg = encodeURIComponent(`Bonjour NUNI, je souhaite souscrire au ${planLabel}${idNote}${emailNote}. Pouvez-vous m'aider à finaliser mon paiement ?`);
+  // Avant : la durée souhaitée n'apparaissait jamais dans ce message — l'opérateur devait
+  // systématiquement redemander "combien de temps voulez-vous ?" avant de pouvoir démarrer
+  // le paiement. Le choix fait dans le formulaire (voir renderDurationOptions) est repris
+  // ici tel quel : durée ET montant déjà visibles dès l'ouverture de la conversation.
+  const durationLabels = { 30: '1 mois', 90: '3 mois', 365: '1 an' };
+  const durationNote = pendingDurationDays
+    ? `, pour ${durationLabels[pendingDurationDays] || pendingDurationDays + ' jours'} (${(pendingAmountFcfa||0).toLocaleString('fr-FR')} FCFA)`
+    : '';
+  const msg = encodeURIComponent(`Bonjour NUNI, je souhaite souscrire au ${planLabel}${durationNote}${idNote}${emailNote}. Pouvez-vous m'aider à finaliser mon paiement ?`);
   openWhatsApp(`https://wa.me/242068951600?text=${msg}`);
   document.getElementById('whatsapp-modal-overlay').classList.remove('show');
   toast('Une fois votre paiement confirmé, vous recevrez un code à saisir ci-dessous.');
@@ -2337,7 +2394,7 @@ const legalContent = {
       <h4>Compte</h4>
       <p>Vous devez avoir 16 ans ou plus. Les informations fournies doivent être exactes. Un compte est personnel et non transférable.</p>
       <h4>Abonnements et paiement</h4>
-      <p>Les Pass Consommateur et Artiste sont facturés par trimestre ou par an via MTN Mobile Money ou Airtel Money. Le Pass Découverte est gratuit pendant 24h, sans engagement.</p>
+      <p>Les Pass Auditeur et Artiste sont facturés par trimestre ou par an via MTN Mobile Money ou Airtel Money. Le Pass Découverte est gratuit pendant 24h, sans engagement.</p>
       <h4>Contenu artiste</h4>
       <p>L'artiste garantit détenir les droits sur tout contenu publié. NUNI se réserve le droit de retirer tout contenu signalé ou en infraction avec le droit d'auteur.</p>
       <h4>Résiliation</h4>
@@ -2380,7 +2437,7 @@ function aiChoosePlan(type){
   closeAiModal();
   goTo('plans'); // affiche d'abord l'écran des Pass en arrière-plan (cohérent visuellement)
   choosePlan(type); // puis ouvre directement le vrai formulaire d'inscription, sans clic supplémentaire
- toast(type==='artist' ? "L'assistant NUNI vous a dirigé vers le Pass Artiste " : "L'assistant NUNI vous a dirigé vers le Pass Consommateur ");
+ toast(type==='artist' ? "L'assistant NUNI vous a dirigé vers le Pass Artiste " : "L'assistant NUNI vous a dirigé vers le Pass Auditeur ");
 }
 
 function updateGreeting(){
@@ -2656,7 +2713,7 @@ const faqContent = `
   <h4>Comment gagner plus avec ma musique ?</h4>
   <p>Votre revenu dépend directement du nombre de vraies personnes qui vous écoutent. Plus votre musique touche d'auditeurs, plus votre part grandit — il n'y a pas de raccourci : publier régulièrement, soigner vos sorties et faire grandir votre communauté d'auditeurs est ce qui fait vraiment progresser vos revenus sur NUNI. Chaque écoute compte, alors continuez à travailler votre musique et à élargir votre audience.</p>
   <h4>Comment les artistes sont-ils payés ?</h4>
-  <p>Chaque écoute réelle (Pass Consommateur payant) génère un revenu, dont 75% revient directement à l'artiste. Les écoutes en Pass Découverte ne comptent pas tant qu'aucun Pass payant n'est validé.</p>
+  <p>Chaque écoute réelle (Pass Auditeur payant) génère un revenu, dont 75% revient directement à l'artiste. Les écoutes en Pass Découverte ne comptent pas tant qu'aucun Pass payant n'est validé.</p>
   <h4>Comment payer mon Pass ?</h4>
   <p>Après avoir choisi un Pass, vous êtes redirigé vers WhatsApp pour finaliser le paiement (Mobile Money). Un code d'accès vous est ensuite envoyé par email pour activer votre compte.</p>
   <h4>J'ai un problème avec mon compte</h4>
@@ -10895,7 +10952,7 @@ function applyAccountTypeInner(){
   if(switchBtn) switchBtn.textContent = isArtist ? ' Passer en vue Consommateur' : ' Passer en vue Artiste';
   // Avant : ce bouton venait du mode démo pré-connexion (avant l'existence des vrais
   // comptes, pour prévisualiser les deux expériences) — mais il restait affiché même pour
-  // un VRAI compte connecté. Un Pass Consommateur pouvait donc littéralement voir et
+  // un VRAI compte connecté. Un Pass Auditeur pouvait donc littéralement voir et
   // naviguer dans l'interface Artiste (Dashboard, page Artiste...), ce qui n'a aucun sens :
   // seul le type de compte réel doit déterminer l'accès. Masqué dès qu'un vrai compte est
   // connecté — ne reste utile que pendant la démo, avant inscription.
@@ -10914,7 +10971,7 @@ function switchAccountType(){
   accountType = accountType === 'artist' ? 'consumer' : 'artist';
   applyAccountType();
   closeProfileMenu();
-  toast(accountType === 'artist' ? 'Vue Pass Artiste activée — menu Accueil, Opportunités, Artiste, Dashboard.' : 'Vue Pass Consommateur activée — menu Accueil, Opportunités, Clips, Bibliothèque.');
+  toast(accountType === 'artist' ? 'Vue Pass Artiste activée — menu Accueil, Opportunités, Artiste, Dashboard.' : 'Vue Pass Auditeur activée — menu Accueil, Opportunités, Clips, Bibliothèque.');
   if(accountType === 'consumer') enterApp('catalog');
 }
 /* ============ BIBLIOTHÈQUE (cartes + liste filtrable) ============ */
@@ -11556,7 +11613,7 @@ function openProfileInfo(type){
       const isActive = currentUser.subscription_status === 'active';
       const expiryDate = currentUser.subscription_expires_at ? new Date(currentUser.subscription_expires_at) : null;
       const daysLeft = expiryDate ? Math.max(0, Math.ceil((expiryDate - new Date()) / 86400000)) : null;
-      const planLabel = currentUser.account_type === 'artist' ? 'Pass Artiste' : 'Pass Consommateur';
+      const planLabel = currentUser.account_type === 'artist' ? 'Pass Artiste' : 'Pass Auditeur';
       const statusLabel = isActive ? '● Actif' : (currentUser.subscription_status === 'expired' ? '● Expiré' : '● Inactif');
       body.innerHTML = `
         <div class="pi-sub-card">
@@ -11576,7 +11633,7 @@ function openProfileInfo(type){
     body.innerHTML = `
       <div class="pi-sub-card" style="margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <b><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> Pass Consommateur</b>
+          <b><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> Pass Auditeur</b>
         </div>
         <div class="pi-sub-row"><span>Mensuel</span><b>750 FCFA</b></div>
         <div class="pi-sub-row"><span>Trimestriel</span><b>650 FCFA</b></div>
