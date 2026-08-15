@@ -8458,10 +8458,26 @@ function openFullPlayer(showLyrics){
   setImmersiveMode(true);
   syncFullPlayer();
   if(showLyrics && !lyricsOpen) toggleLyrics();
+  initFpScrollCollapse();
+}
+// Le bandeau du haut du lecteur plein écran passe d'un fond transparent à un fond flouté
+// dès qu'on défile un peu la page — même principe que le mini-lecteur mobile. Un seul
+// écouteur posé une fois (pas à chaque ouverture), réutilisé pour toute la durée de la session.
+let fpScrollCollapseInit = false;
+function initFpScrollCollapse(){
+  if(fpScrollCollapseInit) return;
+  fpScrollCollapseInit = true;
+  const scrollEl = document.getElementById('fp-scroll');
+  const topbar = document.querySelector('.fp-topbar');
+  if(!scrollEl || !topbar) return;
+  scrollEl.addEventListener('scroll', ()=>{
+    topbar.classList.toggle('fp2-scrolled', scrollEl.scrollTop > 40);
+  }, { passive:true });
 }
 function closeFullPlayer(){
   document.getElementById('full-player').classList.remove('open');
   document.getElementById('full-player').classList.remove('immersion');
+  closeFpSheets(); // évite de retrouver Paroles/File resté ouvert à la prochaine ouverture
   immersionOn = false;
   document.body.style.overflow = '';
   setImmersiveMode(false);
@@ -8509,9 +8525,14 @@ function toggleLyrics(){
   lyricsOpen = !lyricsOpen;
   document.getElementById('fp-lyrics').classList.toggle('open', lyricsOpen);
   document.getElementById('lyrics-toggle-btn').classList.toggle('is-active', lyricsOpen);
-  if(lyricsOpen){
-    document.getElementById('fp-scroll').scrollTo({top: document.getElementById('fp-lyrics').offsetTop - 90, behavior:'smooth'});
-  }
+  document.getElementById('fp-sheet-backdrop').classList.toggle('show', lyricsOpen);
+}
+// Ferme n'importe quelle feuille du lecteur actuellement ouverte (Paroles ou File) — appelé
+// au clic sur le fond assombri, ou en fermant le lecteur plein écran lui-même.
+function closeFpSheets(){
+  if(lyricsOpen) toggleLyrics();
+  const queuePanel = document.getElementById('fp-queue');
+  if(queuePanel && queuePanel.classList.contains('open')) toggleQueuePanel();
 }
 let currentLyricLines = [];
 /* Construit les lignes de paroles du morceau en cours.
@@ -8997,9 +9018,9 @@ function toggleQueuePanel(){
   const willOpen = !panel.classList.contains('open');
   panel.classList.toggle('open', willOpen);
   if(btn) btn.classList.toggle('is-active', willOpen);
+  document.getElementById('fp-sheet-backdrop').classList.toggle('show', willOpen);
   if(willOpen){
     renderQueuePanel();
-    panel.scrollIntoView({ behavior:'smooth', block:'start' });
   }
 }
 

@@ -2153,7 +2153,7 @@ html.is-playing .fp-title{ font-weight:800; }
 
 /* Menu rapide (⋯) */
 .fp-quick-menu-wrap{ position:relative; }
-.fp-quick-menu{ display:none; position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:var(--bg-elev); border:1px solid var(--border-strong); border-radius:14px; box-shadow:var(--shadow); padding:6px; min-width:190px; z-index:20; flex-direction:column; gap:1px; }
+.fp-quick-menu{ display:none; position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:var(--bg-elev); border:1px solid var(--border-strong); border-radius:14px; box-shadow:var(--shadow); padding:6px; min-width:190px; max-height:60vh; overflow-y:auto; z-index:20; flex-direction:column; gap:1px; }
 .fp-quick-menu.open{ display:flex; animation:fadeUp .2s var(--ease); }
 .fp-quick-menu button{ display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:9px; font-size:13px; color:var(--text-dim); text-align:left; width:100%; }
 .fp-quick-menu button:hover{ background:var(--bg-card); color:var(--text); }
@@ -2199,6 +2199,112 @@ html.is-playing .fp-title{ font-weight:800; }
 .fp-tech-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; text-align:left; }
 .fp-tech-grid .lbl{ display:block; font-size:11px; color:var(--text-faint); margin-bottom:4px; }
 .fp-tech-grid .val{ display:block; font-family:var(--font-data); font-size:14px; font-weight:600; }
+
+/* ================================================================
+   NUNI PLAYER v3 — refonte visuelle du lecteur plein écran
+   Surcharge par-dessus l'existant (jamais de suppression) : toute
+   l'infrastructure Mode Vibe NUNI (halo, particules, EQ circulaire,
+   fp-bg-stack) reste fonctionnelle et visible sous ce nouveau
+   fond ambiant/pochette/typographie, plutôt que d'être reconstruite
+   depuis zéro au risque de la casser.
+   ================================================================ */
+.full-player{ background:#000; }
+/* ---- Fond ambiant dynamique — dérivé de la vraie couleur de la pochette en cours
+   (--nuni-aura-color, déjà calculée ailleurs dans l'app via NuniPalette à chaque
+   changement de morceau — jamais une couleur inventée). ---- */
+.full-player::before{
+  content:''; position:absolute; inset:-15%; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(50% 40% at 50% 8%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) 42%, transparent), transparent 72%),
+    radial-gradient(55% 45% at 8% 55%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) 24%, transparent), transparent 75%),
+    radial-gradient(55% 45% at 92% 60%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) 24%, transparent), transparent 75%),
+    radial-gradient(60% 50% at 50% 100%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) 28%, transparent), transparent 78%),
+    linear-gradient(180deg, #080706 0%, #000 65%);
+  filter:blur(70px) saturate(125%); transform:scale(1.15);
+  animation:fp2Drift 26s ease-in-out infinite;
+  transition:background 1.1s ease;
+}
+@keyframes fp2Drift{ 0%,100%{ transform:scale(1.15) translate(0,0); } 50%{ transform:scale(1.2) translate(-1.2%,1.2%); } }
+
+.fp-topbar{ position:sticky; top:0; z-index:12; transition:background .3s ease, backdrop-filter .3s ease; }
+.fp-topbar.fp2-scrolled{ background:rgba(6,5,4,.74); backdrop-filter:blur(22px); border-bottom:1px solid var(--glass-line, rgba(255,255,255,.12)); }
+.fp-eyebrow{ font-family:'Space Grotesk',var(--font-display); }
+
+/* ---- Pochette façon affiche — 89% de large, coins généreux ---- */
+.fp-hero{ padding-top:8px; }
+.fp-cover-wrap{ width:89%; max-width:340px; height:auto; aspect-ratio:1/1; margin:4px auto 22px; }
+.fp-cover{ width:100%; height:100%; border-radius:20px; box-shadow:0 30px 55px -16px rgba(0,0,0,.75); }
+.fp-halo{ border-radius:20px; }
+
+.fp-title{ font-family:'Space Grotesk',var(--font-display); font-size:clamp(22px,5.5vw,26px); text-align:left; }
+.fp-artist-row{ font-size:14px; }
+.fp-text-swap{ text-align:left; width:100%; }
+.fp-meta, .fp-meta-faint{ text-align:left; }
+
+/* ---- Barre de progression fine, façon lecteur premium ---- */
+.fp-progress{ margin:20px 0 4px; }
+.fp-progress .progress-track{ height:4px; border-radius:4px; background:rgba(255,255,255,.16); }
+.fp-progress .progress-fill{ background:#fff; border-radius:4px; }
+.fp-progress .time{ font-family:'IBM Plex Mono',var(--font-data); font-size:11px; color:rgba(255,255,255,.55); }
+
+/* ---- Transport — bouton lecture arrondi et plus affirmé ---- */
+.fp-controls{ margin:20px 4px 20px; }
+.fp-controls .play-pause{
+  width:64px; height:64px; border-radius:50%;
+  background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.2);
+  backdrop-filter:blur(10px);
+}
+.fp-controls button:not(.play-pause){ color:#fff; opacity:.9; }
+
+.fp-subcontrols{ justify-content:center; }
+.fp-pill{ font-family:'IBM Plex Mono',var(--font-data); }
+
+/* ---- Rangée d'actions principale épurée — le reste (album/crédits/signaler) est
+   regroupé dans le menu ⋮ déjà existant (fp-quick-menu), pas dupliqué ici. ---- */
+.fp-actions-row{ gap:8px; }
+.fp-actions-row .btn-icon{
+  width:34px; height:34px; border-radius:50%;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+}
+.fp-actions-row .btn-icon:hover{ background:rgba(255,255,255,.14); }
+
+/* ---- Onglets bas (Paroles / DJ / File) — façon barre d'onglets mobile premium ---- */
+.fp-bottom-tabs{
+  display:flex; align-items:center; justify-content:space-around;
+  margin:8px 4px 4px; padding-top:14px; border-top:1px solid rgba(255,255,255,.08);
+}
+.fp-bottom-tab{
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  background:none; border:none; color:rgba(255,255,255,.55); cursor:pointer; padding:4px 10px;
+}
+.fp-bottom-tab svg{ width:19px; height:19px; }
+.fp-bottom-tab span{ font-family:'IBM Plex Mono',var(--font-data); font-size:9px; letter-spacing:.08em; text-transform:uppercase; }
+.fp-bottom-tab.is-active{ color:var(--accent); }
+
+/* ---- Paroles / File d'attente transformées en vraies feuilles coulissantes
+   (bottom sheets) — même contenu et logique JS qu'avant (toggleLyrics/
+   toggleQueuePanel), juste une présentation glissée depuis le bas au lieu d'un
+   simple changement de visibilité en ligne. ---- */
+.fp-lyrics, .fp-queue{
+  position:fixed; left:0; right:0; bottom:0; z-index:70;
+  max-height:74vh; background:rgba(18,15,11,.94); backdrop-filter:blur(24px);
+  border-top:1px solid rgba(255,255,255,.12); border-radius:22px 22px 0 0;
+  padding:14px 22px calc(22px + env(safe-area-inset-bottom,0));
+  transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.9,.36,1);
+  overflow-y:auto; display:block !important; visibility:visible !important;
+}
+.fp-lyrics.open, .fp-queue.open{ transform:translateY(0); }
+.fp-lyrics::before, .fp-queue::before{
+  content:''; display:block; width:34px; height:4px; border-radius:4px;
+  background:rgba(255,255,255,.25); margin:0 auto 14px;
+}
+/* Fond assombri derrière la feuille — un seul élément partagé par Paroles et File
+   (jamais les deux ouvertes en même temps dans l'usage réel de l'app). */
+.fp-sheet-backdrop{
+  position:fixed; inset:0; z-index:69; background:rgba(0,0,0,.55);
+  opacity:0; pointer-events:none; transition:opacity .25s ease;
+}
+.fp-sheet-backdrop.show{ opacity:1; pointer-events:auto; }
 
 .ai-assistant-btn{
   position:fixed; right:24px; bottom:28px; z-index:65; display:flex; align-items:center; gap:9px;
