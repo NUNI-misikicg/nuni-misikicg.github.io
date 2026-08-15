@@ -106,6 +106,7 @@ async function submitEmailVerifyCode(){
     saveSession(realAuthToken, currentUser, true);
     toast('Email confirmé — bienvenue sur NUNI en intégralité !');
     closeEmailVerifyModal();
+    loadRealTracks(); // débloque enfin l'écoute réelle — même raison que pour l'activation d'un Pass
   }catch(e){ btn.disabled = false; feedback.style.color = 'var(--rose-braise)'; feedback.textContent = 'Impossible de contacter le serveur NUNI.'; }
 }
 async function resendEmailVerifyCode(){
@@ -617,6 +618,12 @@ function startAccountStatusWatcher(){
         const wasActive = currentUser && currentUser.subscription_status === 'active';
         const nowActive = data.user && data.user.subscription_status === 'active';
         const nowExpired = data.user && data.user.subscription_status === 'expired';
+        // Pour un compte Découverte, subscription_status reste "active" tout du long de
+        // l'essai, que l'email soit confirmé ou non — donc wasActive/nowActive ne bougent
+        // jamais pour CETTE transition précise. Vérifiée séparément : email confirmé entre-
+        // temps (ex. sur un autre onglet/appareil), pendant que cette session reste ouverte ici.
+        const wasVerified = currentUser && currentUser.email_verified;
+        const nowVerified = data.user && data.user.email_verified;
         currentUser = data.user;
         demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
         saveSession(realAuthToken, currentUser, true);
@@ -629,6 +636,10 @@ function startAccountStatusWatcher(){
  toast(' Votre Pass est maintenant actif — bienvenue sur NUNI en intégralité !');
           hidePassExpiredOverlay(); // au cas où l'écran de blocage était encore affiché
           loadRealTracks(); // même raison qu'après validation d'un code : les liens audio doivent apparaître sans rechargement manuel
+        } else if(!wasVerified && nowVerified){
+          toast(' Email confirmé — bienvenue sur NUNI en intégralité !');
+          closeEmailVerifyModal();
+          loadRealTracks();
         } else if(nowExpired){
           // Le Pass vient d'expirer PENDANT que la personne utilise déjà NUNI (pas
           // seulement détecté à la connexion) — écran de blocage immédiat, où qu'elle soit.
