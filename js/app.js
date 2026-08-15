@@ -11537,9 +11537,9 @@ function openProfileInfo(type){
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <b><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> Pass Consommateur</b>
         </div>
-        <div class="pi-sub-row"><span>Mensuel</span><b>650 FCFA</b></div>
+        <div class="pi-sub-row"><span>Mensuel</span><b>750 FCFA</b></div>
         <div class="pi-sub-row"><span>Trimestriel</span><b>650 FCFA</b></div>
-        <div class="pi-sub-row"><span>Annuel</span><b>1 500 FCFA</b></div>
+        <div class="pi-sub-row"><span>Annuel</span><b>1 250 FCFA</b></div>
       </div>
       <div class="pi-sub-card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
