@@ -22,6 +22,103 @@ function openWhatsApp(url){
    déclenche à la connexion, à la restauration de session, ET en direct pendant une session
    déjà ouverte si le Pass expire pendant que la personne est en train d'utiliser NUNI (voir
    startAccountStatusWatcher, qui vérifie le vrai statut toutes les 2 minutes). */
+/* ============ VÉRIFICATION D'EMAIL — nudge non bloquant ============
+   Contrairement à l'écran plein écran "Pass expiré" (vraiment bloquant), celui-ci se ferme
+   librement — la personne peut continuer à explorer le catalogue. Mais la vraie écoute reste
+   verrouillée côté serveur tant que le code n'est pas confirmé (voir hasStreamingAccess dans
+   server.js) : dès qu'elle essaiera de lancer un morceau, playTrack() la ramènera ici. */
+function ensureEmailVerifyStyles(){
+  if(document.getElementById('email-verify-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'email-verify-styles';
+  style.textContent = `
+    #email-verify-overlay{position:fixed; inset:0; z-index:99000; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:20px; opacity:0; transition:opacity .2s ease;}
+    #email-verify-overlay.show{opacity:1;}
+    #ev-card{width:100%; max-width:360px; background:var(--bg-elev); border:1px solid var(--border); border-radius:20px; padding:26px 24px; text-align:center; box-shadow:0 24px 60px -16px rgba(0,0,0,.55);}
+    #ev-card .ev-icon{width:52px; height:52px; margin:0 auto 16px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#241708;}
+    #ev-card .ev-icon svg{width:24px; height:24px;}
+    #ev-card h4{font-size:17px; font-weight:700; margin:0 0 8px;}
+    #ev-card p{font-size:13px; color:var(--text-dim); line-height:1.55; margin:0 0 18px;}
+    #ev-card input{width:100%; box-sizing:border-box; padding:13px; border-radius:12px; border:1px solid var(--border); background:var(--bg-card); color:var(--text); font-size:20px; font-weight:700; letter-spacing:6px; text-align:center; margin-bottom:14px;}
+    #ev-card input:focus{ outline:none; border-color:var(--accent); }
+    #ev-card .ev-btn-primary{width:100%; padding:13px; border-radius:999px; border:none; cursor:pointer; background:var(--grad-envol); color:#241708; font-weight:700; font-size:14px; margin-bottom:10px;}
+    #ev-card .ev-btn-primary:disabled{opacity:.6; cursor:default;}
+    #ev-card .ev-resend{background:none; border:none; color:var(--accent); font-size:12.5px; cursor:pointer; font-weight:600;}
+    #ev-card .ev-later{display:block; margin:14px auto 0; background:none; border:none; color:var(--text-faint); font-size:12px; text-decoration:underline; cursor:pointer;}
+    #ev-card .ev-feedback{font-size:12.5px; margin-bottom:10px; min-height:16px;}
+  `;
+  document.head.appendChild(style);
+}
+function openEmailVerifyModal(){
+  if(!currentUser || currentUser.email_verified) return;
+  ensureEmailVerifyStyles();
+  let overlay = document.getElementById('email-verify-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'email-verify-overlay';
+  overlay.innerHTML = `
+    <div id="ev-card">
+      <div class="ev-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></svg></div>
+      <h4>Confirmez votre email</h4>
+      <p>On vient d'envoyer un code à <b>${esc(currentUser.email||'')}</b>. Entrez-le pour débloquer l'écoute complète de votre Pass Découverte.</p>
+      <div class="ev-feedback" id="ev-feedback"></div>
+      <input type="text" id="ev-code-input" maxlength="6" inputmode="numeric" placeholder="••••••">
+      <button class="ev-btn-primary" id="ev-submit-btn">Confirmer</button>
+      <button class="ev-resend" id="ev-resend-btn">Je n'ai pas reçu de code — renvoyer</button>
+      <button class="ev-later" id="ev-later-btn">Plus tard</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  overlay.onclick = (e)=>{ if(e.target === overlay) closeEmailVerifyModal(); };
+  document.getElementById('ev-later-btn').onclick = closeEmailVerifyModal;
+  document.getElementById('ev-code-input').focus();
+  document.getElementById('ev-code-input').onkeydown = (e)=>{ if(e.key === 'Enter') submitEmailVerifyCode(); };
+  document.getElementById('ev-submit-btn').onclick = submitEmailVerifyCode;
+  document.getElementById('ev-resend-btn').onclick = resendEmailVerifyCode;
+}
+function closeEmailVerifyModal(){
+  const overlay = document.getElementById('email-verify-overlay');
+  if(!overlay) return;
+  overlay.classList.remove('show');
+  setTimeout(()=> overlay.remove(), 200);
+}
+async function submitEmailVerifyCode(){
+  const feedback = document.getElementById('ev-feedback');
+  const btn = document.getElementById('ev-submit-btn');
+  const code = document.getElementById('ev-code-input').value.trim();
+  if(!code){ feedback.style.color = 'var(--rose-braise)'; feedback.textContent = 'Entrez le code reçu par email.'; return; }
+  btn.disabled = true;
+  feedback.style.color = 'var(--text-faint)';
+  feedback.textContent = 'Vérification…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/auth/verify-email', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+realAuthToken},
+      body: JSON.stringify({ code }),
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    if(!res.ok){ feedback.style.color = 'var(--rose-braise)'; feedback.textContent = data.error; return; }
+    currentUser = data.user || currentUser;
+    if(currentUser) currentUser.email_verified = true;
+    saveSession(realAuthToken, currentUser, true);
+    toast('Email confirmé — bienvenue sur NUNI en intégralité !');
+    closeEmailVerifyModal();
+  }catch(e){ btn.disabled = false; feedback.style.color = 'var(--rose-braise)'; feedback.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+async function resendEmailVerifyCode(){
+  const feedback = document.getElementById('ev-feedback');
+  feedback.style.color = 'var(--text-faint)';
+  feedback.textContent = 'Envoi en cours…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/auth/resend-verification', {
+      method:'POST', headers:{'Authorization':'Bearer '+realAuthToken},
+    });
+    const data = await res.json();
+    feedback.style.color = res.ok ? '#7FC79A' : 'var(--rose-braise)';
+    feedback.textContent = data.message || data.error;
+  }catch(e){ feedback.style.color = 'var(--rose-braise)'; feedback.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+
 function ensurePassExpiredStyles(){
   if(document.getElementById('pass-expired-styles')) return;
   const style = document.createElement('style');
@@ -419,7 +516,10 @@ async function restoreSession(){
     } else if(currentUser.subscription_status === 'active'){
       enterApp('catalog');
  toast(`Bon retour, ${currentUser.first_name} `);
-      if(currentUser.plan === 'discovery') startDiscoveryFromServer();
+      if(currentUser.plan === 'discovery'){
+        startDiscoveryFromServer();
+        if(!currentUser.email_verified) setTimeout(openEmailVerifyModal, 800); // rappel si toujours pas confirmé
+      }
       handleSharedTrackLink(); // reprend un lien partagé en attente, si la personne y était arrivée avant de se connecter
     } else if(currentUser.subscription_status === 'expired'){
       // Distinct d'un Pass jamais activé (branche suivante) : ici, la personne avait bien un
@@ -701,7 +801,10 @@ async function submitLogin(){
         enterApp('dashboard');
       } else if(currentUser.subscription_status === 'active'){
         enterApp('catalog');
-        if(currentUser.plan === 'discovery') startDiscoveryFromServer();
+        if(currentUser.plan === 'discovery'){
+          startDiscoveryFromServer();
+          if(!currentUser.email_verified) setTimeout(openEmailVerifyModal, 800);
+        }
       handleSharedTrackLink(); // reprend un lien partagé en attente, si la personne y était arrivée avant de se connecter
       } else if(currentUser.subscription_status === 'expired'){
         goTo('plans');
@@ -820,12 +923,13 @@ async function submitRealRegistration(){
       // Pass Découverte : déjà actif 24h côté serveur dès l'inscription, aucun passage par
       // WhatsApp — accès immédiat, vraie échéance suivie via subscription_expires_at.
       feedback.style.color = '#7FC79A';
- feedback.textContent = ' Compte créé — Pass Découverte activé pour 24h !';
+ feedback.textContent = ' Compte créé — confirmez votre email pour débloquer l\'écoute !';
       btn.disabled = false;
       setTimeout(()=>{
         closeRealRegister();
         enterApp('catalog');
         startDiscoveryFromServer();
+        openEmailVerifyModal(); // nudge immédiat — fermable, mais l'écoute réelle reste verrouillée côté serveur tant que non confirmé
       }, 900);
       return;
     }
@@ -5790,6 +5894,9 @@ function playTrack(tr){
     if(!realAuthToken){
       toast('Connectez-vous pour écouter ce morceau en entier.');
       openLoginModal();
+    } else if(currentUser && currentUser.plan === 'discovery' && !currentUser.email_verified){
+      toast('Confirmez votre email pour débloquer l\'écoute de votre Pass Découverte.');
+      openEmailVerifyModal();
     } else {
       toast('Votre Pass a expiré — réactivez-le pour continuer à écouter.');
       goTo('plans');
