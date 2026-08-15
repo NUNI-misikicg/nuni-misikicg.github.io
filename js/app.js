@@ -4983,8 +4983,11 @@ async function loadArtistStats(){
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
 }
 let loadRealTracksGen = 0;
-async function loadRealTracks(){
-  const myGen = ++loadRealTracksGen;
+async function loadRealTracks(attempt){
+  attempt = attempt || 0;
+  const myGen = attempt === 0 ? ++loadRealTracksGen : loadRealTracksGen; // une chaîne de tentatives garde le même "ticket" tout du long
+  const maxAttempts = 5;
+  const retryDelays = [3000, 6000, 10000, 15000]; // ~34s de marge au total, le temps qu'un serveur Render endormi se réveille
   try{
     // FIX CRITIQUE : avant, ce fetch n'envoyait jamais le jeton de connexion — cet endpoint
     // était historiquement public, donc jamais besoin d'authentification. Depuis que le
@@ -4995,14 +4998,30 @@ async function loadRealTracks(){
     const res = await fetch(NUNI_API_BASE + '/api/tracks', {
       headers: realAuthToken ? { 'Authorization': 'Bearer ' + realAuthToken } : {},
     });
-    if(!res.ok) return;
+    if(!res.ok){
+      if(attempt < maxAttempts - 1 && myGen === loadRealTracksGen){
+        await new Promise(r=> setTimeout(r, retryDelays[attempt] || 15000));
+        return loadRealTracks(attempt + 1);
+      }
+      return;
+    }
     const data = await res.json();
-    if(!data.tracks || !data.tracks.length) return;
+    if(!data.tracks || !data.tracks.length){
+      // RESTAURÉ : avant, une réponse vide arrêtait tout net — c'était justement le
+      // symptôme visible (Nouveautés/Écoutés récemment/Top Congo vides) quand Render
+      // répondait déjà mais avec un catalogue pas encore tout à fait prêt juste après un
+      // redémarrage. On retente avec le même mécanisme que pour une requête qui échoue.
+      if(attempt < maxAttempts - 1 && myGen === loadRealTracksGen){
+        await new Promise(r=> setTimeout(r, retryDelays[attempt] || 15000));
+        return loadRealTracks(attempt + 1);
+      }
+      return;
+    }
     // FIX : avec les nombreux points d'appel ajoutés cette session (connexion, restauration
     // de session, validation de code, vérification email, surveillance en direct toutes les
-    // 2 min), plusieurs appels à loadRealTracks() peuvent désormais se chevaucher dans le
-    // temps. Sans cette protection, un appel plus ANCIEN qui finissait après un appel plus
-    // RÉCENT pouvait écraser son résultat déjà à jour — seul le tout dernier appel lancé a
+    // 2 min), plusieurs CHAÎNES de tentatives peuvent désormais se chevaucher dans le temps.
+    // Sans cette protection, une chaîne plus ANCIENNE qui finissait après une plus RÉCENTE
+    // pouvait écraser son résultat déjà à jour — seule la toute dernière chaîne lancée a
     // maintenant le droit de mettre à jour l'affichage, les autres s'arrêtent proprement ici.
     if(myGen !== loadRealTracksGen) return;
     // retire les vrais morceaux déjà chargés avant de réinjecter (évite les doublons)
@@ -5042,7 +5061,13 @@ async function loadRealTracks(){
       syncFullPlayer();
     }
     handleSharedTrackLink();
-  }catch(e){ /* pas grave si le serveur est indisponible, le catalogue de démo reste affiché */ }
+  }catch(e){
+    if(attempt < maxAttempts - 1 && myGen === loadRealTracksGen){
+      await new Promise(r=> setTimeout(r, retryDelays[attempt] || 15000));
+      return loadRealTracks(attempt + 1);
+    }
+    /* pas grave si le serveur reste indisponible après tous les essais, le catalogue de démo reste affiché */
+  }
 }
 // Avant : la bannière hero affichait toujours la même image statique (le logo NUNI en grand),
 // jamais liée au vrai contenu de la plateforme. Ici : la vraie pochette + le vrai titre/artiste
