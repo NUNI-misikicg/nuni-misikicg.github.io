@@ -4650,7 +4650,13 @@ function wireHoverPreview(card, tr){
     ticking = true;
     requestAnimationFrame(()=>{
       const view = document.getElementById('view-catalog');
-      if(view && view.style.display !== 'none') view.style.setProperty('--parallax-y', window.scrollY + 'px');
+      // FIX : avant, --parallax-y valait window.scrollY sans aucune limite — sur une longue
+      // page, un élément proche du bas (comme la carte NUNI Talent) subissait un décalage
+      // visuel énorme (150px+ à x0.06) une fois beaucoup scrollé, glissant dans le contenu
+      // en dessous (le pied de page). Plafonné à 400px : garde l'effet de profondeur subtil
+      // voulu pour les tout premiers pixels de scroll, sans jamais casser la mise en page
+      // plus bas dans la page.
+      if(view && view.style.display !== 'none') view.style.setProperty('--parallax-y', Math.min(window.scrollY, 400) + 'px');
       ticking = false;
     });
   }, { passive:true });
