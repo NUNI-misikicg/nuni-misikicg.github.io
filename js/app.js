@@ -2521,19 +2521,24 @@ async function renderContinueListening(){
     wrap.style.display = 'block';
     row.innerHTML = '';
     fillShelf('shelf-continue', recent.map(x=>x.tr));
-    // Badge "il y a X" ajouté après coup sur chaque carte fraîchement créée, dans le même
-    // ordre — plus simple que d'étendre trackCard() pour un seul shelf parmi tous les autres.
-    const cards = row.querySelectorAll('.track-card');
-    recent.forEach((x, i)=>{
-      const cover = cards[i] && cards[i].querySelector('.cover');
-      if(!cover || !x.lastPlayedAt) return;
-      const mins = Math.max(0, Math.round((Date.now() - new Date(x.lastPlayedAt).getTime())/60000));
-      const label = mins < 1 ? "à l'instant" : mins < 60 ? `il y a ${mins} min` : mins < 1440 ? `il y a ${Math.round(mins/60)} h` : `il y a ${Math.round(mins/1440)} j`;
-      const badge = document.createElement('span');
-      badge.className = 'recent-play-badge';
-      badge.textContent = label;
-      cover.appendChild(badge);
-    });
+    // FIX : le badge "il y a X" est purement cosmétique — une erreur ici ne doit JAMAIS
+    // cacher la section entière alors que les vraies cartes viennent d'être correctement
+    // affichées juste au-dessus. Avant, ce bloc n'avait pas son propre try/catch : la
+    // moindre erreur (ex. décalage d'index si dedupeAlbums avait fusionné des cartes)
+    // remontait au catch englobant, qui mettait wrap.style.display='none' et effaçait tout.
+    try{
+      const cards = row.querySelectorAll('.track-card');
+      recent.forEach((x, i)=>{
+        const cover = cards[i] && cards[i].querySelector('.cover');
+        if(!cover || !x.lastPlayedAt) return;
+        const mins = Math.max(0, Math.round((Date.now() - new Date(x.lastPlayedAt).getTime())/60000));
+        const label = mins < 1 ? "à l'instant" : mins < 60 ? `il y a ${mins} min` : mins < 1440 ? `il y a ${Math.round(mins/60)} h` : `il y a ${Math.round(mins/1440)} j`;
+        const badge = document.createElement('span');
+        badge.className = 'recent-play-badge';
+        badge.textContent = label;
+        cover.appendChild(badge);
+      });
+    }catch(e){ console.error('[renderContinueListening] badge ignoré après erreur :', e); }
   }catch(e){ wrap.style.display = 'none'; }
 }
 // ---------- "Tout voir" de l'historique d'écoute — réutilise openCategoryPage (même
@@ -4746,15 +4751,28 @@ fillShelf('shelf-artist-albums', tracks.filter(t=>t.a==='Bibi Mwana'));
 
 /* ============ VRAIS MORCEAUX PUBLIÉS (serveur NUNI) ============ */
 function refreshMainShelves(){
+  // FIX : chaque section est maintenant isolée dans son propre bloc — avant, si l'une
+  // d'entre elles levait une erreur inattendue, TOUTES les suivantes dans cette liste
+  // n'étaient jamais exécutées (une seule exception coupait net toute la chaîne).
   const row = document.getElementById('shelf-new');
   if(row) row.innerHTML = '';
-  fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
-  renderTopCongo();
-  renderTrendingRegion();
-  renderForYouShelf();
-  renderContinueListening();
-  renderResumeListening();
-  renderNuniSelection();
+  try{ fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5)); }catch(e){ console.error('[refreshMainShelves] shelf-new:', e); }
+  // Filet de sécurité final : si malgré tout ça la section reste visuellement vide alors que
+  // de vrais morceaux existent bien en mémoire, on retente une fois après un court délai —
+  // couvre le cas où le DOM n'était pas encore tout à fait prêt au moment du tout premier essai.
+  setTimeout(()=>{
+    const rowNow = document.getElementById('shelf-new');
+    const realCount = tracks.filter(t=>t.isReal).length;
+    if(rowNow && rowNow.children.length === 0 && realCount > 0){
+      try{ fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5)); }catch(e){ console.error('[refreshMainShelves] shelf-new (retry):', e); }
+    }
+  }, 400);
+  try{ renderTopCongo(); }catch(e){ console.error('[refreshMainShelves] renderTopCongo:', e); }
+  try{ renderTrendingRegion(); }catch(e){ console.error('[refreshMainShelves] renderTrendingRegion:', e); }
+  try{ renderForYouShelf(); }catch(e){ console.error('[refreshMainShelves] renderForYouShelf:', e); }
+  try{ renderContinueListening(); }catch(e){ console.error('[refreshMainShelves] renderContinueListening:', e); }
+  try{ renderResumeListening(); }catch(e){ console.error('[refreshMainShelves] renderResumeListening:', e); }
+  try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
 }
 // ---------- "Tendance dans votre région" — vraies écoutes de vrais auditeurs du même pays
 // que la personne connectée (voir /api/tracks/trending-region côté serveur). Jamais affichée
@@ -4953,7 +4971,9 @@ async function loadArtistStats(){
     elArtist.textContent = fmt(s.artist_share_fcfa) + ' FCFA';
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
 }
+let loadRealTracksGen = 0;
 async function loadRealTracks(){
+  const myGen = ++loadRealTracksGen;
   try{
     // FIX CRITIQUE : avant, ce fetch n'envoyait jamais le jeton de connexion — cet endpoint
     // était historiquement public, donc jamais besoin d'authentification. Depuis que le
@@ -4967,6 +4987,13 @@ async function loadRealTracks(){
     if(!res.ok) return;
     const data = await res.json();
     if(!data.tracks || !data.tracks.length) return;
+    // FIX : avec les nombreux points d'appel ajoutés cette session (connexion, restauration
+    // de session, validation de code, vérification email, surveillance en direct toutes les
+    // 2 min), plusieurs appels à loadRealTracks() peuvent désormais se chevaucher dans le
+    // temps. Sans cette protection, un appel plus ANCIEN qui finissait après un appel plus
+    // RÉCENT pouvait écraser son résultat déjà à jour — seul le tout dernier appel lancé a
+    // maintenant le droit de mettre à jour l'affichage, les autres s'arrêtent proprement ici.
+    if(myGen !== loadRealTracksGen) return;
     // retire les vrais morceaux déjà chargés avant de réinjecter (évite les doublons)
     for(let i = tracks.length - 1; i >= 0; i--){ if(tracks[i].isReal) tracks.splice(i, 1); }
     const mapped = data.tracks.map(r => ({
