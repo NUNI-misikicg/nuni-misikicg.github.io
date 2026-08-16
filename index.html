@@ -1706,13 +1706,6 @@
 
 <!-- ============ FULL-SCREEN PLAYER ============ -->
 <div class="full-player" id="full-player">
-  <div class="fp-bg-stack" id="fp-bg-stack">
-    <div class="fp-bg-layer is-active" id="fp-bg-a"></div>
-    <div class="fp-bg-layer" id="fp-bg-b"></div>
-  </div>
-  <div class="fp-waves" id="fp-waves"><div class="fp-wave w1"></div><div class="fp-wave w2"></div></div>
-  <div class="fp-particles" id="fp-particles"></div>
-
   <div class="fp-topbar">
     <button class="btn-icon" onclick="closeFullPlayer()" aria-label="Fermer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
@@ -1730,9 +1723,22 @@
         <svg viewBox="0 0 24 24" fill="currentColor" id="fp-mini-play-icon"><path d="M8 5v14l11-7z"/></svg>
       </button>
     </div>
-    <button class="btn-icon" id="immersion-btn" onclick="toggleImmersion()" aria-label="Mode immersion">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
+    <button class="btn-icon" id="fp-header-options-btn" onclick="toggleQuickMenu(event)" aria-label="Plus d'options">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
     </button>
+    <div class="fp-quick-menu-wrap" id="fp-header-quick-menu-wrap">
+      <div class="fp-quick-menu fp-quick-menu-header" id="fp-quick-menu">
+        <button onclick="downloadCurrentTrack()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16"/></svg> <span>Télécharger</span></button>
+        <button onclick="shareCurrentTrack()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> <span>Partager</span></button>
+        <button onclick="closeFullPlayer(); openArtistPage(currentTrack.a, currentTrack.artistId);"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg> <span>Voir l'artiste</span></button>
+        <button onclick="openFpAlbum()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/></svg> <span>Voir l'album</span></button>
+        <button onclick="openFpCredits()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="13" height="17" rx="2"/><path d="M9 4.5V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5M8.5 11h7M8.5 15h7"/></svg> <span>Afficher les crédits</span></button>
+        <button onclick="cycleSpeed()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> <span id="fp-speed-menu-label">Vitesse de lecture (1×)</span></button>
+        <button onclick="openTuner('dj')" id="fp-dj-toggle-btn" class="dj-toggle-btn"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> <span>Mode DJ</span></button>
+        <button onclick="toggleImmersion()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg> <span>Mode immersion</span></button>
+        <button onclick="reportCurrentTrack()"><svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h13l-2.5 4L18 12H5"/></svg> <span>Signaler</span></button>
+      </div>
+    </div>
   </div>
 
   <div class="fp-scroll" id="fp-scroll">
@@ -1743,71 +1749,46 @@
         </div>
       </div>
 
-      <div class="fp-visualizer" id="fp-visualizer"></div>
-
-      <div class="fp-text-swap" id="fp-text-swap">
-        <h1 class="serif fp-title" id="fp-title">Mokili Ya Sika</h1>
-        <div class="fp-artist-row">
-          <span id="fp-artist">Bibi Mwana</span>
-          <span class="badge-verified" id="fp-verified" style="display:none">${ico('check')} Artiste vérifié NUNI</span>
+      <div class="fp-track-row">
+        <div class="fp-track-meta">
+          <h1 class="fp-title" id="fp-title">—</h1>
+          <div class="fp-artist-row">
+            <span id="fp-artist">—</span>
+            <span class="badge-verified" id="fp-verified" style="display:none">${ico('check')}</span>
+          </div>
         </div>
-        <div class="fp-meta" id="fp-meta">Envol · Rumba · 2026</div>
-        <div class="fp-meta fp-meta-faint" id="fp-meta2">412 K écoutes · Sorti le 12 Jan 2026</div>
-        <div class="fp-info-pills" id="fp-info-pills"></div>
-      </div>
-
-      <div class="fp-artist-stat-card" id="fp-artist-stat" style="display:none">
-        <span><svg class="nuni-ic filled nuni-ic-gold" viewBox="0 0 24 24"><path d="M14.5 3.5c3 0 6 3 6 6-3 1-6 4-8 8l-4.5-4.5c4-2 6-5 6.5-9.5z"/><path d="M9 15l-4 1 1-4M5 19c1.5 0 3-1.5 3-3"/></svg></span>
-        <div>
-          <div class="t">C'est votre morceau</div>
-          <div class="d">Excellent démarrage cette semaine — <a href="#" onclick="event.preventDefault(); enterApp('dashboard'); closeFullPlayer();">voir le tableau de bord</a></div>
-        </div>
+        <button class="fav-btn" id="fp-like-btn" onclick="toggleLike(this)" aria-label="Aimer" aria-pressed="false">
+          <svg class="heart-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+          <svg class="heart-fill" viewBox="0 0 24 24" fill="currentColor"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        </button>
       </div>
 
       <div class="progress-row fp-progress">
         <span class="time data" id="fp-time-elapsed">0:00</span>
-        <div class="progress-track" id="fp-progress-track" onclick="seek(event)"><div class="progress-fill" id="fp-progress-fill"></div><span class="progress-scrub-tip" id="fp-scrub-tip">0:00</span></div>
-        <span class="time data" id="fp-time-total">3:24</span>
+        <div class="progress-track" id="fp-progress-track" onclick="seek(event)" role="slider" aria-label="Progression du morceau" tabindex="0">
+          <div class="progress-fill" id="fp-progress-fill"></div>
+          <div class="progress-thumb" id="fp-progress-thumb"></div>
+          <span class="progress-scrub-tip" id="fp-scrub-tip">0:00</span>
+        </div>
+        <span class="time data" id="fp-time-total">0:00</span>
       </div>
 
       <div class="player-controls fp-controls">
-        <button onclick="shuffleToggle(this)" aria-label="Lecture aléatoire"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
+        <button class="fp-side-mini" onclick="shuffleToggle(this)" aria-label="Lecture aléatoire"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></button>
         <button onclick="prevTrack()" aria-label="Précédent"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM10 12l9-6v12z"/></svg></button>
-        <button class="play-pause fp-play" onclick="togglePlay()" aria-label="Lecture / Pause">
+        <button class="play-pause fp-play" onclick="togglePlay()" aria-label="Lecture / Pause" aria-pressed="false">
           <svg viewBox="0 0 24 24" fill="currentColor" id="fp-play-icon"><path d="M8 5v14l11-7z"/></svg>
         </button>
         <button onclick="nextTrack()" aria-label="Suivant"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM5 18l9-6-9-6z"/></svg></button>
-        <button onclick="repeatToggle(this)" aria-label="Répéter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+        <button class="fp-side-mini" onclick="repeatToggle(this)" aria-label="Répéter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
       </div>
 
-      <div class="fp-subcontrols">
-        <button class="fp-pill" id="speed-btn" onclick="cycleSpeed()">1×</button>
-        <button class="fp-pill" id="quality-btn" onclick="cycleQuality()">Qualité originale</button>
-        <div class="volume-row" style="margin-left:4px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4zM19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-          <div class="volume-track" onclick="setVolume(event)"><div class="volume-fill" id="volume-fill-fp"></div></div>
-        </div>
+      <div class="volume-row fp-volume-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4zM19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        <div class="volume-track" onclick="setVolume(event)"><div class="volume-fill" id="volume-fill-fp"></div></div>
       </div>
 
-      <div class="fp-actions-row">
-        <button class="btn-icon" id="fp-like-btn" onclick="toggleLike(this)" aria-label="Aimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
-        <div class="fp-quick-menu-wrap">
-          <button class="btn-icon" onclick="toggleQuickMenu(event)" aria-label="Plus d'options"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
-          <div class="fp-quick-menu" id="fp-quick-menu">
-            <button onclick="downloadCurrentTrack()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16"/></svg> <span>Télécharger</span></button>
-            <button onclick="shareCurrentTrack()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg> <span>Partager</span></button>
-            <button onclick="closeFullPlayer(); openArtistPage(currentTrack.a, currentTrack.artistId);"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg> <span>Voir l'artiste</span></button>
-            <button onclick="openFpAlbum()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/></svg> <span>Voir l'album</span></button>
-            <button onclick="openFpCredits()"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="13" height="17" rx="2"/><path d="M9 4.5V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5M8.5 11h7M8.5 15h7"/></svg> <span>Afficher les crédits</span></button>
-            <button onclick="openTuner('dj')" id="fp-dj-toggle-btn" class="dj-toggle-btn"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.6" y="14" width="4.4" height="6" rx="2"/><rect x="17" y="14" width="4.4" height="6" rx="2"/></svg> <span>Mode DJ</span></button>
-            <button onclick="reportCurrentTrack()"><svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h13l-2.5 4L18 12H5"/></svg> <span>Signaler</span></button>
-          </div>
-        </div>
-      </div>
-
-      <button class="btn btn-primary fp-support-btn" onclick="openSupportArtistModal(currentTrack.artistId || null, currentTrack.a)"><svg class="nuni-ic filled nuni-ic-err" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg> Soutenir cet artiste</button>
-
-      <!-- Barre d'onglets bas façon lecteur premium — fidèle à la maquette. -->
+      <!-- Barre d'onglets bas — fidèle à la maquette validée. -->
       <div class="fp-bottom-tabs">
         <button class="fp-bottom-tab" id="lyrics-toggle-btn" onclick="toggleLyrics()" aria-label="Paroles">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -1833,13 +1814,14 @@
       <div class="fp-cast-list" id="fp-cast-list"></div>
     </div>
 
-    <!-- Lyrics panel -->
+    <!-- Paroles -->
     <div class="fp-lyrics" id="fp-lyrics">
       <h3 class="serif">Paroles</h3>
       <div class="fp-lyrics-lines" id="fp-lyrics-lines"></div>
     </div>
 
-    <!-- File d'attente -->
+    <!-- File d'attente — vraie file (ajouts personnels + suggestions automatiques du
+         contexte de lecture en cours) + historique récent. -->
     <div class="fp-queue" id="fp-queue">
       <h3 class="serif">File d'attente</h3>
       <p class="fp-section-sub">Ce qui joue, ce qui va suivre, et ce que vous venez d'écouter</p>
@@ -1857,54 +1839,10 @@
       </div>
     </div>
 
-    <!-- Mur des fans -->
-    <div class="fp-section">
-      <h3 class="serif">Mur des fans</h3>
-      <p class="fp-section-sub">Les derniers fans qui soutiennent cet artiste</p>
-      <div class="fan-wall" id="fan-wall"></div>
-    </div>
-
-    <!-- Artist bio -->
-    <div class="fp-section fp-bio">
-      <h3 class="serif">À propos de l'artiste</h3>
-      <div class="fp-bio-row">
-        <div class="artist-avatar" style="width:84px;height:84px;border-radius:22px;font-size:28px;flex-shrink:0;" id="fp-bio-avatar">BM</div>
-        <div>
-          <p class="fp-bio-text" id="fp-bio-text"></p>
-          <div class="fp-bio-chips" id="fp-bio-chips"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Suggestions -->
-    <div class="fp-section">
-      <div class="shelf-head"><h3 class="serif">Titres similaires</h3></div>
-      <div class="shelf-row" id="fp-suggest-similar"></div>
-    </div>
-    <div class="fp-section">
-      <div class="shelf-head"><h3 class="serif">Même artiste</h3></div>
-      <div class="shelf-row" id="fp-suggest-artist"></div>
-    </div>
-
-    <!-- Technical info -->
-    <div class="fp-section fp-tech" id="fp-tech-section" style="display:none;">
-      <h3 class="serif">Informations techniques</h3>
-      <div class="fp-tech-grid">
-        <div><span class="lbl">Format</span><span class="val" id="fp-tech-format">—</span></div>
-        <div><span class="lbl">Débit (estimé)</span><span class="val" id="fp-tech-bitrate">—</span></div>
-        <div><span class="lbl">Taille</span><span class="val" id="fp-tech-size">—</span></div>
-      </div>
-    </div>
-
     <div style="height:40px"></div>
   </div>
 
   <div class="fp-sheet-backdrop" id="fp-sheet-backdrop" onclick="closeFpSheets()"></div>
-
-  <button class="ai-assistant-btn" onclick="askLePAboutArtist()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/><circle cx="12" cy="12" r="3"/></svg>
-    <span>Besoin d'en savoir plus sur cet artiste ?</span>
-  </button>
 </div>
 
 <!-- ============ MIMI — ASSISTANT MUSIQUE CONGOLAISE ============ -->

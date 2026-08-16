@@ -5628,7 +5628,6 @@ const NuniAura = {
   // visible, jamais d'impact sur la vraie lecture du son.
   startLiveLoop(){
     if(this._liveRAF) return; // déjà en cours
-    let lastBass = 0, lastVibeHitAt = 0; // pour détecter un vrai "coup de basse" et déclencher une particule Mode Vibe
     const tick = ()=>{
       this._liveRAF = requestAnimationFrame(tick);
       if(!playing || !usingRealAudio || !nuniAnalyser || !nuniFreqData){
@@ -5641,18 +5640,9 @@ const NuniAura = {
       for(let i=0;i<bassEnd;i++) bSum += nuniFreqData[i];
       const bass = (bSum/bassEnd)/255; // 0 (silence) à 1 (basse pleine puissance)
       // Boost doux et plafonné — "augmente légèrement", jamais un clignotement agressif.
+      // Le fond ambiant du lecteur plein écran (.full-player::before) réagit ainsi
+      // légèrement au rythme du vrai morceau en cours d'écoute.
       document.documentElement.style.setProperty('--nuni-aura-live-boost', (bass*0.22).toFixed(3));
-      // ---- Mode Vibe réactif : un vrai "coup de basse" (front montant au-delà d'un seuil)
-      // déclenche une particule musicale supplémentaire, en plus du rythme de base déjà en
-      // place — les particules suivent enfin vraiment le morceau, pas juste un minuteur fixe.
-      if(typeof vibeMode !== 'undefined' && vibeMode && bass > 0.55 && lastBass <= 0.55){
-        const now = performance.now();
-        if(now - lastVibeHitAt > 180){ // évite une rafale si les basses restent hautes plusieurs frames de suite
-          spawnVibeParticle();
-          lastVibeHitAt = now;
-        }
-      }
-      lastBass = bass;
     };
     tick();
   },
@@ -6367,12 +6357,14 @@ function updateProgress(){
   if(slimFill) slimFill.style.width = (elapsed/duration*100) + '%';
   const fpFill = document.getElementById('fp-progress-fill');
   if(fpFill){
-    fpFill.style.width = (elapsed/duration*100) + '%';
+    const pct = (elapsed/duration*100);
+    fpFill.style.width = pct + '%';
+    const fpThumb = document.getElementById('fp-progress-thumb');
+    if(fpThumb) fpThumb.style.left = pct + '%';
     document.getElementById('fp-time-elapsed').textContent = fmt(elapsed);
     document.getElementById('fp-time-total').textContent = fmt(duration);
   }
   updateLyricsHighlight();
-  updateFpRemainingPill();
   if('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && isFinite(duration) && duration > 0){
     try{ navigator.mediaSession.setPositionState({ duration, playbackRate: playbackSpeed || 1, position: Math.min(elapsed, duration) }); }catch(e){ /* pas bloquant */ }
   }
@@ -8541,8 +8533,8 @@ function toggleImmersion(){
 const NUNI_SPEED_KEY = 'nuni_playback_speed';
 function applyPlaybackSpeed(){
   if(usingRealAudio) realAudio.playbackRate = playbackSpeed;
-  const btn = document.getElementById('speed-btn');
-  if(btn) btn.textContent = playbackSpeed + '×';
+  const label = document.getElementById('fp-speed-menu-label');
+  if(label) label.textContent = 'Vitesse de lecture (' + playbackSpeed + '×)';
 }
 function cycleSpeed(){
   const speeds = [1, 1.25, 1.5, 0.75];
@@ -8550,13 +8542,6 @@ function cycleSpeed(){
   applyPlaybackSpeed();
   try{ localStorage.setItem(NUNI_SPEED_KEY, String(playbackSpeed)); }catch(e){ /* pas bloquant */ }
   toast('Vitesse de lecture : ' + playbackSpeed + '×');
-}
-function cycleQuality(){
-  // Avant : ce bouton faisait défiler "Standard / Haute qualité / Sans perte" comme s'il
-  // changeait vraiment la qualité du flux — en réalité un seul fichier existe par morceau
-  // (celui envoyé par l'artiste), aucune vraie bascule de qualité n'existe côté serveur.
-  // Plutôt que de continuer à simuler un changement qui ne fait rien, on le dit clairement.
-  toast("NUNI diffuse toujours le fichier original envoyé par l'artiste — pas de palier de qualité à changer pour l'instant.");
 }
 function toggleLyrics(){
   lyricsOpen = !lyricsOpen;
@@ -8662,177 +8647,17 @@ function updateLyricsHighlight(){
   currentLyricLines.forEach((l,i)=>{ if(elapsed >= l.time) current = i; });
   lines.forEach((p,i)=> p.classList.toggle('is-current', i===current));
 }
-function renderFanWall(){
-  const wall = document.getElementById('fan-wall');
-  const section = wall ? wall.closest('.fp-section') : null;
-  if(!wall) return;
-  const artistId = currentTrack && currentTrack.artistId;
-  if(!artistId){
-    // Morceau de démonstration (pas de vrai artiste rattaché) : section masquée plutôt
-    // qu'un mur de fans inventé.
-    if(section) section.style.display = 'none';
-    return;
-  }
-  wall.dataset.artistId = artistId;
-  wall.innerHTML = '<p style="font-size:12px; color:var(--text-faint);">Chargement…</p>';
-  fetch(NUNI_API_BASE + '/api/artist/' + artistId + '/recent-followers').then(r=>r.json()).then(data=>{
-    if(String(artistId) !== wall.dataset.artistId) return; // le morceau a changé entre-temps
-    const list = data.followers || [];
-    if(section) section.style.display = list.length ? '' : 'none';
-    wall.innerHTML = '';
-    list.forEach(f=>{
-      const d = document.createElement('div');
-      d.className = 'fan-avatar';
-      if(f.avatar_url){
-        d.style.backgroundImage = `url(${f.avatar_url})`;
-        d.style.backgroundSize = 'cover';
-        d.style.backgroundPosition = 'center';
-      } else {
-        d.textContent = (f.first_name || '?').slice(0,2).toUpperCase();
-      }
-      wall.appendChild(d);
-    });
-  }).catch(()=>{ if(section) section.style.display = 'none'; });
-}
-let fpLastTextKey = null;
 function syncFullPlayer(){
-  applyPlaybackSpeed(); // le libellé du bouton doit refléter la vraie vitesse mémorisée, pas juste "1×" par défaut
+  applyPlaybackSpeed(); // vitesse de lecture mémorisée, appliquée au vrai <audio>, même si le sélecteur visuel a été retiré du nouveau design
   const tr = currentTrack;
-  const textKey = tr.t + '::' + tr.a;
-  const textSwap = document.getElementById('fp-text-swap');
-  const applyText = ()=>{
-    document.getElementById('fp-title').textContent = tr.t;
-    document.getElementById('fp-artist').textContent = tr.a;
-    document.getElementById('fp-meta').textContent = `${tr.album} · ${tr.genre} · ${tr.year}`;
-    document.getElementById('fp-meta2').textContent = `${tr.streams} écoutes · Sorti le ${tr.release}`;
-    document.getElementById('fp-verified').style.display = tr.verified ? 'inline-flex' : 'none';
-    renderFpInfoPills(tr);
-  };
-  if(textSwap && textKey !== fpLastTextKey){
-    fpLastTextKey = textKey;
-    textSwap.classList.add('is-swapping');
-    setTimeout(()=>{ applyText(); textSwap.classList.remove('is-swapping'); }, 180);
-  } else {
-    applyText();
-  }
+  document.getElementById('fp-title').textContent = tr.t;
+  document.getElementById('fp-artist').textContent = tr.a;
+  document.getElementById('fp-verified').style.display = tr.verified ? 'inline-flex' : 'none';
   applyPlayerVisuals(tr);
-  // Avant : l'avatar de la section "À propos de l'artiste" affichait TOUJOURS les initiales
-  // générées, jamais la vraie photo de profil de l'artiste (pourtant déjà disponible et
-  // affichée normalement sur sa page artiste) — et le texte de bio venait d'un dictionnaire
-  // codé en dur, avec un texte générique pour tout artiste réel non listé dedans.
-  const fpBioAvatarEl = document.getElementById('fp-bio-avatar');
-  const initials = tr.a.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const fallbackBio = (artistProfiles[tr.a] || { bio:"Découvrez l'univers de "+tr.a+" sur NUNI." }).bio;
-  const applyRealArtistInfo = (info)=>{
-    if(info && info.avatar_url){
-      fpBioAvatarEl.style.backgroundImage = `url(${info.avatar_url})`;
-      fpBioAvatarEl.style.backgroundSize = 'cover';
-      fpBioAvatarEl.style.backgroundPosition = 'center';
-      fpBioAvatarEl.textContent = '';
-    } else {
-      fpBioAvatarEl.style.backgroundImage = '';
-      fpBioAvatarEl.textContent = initials;
-    }
-    document.getElementById('fp-bio-text').textContent = (info && info.bio) ? info.bio : fallbackBio;
-  };
-  if(tr.artistId){
-    // Sa propre page (déjà connu via currentUser) : pas besoin d'attendre le réseau.
-    if(currentUser && currentUser.account_type === 'artist' && currentUser.id === tr.artistId){
-      applyRealArtistInfo({ avatar_url: currentUser.avatar_url, bio: currentUser.bio });
-    } else if(artistPublicInfoCache[tr.artistId]){
-      applyRealArtistInfo(artistPublicInfoCache[tr.artistId]);
-    } else {
-      applyRealArtistInfo(null); // affichage immédiat (initiales + texte générique) pendant le chargement
-      fetch(NUNI_API_BASE + '/api/artist/' + tr.artistId + '/public-stats')
-        .then(r=>r.json()).then(data=>{
-          const info = { avatar_url: data.avatar_url || null, bio: data.bio || null };
-          artistPublicInfoCache[tr.artistId] = info;
-          // Le morceau a pu changer pendant le chargement — on ne met à jour que si c'est
-          // toujours le bon artiste affiché à l'écran.
-          if(currentTrack && currentTrack.artistId === tr.artistId) applyRealArtistInfo(info);
-        }).catch(()=>{});
-    }
-  } else {
-    applyRealArtistInfo(null); // morceau de démo sans compte réel rattaché
-  }
-  // Avant : la carte "C'est votre morceau" ne s'affichait que pour la démo "Bibi Mwana",
-  // jamais pour un vrai artiste connecté écoutant son propre morceau. Et l'affirmation
-  // "Excellent démarrage cette semaine" était inventée, sans aucune vraie mesure derrière —
-  // on renvoie maintenant simplement vers le vrai tableau de bord, sans rien affirmer.
-  const isRealOwnTrack = !!(currentUser && currentUser.account_type === 'artist' && currentUser.artist_name === tr.a);
-  const statCard = document.getElementById('fp-artist-stat');
-  if(statCard){
-    statCard.style.display = isRealOwnTrack ? 'flex' : 'none';
-    if(isRealOwnTrack){
-      const desc = statCard.querySelector('.d');
-      if(desc) desc.innerHTML = `Voir vos vraies statistiques — <a href="#" onclick="event.preventDefault(); enterApp('dashboard'); closeFullPlayer();">tableau de bord</a>`;
-    }
-  }
+  syncFpMiniInfo();
   renderLyrics();
   updateLyricsHighlight();
-  renderFanWall();
-  loadTechnicalInfo(tr);
   if(document.getElementById('fp-queue') && document.getElementById('fp-queue').classList.contains('open')) renderQueuePanel();
-  // suggestions
-  const similar = document.getElementById('fp-suggest-similar');
-  const sameArtist = document.getElementById('fp-suggest-artist');
-  if(similar){ similar.innerHTML=''; tracks.filter(t=>t.genre===tr.genre && t.t!==tr.t).slice(0,5).forEach(t=>{ try{ similar.appendChild(trackCard(t)); }catch(e){ console.error('[fp similar] carte ignorée:', e); } }); if(!similar.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,5).forEach(t=>{ try{ similar.appendChild(trackCard(t)); }catch(e){} }); }
-  if(sameArtist){ sameArtist.innerHTML=''; tracks.filter(t=>t.a===tr.a && t.t!==tr.t).forEach(t=>{ try{ sameArtist.appendChild(trackCard(t)); }catch(e){ console.error('[fp sameArtist] carte ignorée:', e); } }); if(!sameArtist.children.length) tracks.filter(t=>t.t!==tr.t).slice(0,4).forEach(t=>{ try{ sameArtist.appendChild(trackCard(t)); }catch(e){} }); }
-}
-
-/* ============ INFOS TECHNIQUES RÉELLES DU FICHIER ============
-   Avant : Format/Débit/Échantillonnage/Taille étaient codés en dur ("FLAC", "1 411 kbps",
-   "44.1 kHz", "38,4 Mo"), identiques pour absolument tous les morceaux — jamais liés au
-   vrai fichier envoyé par l'artiste (souvent du MP3, pas du FLAC). Ici : la vraie taille
-   vient d'une requête HEAD réelle (en-tête Content-Length), le format de l'extension du
-   vrai fichier, et le débit est calculé (taille réelle / vraie durée) — étiqueté "estimé"
-   car c'est une moyenne, pas une mesure trame par trame. Rien n'est affiché si le morceau
-   n'a pas de vrai fichier (démo) ou si la mesure échoue — jamais de repli inventé.
-   L'échantillonnage a été retiré : aucun moyen fiable de l'obtenir sans décoder tout le
-   fichier (coûteux), donc pas de faux "44.1 kHz" générique à la place. */
-let techInfoRequestId = 0;
-async function loadTechnicalInfo(tr){
-  const myRequestId = ++techInfoRequestId;
-  const section = document.getElementById('fp-tech-section');
-  if(!section) return;
-  if(!tr.audioUrl){ section.style.display = 'none'; return; }
-  section.style.display = 'none'; // caché pendant la mesure, pas de vieille valeur affichée par erreur
-  try{
-    const res = await fetch(tr.audioUrl, { method:'HEAD' });
-    if(myRequestId !== techInfoRequestId) return; // le morceau a changé entre-temps
-    if(!res.ok) return;
-    const sizeBytes = parseInt(res.headers.get('content-length'), 10);
-    const contentType = res.headers.get('content-type') || '';
-    if(!sizeBytes) return;
-
-    const ext = (tr.audioUrl.split('.').pop() || '').split('?')[0].toUpperCase();
-    const formatLabel = contentType.includes('mpeg') || ext === 'MP3' ? 'MP3'
-      : contentType.includes('wav') || ext === 'WAV' ? 'WAV'
-      : contentType.includes('flac') || ext === 'FLAC' ? 'FLAC'
-      : contentType.includes('aac') || ext === 'AAC' || ext === 'M4A' ? 'AAC'
-      : (ext.length <= 5 ? ext : '—');
-
-    document.getElementById('fp-tech-format').textContent = formatLabel;
-    document.getElementById('fp-tech-size').textContent = (sizeBytes / (1024*1024)).toFixed(1).replace('.', ',') + ' Mo';
-
-    // Le débit dépend de la vraie durée — pas toujours connue tout de suite (le fichier peut
-    // encore être en train de charger ses métadonnées) ; on retente une fois, sans bloquer l'affichage du reste.
-    const withDuration = (d)=>{
-      if(!d || !isFinite(d)) { document.getElementById('fp-tech-bitrate').textContent = '—'; return; }
-      const kbps = Math.round((sizeBytes * 8) / d / 1000);
-      document.getElementById('fp-tech-bitrate').textContent = kbps.toLocaleString('fr-FR') + ' kbps';
-    };
-    if(usingRealAudio && isFinite(realAudio.duration) && realAudio.duration > 0){
-      withDuration(realAudio.duration);
-    } else {
-      document.getElementById('fp-tech-bitrate').textContent = '—';
-      realAudio.addEventListener('loadedmetadata', function once(){
-        realAudio.removeEventListener('loadedmetadata', once);
-        if(myRequestId === techInfoRequestId) withDuration(realAudio.duration);
-      });
-    }
-    section.style.display = '';
-  }catch(e){ /* mesure impossible (CORS, réseau) : section reste cachée, jamais de valeur inventée */ }
 }
 
 /* ============ PARTAGE / TÉLÉCHARGEMENT / SIGNALEMENT — vrais comportements ============
@@ -8934,8 +8759,7 @@ function handleSharedTrackLink(){
   }
 }
 
-/* ============ VISUELS DU LECTEUR : fond dégradé + halo + pochette (via NuniPalette) ============ */
-let fpActiveBgLayer = 'a'; // alterne entre les deux calques pour un fondu propre
+/* ============ VISUELS DU LECTEUR : pochette + couleur d'ambiance (via NuniPalette) ============ */
 let fpLastCoverKey = null; // évite de relancer toute l'animation si le morceau n'a pas vraiment changé de visuel
 function applyPlayerVisuals(tr){
   const coverKey = tr.cover || tr.p;
@@ -8966,21 +8790,12 @@ function applyPlayerVisuals(tr){
     }, 180);
   }
 
-  // --- Palette + fond + halo : recalcul seulement si le visuel a changé (cache interne en plus) ---
+  // --- Couleur d'ambiance : posée sur --nuni-aura-color, utilisée par le fond ambiant
+  // (.full-player::before) — recalcul seulement si le visuel a vraiment changé. La
+  // transition visuelle douce vient du CSS (transition:background 1s ease), pas d'un
+  // fondu manuel entre deux calques comme avant.
   const applyPalette = (palette)=>{
-    const nextLayerId = fpActiveBgLayer === 'a' ? 'fp-bg-b' : 'fp-bg-a';
-    const prevLayerId = fpActiveBgLayer === 'a' ? 'fp-bg-a' : 'fp-bg-b';
-    const nextLayer = document.getElementById(nextLayerId);
-    const prevLayer = document.getElementById(prevLayerId);
-    if(nextLayer){
-      nextLayer.style.background = `linear-gradient(135deg, ${palette.dominant} 0%, ${palette.secondary} 60%, ${palette.dark} 100%)`;
-      nextLayer.classList.add('is-active');
-    }
-    if(prevLayer) prevLayer.classList.remove('is-active');
-    fpActiveBgLayer = fpActiveBgLayer === 'a' ? 'b' : 'a';
-
-    const halo = document.getElementById('fp-halo');
-    if(halo) halo.style.background = `radial-gradient(circle, ${palette.accent} 0%, transparent 72%)`;
+    document.documentElement.style.setProperty('--nuni-aura-color', palette.dominant);
   };
 
   if(isSameVisual) return; // même pochette qu'avant : on ne relance ni le calcul ni le fondu du fond
@@ -8991,32 +8806,6 @@ function applyPlayerVisuals(tr){
   } else {
     applyPalette(NuniPalette.forPaletteClass(tr.p));
   }
-}
-
-/* ============ INFOS DISCRÈTES DU LECTEUR (type de sortie, année, piste, temps restant) ============ */
-function renderFpInfoPills(tr){
-  const wrap = document.getElementById('fp-info-pills');
-  if(!wrap) return;
-  const pills = [];
-  if(tr.releaseType) pills.push(tr.releaseType);
-  if(tr.year) pills.push(String(tr.year));
-
-  if(tr.album && tr.releaseType && tr.releaseType !== 'Single'){
-    const albumTracks = tracks.filter(t=> t.album === tr.album && t.a === tr.a);
-    if(albumTracks.length > 1){
-      const idx = albumTracks.findIndex(t=> t.t === tr.t);
-      if(idx > -1) pills.push(`Piste ${idx+1}/${albumTracks.length}`);
-    }
-  }
-  wrap.innerHTML = pills.map(p=> `<span class="fp-info-pill">${p}</span>`).join('')
-    + `<span class="fp-info-pill" id="fp-remaining-pill">--:-- restantes</span>`;
-  updateFpRemainingPill();
-}
-function updateFpRemainingPill(){
-  const el = document.getElementById('fp-remaining-pill');
-  if(!el) return;
-  const remaining = Math.max(0, duration - elapsed);
-  el.textContent = fmt(remaining) + ' restantes';
 }
 
 /* ============ FILE D'ATTENTE ============
@@ -12141,57 +11930,6 @@ document.addEventListener('click', (e)=>{
 });
 
 /* ============ FULL-SCREEN PLAYER INIT ============ */
-const fpViz = document.getElementById('fp-visualizer');
-if(fpViz){
-  for(let i=0;i<28;i++){
-    const bar = document.createElement('i');
-    bar.style.animationDelay = (i*0.05) + 's';
-    fpViz.appendChild(bar);
-  }
-}
-const fpCircEq = document.getElementById('fp-circular-eq');
-if(fpCircEq){
-  const n = 32;
-  for(let i=0;i<n;i++){
-    const bar = document.createElement('i');
-    const deg = (360/n)*i;
-    bar.style.transform = `rotate(${deg}deg)`;
-    bar.style.animationDelay = (i*0.03) + 's';
-    fpCircEq.appendChild(bar);
-  }
-}
-
-/* ============ MODE VIBE NUNI ============ */
-let vibeMode = false, vibeParticleTimer = null;
-const vibeEmojis = ['♪','♫','✦','✧'];
-function toggleVibeMode(){
-  vibeMode = !vibeMode;
-  document.getElementById('full-player').classList.toggle('vibe-mode', vibeMode);
-  const hint = document.getElementById('fp-vibe-hint');
- hint.textContent = vibeMode ? ' Mode Vibe NUNI activé — touchez pour quitter' : ' Touchez la pochette pour le Mode Vibe NUNI';
-  if(vibeMode){
- toast('Mode Vibe NUNI activé ');
-    spawnVibeParticle();
-    vibeParticleTimer = setInterval(spawnVibeParticle, 700);
-  } else {
-    clearInterval(vibeParticleTimer);
-  }
-}
-function spawnVibeParticle(){
-  const layer = document.getElementById('fp-vibe-particles');
-  if(!layer || !vibeMode) return;
-  const p = document.createElement('span');
-  p.className = 'vibe-particle';
-  p.textContent = vibeEmojis[Math.floor(Math.random()*vibeEmojis.length)];
-  p.style.left = (18 + Math.random()*64) + '%';
-  p.style.setProperty('--drift', (Math.random()*80-40) + 'px');
-  p.style.setProperty('--spin', (Math.random()*50-25) + 'deg');
-  p.style.fontSize = (12 + Math.random()*9) + 'px';
-  p.style.color = Math.random() > 0.5 ? 'var(--accent)' : 'var(--violet-soft)';
-  layer.appendChild(p);
-  setTimeout(()=> p.remove(), 3600);
-}
-
 syncFullPlayer();
 
 /* ============ PWA — enregistrement du service worker ============ */
