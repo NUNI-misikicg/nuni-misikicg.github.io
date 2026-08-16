@@ -330,8 +330,13 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
 .app-topnav{
   position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between;
   padding:18px 34px; padding-top:calc(18px + env(safe-area-inset-top,0));
-  background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(14px);
-  border-bottom:1px solid var(--border);
+  background:color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter:blur(10px);
+  border-bottom:1px solid transparent;
+  transition:background .3s ease, backdrop-filter .3s ease, border-color .3s ease;
+}
+.app-topnav.is-scrolled{
+  background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(18px);
+  border-bottom-color:var(--border);
 }
 /* Le thème est désormais entièrement automatique selon l'heure de l'appareil (voir
    computeAutoTheme dans app.js) — ces deux boutons restent dans le DOM par sécurité mais ne
@@ -1001,27 +1006,25 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   0%{ opacity:1; transform:translate(-50%,-50%) rotate(0deg); }
   100%{ opacity:0; transform:translate(calc(-50% + var(--cx)), calc(-50% + var(--cy))) rotate(var(--cr)); }
 }
-.artist-suggest-card{ flex-shrink:0; width:170px; cursor:pointer; }
+.artist-suggest-card{ flex-shrink:0; width:132px; cursor:pointer; text-align:center; }
 .asc-photo{
-  position:relative; width:170px; height:210px; border-radius:18px; overflow:hidden;
+  position:relative; width:112px; height:112px; margin:0 auto 14px; border-radius:50%; overflow:hidden;
   background:var(--grad-envol); background-size:cover; background-position:center;
-  display:flex; align-items:flex-end; box-shadow:0 14px 30px -14px rgba(0,0,0,0.55);
+  border:1px solid var(--border);
   transition:transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s cubic-bezier(.2,.8,.2,1);
 }
-.artist-suggest-card:hover .asc-photo{ transform:translateY(-4px) scale(1.015); box-shadow:0 22px 40px -14px rgba(0,0,0,0.65); }
-.asc-initials{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-data); font-weight:700; font-size:34px; color:rgba(10,10,16,.5); }
-.asc-scrim{ position:absolute; inset:0; background:linear-gradient(0deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.15) 55%, transparent 78%); }
-.asc-info{ position:relative; z-index:1; padding:14px; width:100%; }
-.asc-info .n{ font-size:14.5px; font-weight:700; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.5); margin-bottom:2px; display:flex; align-items:center; gap:4px; }
-.asc-info .g{ font-size:11px; color:rgba(255,255,255,.72); margin-bottom:10px; }
+.artist-suggest-card:hover .asc-photo{ transform:translateY(-4px); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), 0 14px 30px -10px rgba(0,0,0,.6); }
+.asc-initials{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-data); font-weight:700; font-size:30px; color:rgba(10,10,16,.5); }
+.asc-info{ display:flex; flex-direction:column; align-items:center; gap:2px; }
+.asc-info .n{ font-size:13.5px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.asc-info .g{ font-size:11.5px; color:var(--text-faint); margin-bottom:8px; }
 .artist-suggest-card button{
-  font-size:11px; padding:6px 0; border-radius:999px; border:none; width:100%; cursor:pointer;
-  transition:all .3s; background:var(--grad-envol); color:#1a1006; font-weight:700;
+  font-size:11px; padding:6px 16px; border-radius:999px; border:1px solid var(--border); cursor:pointer;
+  transition:all .3s; background:transparent; color:var(--text-dim); font-weight:500;
 }
-.artist-suggest-card button:hover{ filter:brightness(1.08); }
-.artist-suggest-card button.is-following{ background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.3); font-weight:500; backdrop-filter:blur(4px); }
-.artist-suggest-card button.is-following:hover{ background:rgba(255,255,255,.2); }
-@media(max-width:640px){ .artist-suggest-card, .asc-photo{ width:140px; } .asc-photo{ height:172px; } }
+.artist-suggest-card button:hover{ border-color:var(--accent); color:var(--accent); }
+.artist-suggest-card button.is-following{ background:var(--bg-card); color:var(--text); }
+@media(max-width:640px){ .artist-suggest-card{ width:104px; } .asc-photo{ width:88px; height:88px; } }
 .release-card{
   flex-shrink:0; width:220px; background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--radius-m);
   padding:16px; display:flex; gap:14px; align-items:center;
@@ -1216,9 +1219,19 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   position:relative; display:flex; align-items:flex-end; min-height:260px; border-radius:24px;
   margin-bottom:26px; padding:0; overflow:hidden; cursor:default;
   background-size:cover; background-position:center; box-shadow:0 20px 50px -18px rgba(0,0,0,.5);
+  transition:background-image .6s ease;
+}
+/* ---- Lueur colorée dérivée de la vraie pochette en avant du hero (--nuni-hero-glow, posée
+   par renderHomeHero/renderTopCongoHero dans app.js via NuniPalette — jamais une couleur
+   inventée séparément de l'image réelle). Donne l'impression que la pochette diffuse sa
+   lumière dans son environnement, pas juste une image posée au milieu. ---- */
+.premium-hero::before{
+  content:''; position:absolute; inset:-30%; z-index:0; pointer-events:none;
+  background:radial-gradient(60% 55% at 82% 15%, color-mix(in srgb, var(--nuni-hero-glow, var(--accent)) 38%, transparent), transparent 68%);
+  filter:blur(50px); transition:background 1s ease;
 }
 .premium-hero-overlay{
-  position:absolute; inset:0;
+  position:absolute; inset:0; z-index:0;
   background:linear-gradient(180deg, rgba(0,0,0,.05) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,.92) 100%);
 }
 .premium-hero-content{ position:relative; z-index:1; padding:32px 34px; width:100%; }
@@ -1305,6 +1318,27 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 @media(hover:none){ .cover::after{ display:none; } }
 .track-card{ width:172px; flex-shrink:0; cursor:pointer; perspective:800px; }
 .track-card.reveal-in{ opacity:0; animation: revealIn .55s var(--ease) forwards; }
+
+/* ---- Classement éditorial (Top Congo, accueil) — grand numéro, ligne discrète, jamais un
+   tableau classique. Aucune flèche de tendance : NUNI ne garde pas encore d'historique de
+   rang précédent, donc rien de fabriqué à sa place. ---- */
+.rank-list{ display:flex; flex-direction:column; gap:2px; width:100%; overflow-x:visible; }
+.rank-row{ display:flex; align-items:center; gap:16px; padding:11px 10px; border-radius:12px; cursor:pointer; transition:background .25s ease, transform .25s ease; }
+.rank-row:hover{ background:var(--bg-card); transform:translateX(3px); }
+.rank-num{ font-family:var(--font-display); font-style:italic; font-weight:600; font-size:22px; color:var(--text-faint); width:34px; flex-shrink:0; transition:color .25s ease; }
+.rank-row:hover .rank-num{ color:var(--accent); }
+.rank-art{ width:52px; height:52px; border-radius:9px; overflow:hidden; flex-shrink:0; background-size:cover; background-position:center; }
+.rank-info{ flex:1; min-width:0; }
+.rank-title{ font-size:14.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rank-artist{ font-size:12.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rank-mini-play{ width:32px; height:32px; border-radius:50%; background:var(--bg-card); border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s ease; color:var(--text); cursor:pointer; }
+.rank-mini-play svg{ width:12px; height:12px; }
+.rank-row:hover .rank-mini-play{ opacity:1; }
+/* ---- Apparition des sections entières au défilement (pas juste les cartes qui les
+   composent) — via IntersectionObserver, voir initShelfScrollReveal dans app.js. ---- */
+.shelf.scroll-reveal{ opacity:0; transform:translateY(26px); transition:opacity .65s var(--ease), transform .65s var(--ease); }
+.shelf.scroll-reveal.is-visible{ opacity:1; transform:translateY(0); }
+@media(prefers-reduced-motion: reduce){ .shelf.scroll-reveal{ transition:none; opacity:1; transform:none; } }
 @keyframes revealIn{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:translateY(0);} }
 .track-card:hover .cover{ transform:translateY(-6px) scale(1.02) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); }
 /* Focus clavier — même traitement visuel que le survol (halo signature + lift), pour que la

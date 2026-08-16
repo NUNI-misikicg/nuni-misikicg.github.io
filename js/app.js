@@ -2862,13 +2862,12 @@ async function loadArtistFollowsSection(artistId, artistName){
       card.innerHTML = `
         <div class="asc-photo" style="${photoStyle}">
           ${a.avatar_url ? '' : `<div class="asc-initials">${initials}</div>`}
-          <div class="asc-scrim"></div>
-          <div class="asc-info">
-            <div class="n">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
-            <div class="g">${a.top_genre || 'Artiste NUNI'}</div>
-          </div>
+        </div>
+        <div class="asc-info">
+          <div class="n">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+          <div class="g">${a.top_genre || 'Artiste NUNI'}</div>
         </div>`;
-      card.querySelector('.asc-photo').onclick = ()=> openArtistPage(name, a.id);
+      card.onclick = ()=> openArtistPage(name, a.id);
       row.appendChild(card);
     });
     section.style.display = 'block';
@@ -3795,14 +3794,13 @@ function filterCatalogByGenre(genreName){
           card.innerHTML = `
             <div class="asc-photo" style="${photoStyle}">
               ${photoStyle ? '' : `<div class="asc-initials">${initials}</div>`}
-              <div class="asc-scrim"></div>
-              <div class="asc-info">
-                <div class="n">${name}${t && t.verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
-                <div class="g">${genreName}</div>
-                <button>Voir le profil</button>
-              </div>
+            </div>
+            <div class="asc-info">
+              <div class="n">${name}${t && t.verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+              <div class="g">${genreName}</div>
+              <button>Voir le profil</button>
             </div>`;
-          card.querySelector('.asc-photo').onclick = (e)=>{ if(e.target.tagName !== 'BUTTON') openArtistPage(name, artistId); };
+          card.querySelector('.asc-photo').onclick = ()=> openArtistPage(name, artistId);
           card.querySelector('button').onclick = (e)=>{ e.stopPropagation(); openArtistPage(name, artistId); };
           artistsRow.appendChild(card);
         });
@@ -4404,7 +4402,14 @@ function trackCard(tr){
   if(tr.cover){
     const coverEl = card.querySelector('.cover');
     const probe = new Image();
-    probe.onload = ()=>{ coverEl.style.backgroundImage = `url("${tr.cover}")`; coverEl.style.backgroundSize = 'cover'; coverEl.style.backgroundPosition = 'center'; };
+    probe.onload = ()=>{
+      coverEl.style.backgroundImage = `url("${tr.cover}")`; coverEl.style.backgroundSize = 'cover'; coverEl.style.backgroundPosition = 'center';
+      // Alimente le moteur d'ambiance de l'accueil (voir initHomeAmbientEngine) avec la
+      // vraie couleur dominante de cette vraie pochette — jamais une couleur inventée.
+      if(typeof NuniPalette !== 'undefined'){
+        NuniPalette.extract(tr.cover).then(palette=>{ card.dataset.ambientColor = palette.dominant; });
+      }
+    };
     probe.onerror = ()=>{ coverEl.classList.add(tr.p || 'pal-1'); coverEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>' + coverEl.innerHTML; };
     probe.src = tr.cover;
   }
@@ -4764,16 +4769,41 @@ function renderTopCongo(){
   const row = document.getElementById('shelf-top');
   if(!row) return;
   row.innerHTML = '';
+  row.classList.add('rank-list');
   const top = getTopStreamedTracks(5);
   if(!top.length){
     row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez d'écoutes réelles pour établir un classement — revenez bientôt !</p>`;
     return;
   }
-  // FIX : même protection que fillShelf() — avant, un appendChild(trackCard(tr)) direct sans
-  // try/catch faisait planter TOUT le forEach dès la première carte à problème, laissant le
-  // classement partiellement ou totalement vide sans aucune raison visible.
-  top.forEach(tr=>{
-    try{ row.appendChild(trackCard(tr)); }catch(e){ console.error('[renderTopCongo] carte ignorée après erreur :', e); }
+  // Vraie liste classée façon éditoriale (grand numéro + rangée), plutôt qu'une simple grille
+  // de pochettes carrées — chaque carte reste protégée individuellement, une entrée à
+  // problème n'empêche jamais les autres de s'afficher.
+  top.forEach((tr, i)=>{
+    try{
+      const el = document.createElement('div');
+      el.className = 'rank-row';
+      const coverInner = tr.cover ? '' : `<div class="cover-glyph pal-pattern"></div>`;
+      el.innerHTML = `
+        <div class="rank-num">${String(i+1).padStart(2,'0')}</div>
+        <div class="rank-art ${tr.cover ? '' : (tr.p||'pal-1')}">${coverInner}</div>
+        <div class="rank-info">
+          <div class="rank-title"></div>
+          <div class="rank-artist"></div>
+        </div>
+        <button class="rank-mini-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
+      el.querySelector('.rank-title').textContent = tr.t;
+      el.querySelector('.rank-artist').textContent = tr.a;
+      if(tr.cover){
+        const artEl = el.querySelector('.rank-art');
+        const probe = new Image();
+        probe.onload = ()=>{ artEl.style.backgroundImage = `url("${tr.cover}")`; artEl.style.backgroundSize = 'cover'; artEl.style.backgroundPosition = 'center'; };
+        probe.onerror = ()=>{ artEl.classList.add(tr.p||'pal-1'); artEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>'; };
+        probe.src = tr.cover;
+      }
+      el.querySelector('.rank-mini-play').onclick = (e)=>{ e.stopPropagation(); handleTrackCardClick(tr); };
+      el.addEventListener('click', ()=> handleTrackCardClick(tr));
+      row.appendChild(el);
+    }catch(e){ console.error('[renderTopCongo] ligne ignorée après erreur :', e); }
   });
 }
 fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
@@ -4806,6 +4836,32 @@ function refreshMainShelves(){
   try{ renderContinueListening(); }catch(e){ console.error('[refreshMainShelves] renderContinueListening:', e); }
   try{ renderResumeListening(); }catch(e){ console.error('[refreshMainShelves] renderResumeListening:', e); }
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
+  initShelfScrollReveal();
+  setTimeout(initShelfScrollReveal, 800); // couvre les sections qui se remplissent de façon asynchrone, un peu après
+}
+// ---------- Apparition des sections au défilement — chaque bloc .shelf de l'accueil entre
+// en douceur (fondu + léger déplacement) quand il devient visible, plutôt que d'apparaître
+// brutalement. Idempotent : peut être rappelée sans risque, ignore les sections déjà
+// observées (data-reveal-bound), donc sûr à appeler plusieurs fois pendant le chargement.
+let shelfRevealObserver = null;
+function initShelfScrollReveal(){
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduceMotion) return; // respecte le réglage système, pas d'animation forcée
+  if(!shelfRevealObserver){
+    shelfRevealObserver = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          entry.target.classList.add('is-visible');
+          shelfRevealObserver.unobserve(entry.target); // une seule apparition, jamais répétée en re-scrollant
+        }
+      });
+    }, { threshold:0.12, rootMargin:'0px 0px -40px 0px' });
+  }
+  document.querySelectorAll('#view-catalog .shelf:not([data-reveal-bound])').forEach(el=>{
+    el.dataset.revealBound = '1';
+    el.classList.add('scroll-reveal');
+    shelfRevealObserver.observe(el);
+  });
 }
 // ---------- "Tendance dans votre région" — vraies écoutes de vrais auditeurs du même pays
 // que la personne connectée (voir /api/tracks/trending-region côté serveur). Jamais affichée
@@ -5654,6 +5710,70 @@ const NuniAura = {
 // Conservé pour compatibilité : l'ancien nom d'appel (playTrack l'utilise) délègue au moteur.
 function applyMusicAura(tr){ NuniAura.applyTrack(tr); }
 
+// ---------- Moteur d'ambiance au scroll — la scène entière reste éclairée par la vraie
+// pochette la plus proche du centre de l'écran, comme une "scène qui se transforme
+// progressivement" plutôt qu'une succession de blocs. Alimenté par card.dataset.ambientColor
+// (voir trackCard(), déjà posé depuis la vraie couleur extraite de chaque vraie pochette —
+// jamais une couleur inventée). Une vraie lecture en cours prime toujours : ce moteur ne
+// s'active que lorsque rien ne joue, en mode "resting" déjà existant sur #nuni-aura-ambient,
+// réutilisant sa transition CSS douce déjà en place (transition:background 1.1s ease) —
+// aucun nouveau moteur de lerp parallèle à maintenir.
+function initHomeAmbientScrollEngine(){
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduceMotion) return;
+  const ambient = document.getElementById('nuni-aura-ambient');
+  if(!ambient) return;
+  let ticking = false;
+  function pickNearestCardColor(){
+    if(playing) return; // une vraie lecture en cours prime toujours — jamais interrompue par un simple défilement
+    const cards = document.querySelectorAll('.track-card[data-ambient-color]');
+    if(!cards.length) return;
+    const vh = window.innerHeight;
+    const centerY = vh / 2;
+    let bestColor = null, bestDist = Infinity;
+    cards.forEach(c=>{
+      const r = c.getBoundingClientRect();
+      if(r.bottom < 0 || r.top > vh) return; // hors du champ visible, ne fait pas partie de la scène actuelle
+      const elCenter = r.top + r.height / 2;
+      const dist = Math.abs(elCenter - centerY);
+      if(dist < bestDist){ bestDist = dist; bestColor = c.dataset.ambientColor; }
+    });
+    if(bestColor){
+      document.documentElement.style.setProperty('--nuni-aura-color', bestColor);
+      ambient.classList.add('is-resting');
+    }
+  }
+  window.addEventListener('scroll', ()=>{
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(()=>{ pickNearestCardColor(); ticking = false; });
+  }, { passive:true });
+  pickNearestCardColor(); // premier calcul au chargement, sans attendre un premier scroll
+}
+initHomeAmbientScrollEngine();
+
+// ---------- Parallaxe très subtile sur le hero — le fond et la pochette bougent légèrement
+// au mouvement de la souris, pas pour "faire bouger toute l'interface" mais pour donner une
+// vraie impression de profondeur. Retiré automatiquement au repos (mouseleave). ----------
+(function initHeroParallax(){
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduceMotion) return;
+  const hero = document.getElementById('premium-hero-accueil');
+  const cover = document.getElementById('premium-hero-cover');
+  if(!hero) return;
+  hero.addEventListener('mousemove', (e)=>{
+    const r = hero.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    hero.style.backgroundPosition = `calc(50% + ${x * -10}px) calc(50% + ${y * -8}px)`;
+    if(cover) cover.style.transform = `translate(${x * 12}px, ${y * 10}px)`;
+  });
+  hero.addEventListener('mouseleave', ()=>{
+    hero.style.backgroundPosition = '';
+    if(cover) cover.style.transform = '';
+  });
+})();
+
 function applyHeroTrack(top, hero, titleEl, subEl, playBtn, coverEl, liveCountEl, shareBtn){
   if(top.cover && coverEl) coverEl.style.backgroundImage = `url(${top.cover})`;
   if(titleEl) titleEl.innerHTML = `<em>${top.t}</em>`;
@@ -5679,6 +5799,22 @@ function applyHeroTrack(top, hero, titleEl, subEl, playBtn, coverEl, liveCountEl
   }
   if(top.cover && typeof NuniAura !== 'undefined') NuniAura.applyRestingHero(top.cover);
 }
+// ---------- Nav qui se voile progressivement au défilement — plus translucide tout en
+// haut (laisse respirer le hero), plus opaque/floutée une fois qu'on a défilé un peu.
+// Throttlé via requestAnimationFrame pour ne jamais recalculer le style à chaque pixel. ----------
+(function initTopnavScrollVeil(){
+  let ticking = false;
+  const apply = ()=>{
+    document.querySelectorAll('.app-topnav').forEach(nav=>{
+      nav.classList.toggle('is-scrolled', window.scrollY > 24);
+    });
+    ticking = false;
+  };
+  window.addEventListener('scroll', ()=>{
+    if(!ticking){ requestAnimationFrame(apply); ticking = true; }
+  }, { passive:true });
+})();
+
 loadRealTracks();
 
 // ---------- Filet de sécurité permanent — sections jamais vides si de vraies données
@@ -10049,14 +10185,13 @@ async function loadFeaturedArtists(){
       card.innerHTML = `
         <div class="asc-photo" style="${photoStyle}">
           ${a.avatar_url ? '' : `<div class="asc-initials">${initials}</div>`}
-          <div class="asc-scrim"></div>
-          <div class="asc-info">
-            <div class="n">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
-            <div class="g">${a.top_genre || 'Artiste NUNI'}</div>
-            <button>Suivre</button>
-          </div>
+        </div>
+        <div class="asc-info">
+          <div class="n">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24" style="width:13px;height:13px;"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+          <div class="g">${a.top_genre || 'Artiste NUNI'}</div>
+          <button>Suivre</button>
         </div>`;
-      card.querySelector('.asc-photo').onclick = (e)=>{ if(e.target.tagName !== 'BUTTON') openArtistPage(name, a.id); };
+      card.querySelector('.asc-photo').onclick = ()=> openArtistPage(name, a.id);
       const followBtn = card.querySelector('button');
       // Avant : ce bouton affichait toujours "Suivre" par défaut, même si le compte connecté
       // suivait déjà cet artiste — jamais vérifié contre la vraie base à l'ouverture (même
