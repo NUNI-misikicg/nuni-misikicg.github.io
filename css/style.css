@@ -1357,13 +1357,15 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
    vitesse de respiration varient selon le profil émotionnel du genre en cours. */
 #nuni-aura-ambient{
   position:fixed; inset:0; z-index:0; pointer-events:none; opacity:0;
-  background:radial-gradient(60% 50% at 15% 90%, var(--nuni-aura-color, transparent) 0%, transparent 65%);
+  background:
+    radial-gradient(85% 70% at 50% 0%, var(--nuni-aura-color, transparent) 0%, transparent 60%),
+    radial-gradient(60% 50% at 15% 90%, var(--nuni-aura-color, transparent) 0%, transparent 65%);
   filter:blur(var(--nuni-aura-blur, 120px));
   transition:opacity 1.1s ease, background 1.1s ease, filter 1.1s ease;
   animation:auraAmbientBreathe var(--nuni-aura-pulse-speed, 5s) ease-in-out infinite;
 }
-#nuni-aura-ambient.is-resting{ opacity:.07; }
-#nuni-aura-ambient.is-active{ opacity:calc(.16 + var(--nuni-aura-live-boost, 0)*0.4); }
+#nuni-aura-ambient.is-resting{ opacity:.1; }
+#nuni-aura-ambient.is-active{ opacity:calc(.34 + var(--nuni-aura-live-boost, 0)*0.5); }
 @keyframes auraAmbientBreathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.04); } }
 @media(prefers-reduced-motion: reduce){ #nuni-aura-ambient{ transition:opacity .3s ease; animation:none; } }
 
