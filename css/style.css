@@ -2192,13 +2192,19 @@ html.nuni-immersive .demo-nav{
 
 /* ---- Diffusion — interface prête à connecter, jamais un faux statut "connecté" pour un
    appareil qui ne l'est pas réellement. ---- */
-.fp-cast-device{ display:flex; align-items:center; justify-content:space-between; padding:13px 2px; border-bottom:1px solid rgba(255,255,255,.06); }
+.fp-cast-device{ display:flex; align-items:center; justify-content:space-between; padding:13px 10px; border-radius:12px; border-bottom:1px solid rgba(255,255,255,.06); transition:background .15s ease; }
 .fp-cast-device:last-child{ border-bottom:none; }
+.fp-cast-device[onclick]{ cursor:pointer; }
+.fp-cast-device[onclick]:hover{ background:rgba(255,255,255,.05); }
 .fp-cast-device-left{ display:flex; align-items:center; gap:12px; font-size:14.5px; color:#fff; }
 .fp-cast-device.is-disabled .fp-cast-device-left{ color:rgba(255,255,255,.4); }
 .fp-cast-device svg{ width:18px; height:18px; color:rgba(255,255,255,.55); flex-shrink:0; }
+/* Appareil actuellement actif — légère accentuation du fond, comme demandé. */
+.fp-cast-device.is-selected{ background:color-mix(in srgb, var(--accent) 8%, transparent); }
+.fp-cast-active-label{ font-family:var(--font-data); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin-left:2px; }
+/* Point lumineux avec vraie lueur — pas juste un point plein. */
 .fp-cast-device-dot{ width:9px; height:9px; border-radius:50%; border:1.5px solid rgba(255,255,255,.4); }
-.fp-cast-device.is-selected .fp-cast-device-dot{ background:var(--accent); border-color:var(--accent); }
+.fp-cast-device.is-selected .fp-cast-device-dot{ background:var(--accent); border-color:var(--accent); box-shadow:0 0 8px 1px color-mix(in srgb, var(--accent) 70%, transparent); }
 .fp-cast-soon-tag{ font-family:var(--font-data); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; color:rgba(255,255,255,.4); background:rgba(255,255,255,.08); padding:3px 8px; border-radius:999px; }
 
 /* Fond assombri derrière une feuille ouverte — un seul élément partagé (jamais deux
