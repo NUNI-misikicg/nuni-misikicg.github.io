@@ -1955,6 +1955,8 @@ html.is-playing .mp-marquee-track .mp-title{ font-weight:700; }
 .player-controls button:hover{ color:var(--text); }
 .player-controls button.is-toggled-on,
 .fp-controls button.is-toggled-on{ color:var(--accent, #D4AF6A) !important; }
+.fp-quick-menu button.is-toggled-on{ color:var(--accent, #D4AF6A) !important; }
+.fp-quick-menu button.is-toggled-on svg{ color:var(--accent, #D4AF6A) !important; }
 .player-controls svg{ width:17px; height:17px; }
 .play-pause{
   width:36px; height:36px; border-radius:50%; background:var(--text); color:var(--bg); display:flex; align-items:center; justify-content:center;
@@ -2042,10 +2044,10 @@ html.nuni-immersive .demo-nav{
 .full-player::before{
   content:''; position:absolute; inset:-20%; z-index:0; pointer-events:none;
   background:
-    radial-gradient(42% 34% at 50% 18%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) calc(48% + var(--nuni-aura-live-boost, 0) * 30%), transparent), transparent 70%),
-    radial-gradient(55% 45% at 50% 100%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) 16%, transparent), transparent 78%),
-    linear-gradient(180deg, #0c0906 0%, #050403 45%, #000 100%);
-  filter:blur(60px); transform:scale(calc(1.1 + var(--nuni-aura-live-boost, 0) * 0.15)); transition:background 1s ease, transform .08s linear;
+    radial-gradient(40% 32% at 50% 16%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) calc(28% + var(--nuni-aura-live-boost, 0) * 18%), transparent), transparent 72%),
+    radial-gradient(55% 45% at 50% 100%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) 9%, transparent), transparent 78%),
+    linear-gradient(180deg, #0a0806 0%, #050403 40%, #000 100%);
+  filter:blur(64px); transform:scale(calc(1.1 + var(--nuni-aura-live-boost, 0) * 0.1)); transition:background 1s ease, transform .08s linear;
 }
 
 /* ---- Header — X / NUNI PLAYER / options, devient compact au scroll (titre+artiste+
@@ -2101,7 +2103,7 @@ html.nuni-immersive .demo-nav{
 .fp-cover-mark{ font-family:var(--font-display); font-weight:700; font-size:18px; letter-spacing:.4em; color:rgba(255,255,255,.7); padding-left:.4em; }
 
 /* ---- Titre / artiste / favori ---- */
-.fp-track-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:18px; }
+.fp-track-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:26px; }
 .fp-track-meta{ min-width:0; }
 .fp-title{ font-family:var(--font-display); font-weight:700; font-size:23px; letter-spacing:-.01em; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .fp-artist-row{ display:flex; align-items:center; gap:8px; font-size:14.5px; color:rgba(255,255,255,.72); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -2125,7 +2127,7 @@ html.nuni-immersive .demo-nav{
 .progress-track.is-scrubbing .progress-scrub-tip{ opacity:1; }
 
 /* ---- Contrôles — minimalistes, pas de grosse pastille dorée ---- */
-.fp-controls{ display:flex; align-items:center; justify-content:space-between; margin:22px 4px 20px; gap:6px; }
+.fp-controls{ display:flex; align-items:center; justify-content:center; margin:30px 4px 32px; gap:36px; }
 .fp-controls button{ background:none; border:none; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:6px; }
 .fp-controls button:active{ transform:scale(.9); }
 .fp-controls > button:not(.fp-side-mini):not(.play-pause) svg{ width:26px; height:26px; }
@@ -2136,21 +2138,21 @@ html.nuni-immersive .demo-nav{
 .play-pause.fp-play svg{ width:22px; height:22px; }
 
 /* ---- Volume — fin, élégant ---- */
-.fp-volume-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.fp-volume-row{ display:flex; align-items:center; gap:10px; margin-bottom:20px; }
 .fp-volume-row svg{ width:14px; height:14px; color:rgba(255,255,255,.5); flex:0 0 auto; }
 .fp-volume-row .volume-track{ position:relative; flex:1; height:4px; border-radius:4px; background:rgba(255,255,255,.14); cursor:pointer; }
 .fp-volume-row .volume-fill{ position:absolute; left:0; top:0; height:4px; border-radius:4px; background:rgba(255,255,255,.75); width:55%; }
 
 /* ---- Trois onglets — Paroles / Diffusion / File ---- */
-.fp-bottom-tabs{ display:flex; align-items:center; justify-content:space-around; padding:16px 0 24px; border-top:1px solid rgba(255,255,255,.08); }
+.fp-bottom-tabs{ display:flex; align-items:center; justify-content:space-around; padding:24px 0 30px; border-top:1px solid rgba(255,255,255,.08); margin-top:8px; }
 .fp-bottom-tab{ display:flex; flex-direction:column; align-items:center; gap:7px; background:none; border:none; color:rgba(255,255,255,.65); cursor:pointer; padding:4px 10px; }
 .fp-bottom-tab:active{ transform:scale(.94); }
 .fp-bottom-tab svg{ width:19px; height:19px; }
 .fp-bottom-tab span{ font-family:var(--font-data); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; }
 .fp-bottom-tab.is-active{ color:var(--accent); }
 
-/* ---- Paroles / Diffusion / File — vraies feuilles coulissantes depuis le bas. ---- */
-.fp-lyrics, .fp-queue, .fp-cast{
+/* ---- Paroles / Diffusion — vraies feuilles coulissantes depuis le bas. ---- */
+.fp-lyrics, .fp-cast{
   position:fixed; left:0; right:0; bottom:0; z-index:70;
   max-height:74vh; background:rgba(14,11,9,.97); backdrop-filter:blur(22px);
   border-top:1px solid rgba(255,255,255,.14); border-radius:22px 22px 0 0;
@@ -2158,21 +2160,23 @@ html.nuni-immersive .demo-nav{
   transform:translateY(100%); transition:transform .32s cubic-bezier(.32,.9,.36,1);
   overflow-y:auto; display:block !important; visibility:visible !important;
 }
-.fp-lyrics.open, .fp-queue.open, .fp-cast.open{ transform:translateY(0); }
-.fp-lyrics::before, .fp-queue::before, .fp-cast::before{
+.fp-lyrics.open, .fp-cast.open{ transform:translateY(0); }
+.fp-lyrics::before, .fp-cast::before{
   content:''; display:block; width:34px; height:4px; border-radius:4px;
   background:rgba(255,255,255,.25); margin:0 auto 14px;
 }
-.fp-lyrics h3, .fp-queue h3, .fp-cast h3{ font-family:var(--font-display); font-weight:700; font-size:17px; margin-bottom:4px; }
+.fp-lyrics h3, .fp-cast h3{ font-family:var(--font-display); font-weight:700; font-size:17px; margin-bottom:4px; }
 .fp-section-sub{ font-size:12.5px; color:rgba(255,255,255,.5); margin-bottom:16px; }
 .fp-lyrics-lines{ font-size:15px; line-height:1.9; color:rgba(255,255,255,.72); }
 .fp-lyrics-lines p{ margin-bottom:4px; cursor:pointer; transition:color .2s ease, opacity .2s ease; }
 .fp-lyrics-lines p.is-current{ color:#fff; font-weight:600; }
 
-.fp-queue-group{ margin-bottom:20px; }
-.fp-queue-label{ font-family:var(--font-data); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.4); margin-bottom:10px; }
+/* ---- À suivre — visible directement en défilant, comme dans la maquette validée. ---- */
+.fp-queue-inline{ margin-top:8px; padding-top:22px; border-top:1px solid rgba(255,255,255,.08); }
+.fp-queue-group{ margin-bottom:26px; }
+.fp-queue-label{ font-family:var(--font-data); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:rgba(255,255,255,.4); margin-bottom:14px; }
 .fp-queue-empty{ font-size:13px; color:rgba(255,255,255,.4); padding:6px 0; }
-.fp-queue-item{ display:flex; align-items:center; gap:12px; padding:9px 0; cursor:pointer; }
+.fp-queue-item{ display:flex; align-items:center; gap:12px; padding:10px 0; cursor:pointer; }
 .fp-queue-item.is-current .fp-qi-title{ color:var(--accent); }
 .fp-queue-remove{ width:24px; height:24px; border-radius:50%; background:none; border:none; color:rgba(255,255,255,.4); display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
 .fp-queue-remove:hover{ color:#fff; background:rgba(255,255,255,.08); }

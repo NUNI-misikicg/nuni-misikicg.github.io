@@ -4346,7 +4346,7 @@ let userQueue = [];
 function addToQueue(tr){
   userQueue.push(tr);
   toast(`« ${tr.t} » ajouté à votre file d'attente.`);
-  if(document.getElementById('fp-queue') && document.getElementById('fp-queue').classList.contains('open')) renderQueuePanel();
+  renderQueuePanel();
 }
 function removeFromQueue(index){
   userQueue.splice(index,1);
@@ -8587,8 +8587,6 @@ function toggleCastPanel(){
 // File) — appelé au clic sur le fond assombri, ou en fermant le lecteur plein écran lui-même.
 function closeFpSheets(){
   if(lyricsOpen) toggleLyrics();
-  const queuePanel = document.getElementById('fp-queue');
-  if(queuePanel && queuePanel.classList.contains('open')) toggleQueuePanel();
   const castPanel = document.getElementById('fp-cast');
   if(castPanel && castPanel.classList.contains('open')) toggleCastPanel();
 }
@@ -8657,7 +8655,7 @@ function syncFullPlayer(){
   syncFpMiniInfo();
   renderLyrics();
   updateLyricsHighlight();
-  if(document.getElementById('fp-queue') && document.getElementById('fp-queue').classList.contains('open')) renderQueuePanel();
+  renderQueuePanel();
 }
 
 /* ============ PARTAGE / TÉLÉCHARGEMENT / SIGNALEMENT — vrais comportements ============
@@ -8822,12 +8820,10 @@ let fpQueueHistoryList = [];
 function renderQueuePanel(){
   const pool = getCurrentPlaybackPool();
   const i = pool.findIndex(t=> t.t === currentTrack.t);
-  const current = document.getElementById('fp-queue-current');
   const next = document.getElementById('fp-queue-next');
   const hist = document.getElementById('fp-queue-history');
-  if(!current || !next || !hist) return;
-
-  current.innerHTML = `<div class="fp-queue-item is-current">${queueRowHtml(currentTrack)}</div>`;
+  const histGroup = document.getElementById('fp-queue-history-group');
+  if(!next || !hist) return;
 
   // Vraie file personnelle (ajoutée depuis le menu "..." d'un morceau) — toujours affichée
   // en premier, clairement distincte des suggestions automatiques du pool en cours.
@@ -8845,9 +8841,8 @@ function renderQueuePanel(){
   next.innerHTML = userQueueHtml + autoHtml;
 
   fpQueueHistoryList = listeningHistory.filter(h=> h.track.t !== currentTrack.t).slice(0, 5).map(h=> h.track);
-  hist.innerHTML = fpQueueHistoryList.length
-    ? fpQueueHistoryList.map((tr, idx)=> `<div class="fp-queue-item" data-queue-kind="history" data-queue-idx="${idx}">${queueRowHtml(tr)}</div>`).join('')
-    : `<div class="fp-queue-empty">Aucun historique récent.</div>`;
+  if(histGroup) histGroup.style.display = fpQueueHistoryList.length ? '' : 'none'; // jamais de section "récemment écouté" vide affichée pour rien
+  hist.innerHTML = fpQueueHistoryList.map((tr, idx)=> `<div class="fp-queue-item" data-queue-kind="history" data-queue-idx="${idx}">${queueRowHtml(tr)}</div>`).join('');
 }
 document.addEventListener('click', (e)=>{
   const removeBtn = e.target.closest('.fp-queue-remove');
@@ -8862,28 +8857,16 @@ document.addEventListener('click', (e)=>{
   else { tr = fpQueueHistoryList[idx]; }
   if(tr){
     playTrack(tr);
-    // Avant : le panneau file d'attente restait ouvert après la sélection — le changement
-    // de pochette/titre se produisait bien, mais hors de vue en haut du lecteur, donnant
-    // l'impression que rien ne s'était passé. On referme le panneau et on remonte pour que
-    // le vrai changement soit immédiatement visible.
-    const queuePanel = document.getElementById('fp-queue');
-    const queueBtn = document.getElementById('queue-toggle-btn');
-    if(queuePanel) queuePanel.classList.remove('open');
-    if(queueBtn) queueBtn.classList.remove('is-active');
+    // La file reste maintenant visible en défilant (plus une feuille à fermer) — on remonte
+    // simplement en haut pour que le vrai changement (pochette/titre) soit immédiatement visible.
     const scrollEl = document.getElementById('fp-scroll');
     if(scrollEl) scrollEl.scrollTo({ top:0, behavior:'smooth' });
   }
 });
 function toggleQueuePanel(){
   const panel = document.getElementById('fp-queue');
-  const btn = document.getElementById('queue-toggle-btn');
-  const willOpen = !panel.classList.contains('open');
-  panel.classList.toggle('open', willOpen);
-  if(btn) btn.classList.toggle('is-active', willOpen);
-  document.getElementById('fp-sheet-backdrop').classList.toggle('show', willOpen);
-  if(willOpen){
-    renderQueuePanel();
-  }
+  if(!panel) return;
+  panel.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
 /* ============ MENU RAPIDE (⋯) ============ */
