@@ -4769,42 +4769,60 @@ function renderTopCongo(){
   const row = document.getElementById('shelf-top');
   if(!row) return;
   row.innerHTML = '';
-  row.classList.add('rank-list');
-  const top = getTopStreamedTracks(5);
+  row.classList.remove('rank-list');
+  row.classList.add('chart-flex');
+  const top = getTopStreamedTracks(10);
   if(!top.length){
     row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez d'écoutes réelles pour établir un classement — revenez bientôt !</p>`;
     return;
   }
-  // Vraie liste classée façon éditoriale (grand numéro + rangée), plutôt qu'une simple grille
-  // de pochettes carrées — chaque carte reste protégée individuellement, une entrée à
-  // problème n'empêche jamais les autres de s'afficher.
-  top.forEach((tr, i)=>{
+  const setCover = (el, tr)=>{
+    if(tr.cover){
+      const probe = new Image();
+      probe.onload = ()=>{ el.style.backgroundImage = `url("${tr.cover}")`; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; };
+      probe.onerror = ()=>{ el.classList.add(tr.p||'pal-1'); el.innerHTML = '<div class="cover-glyph pal-pattern"></div>'; };
+      probe.src = tr.cover;
+    } else {
+      el.classList.add(tr.p||'pal-1');
+      el.innerHTML = '<div class="cover-glyph pal-pattern"></div>';
+    }
+  };
+
+  // #1 — grande pochette, point focal du classement (comme sur les plateformes musicales
+  // premium : le morceau le plus écouté doit se voir immédiatement, pas être noyé dans une
+  // liste uniforme).
+  try{
+    const leader = top[0];
+    const leaderEl = document.createElement('div');
+    leaderEl.className = 'chart-leader';
+    leaderEl.innerHTML = `
+      <div class="chart-leader-cover"><span class="chart-leader-rank">01</span></div>
+      <h3></h3><p></p>`;
+    leaderEl.querySelector('h3').textContent = leader.t;
+    leaderEl.querySelector('p').textContent = leader.a;
+    setCover(leaderEl.querySelector('.chart-leader-cover'), leader);
+    leaderEl.addEventListener('click', ()=> handleTrackCardClick(leader));
+    row.appendChild(leaderEl);
+  }catch(e){ console.error('[renderTopCongo] leader ignoré après erreur :', e); }
+
+  // 02 à 10 — rail de mini-pochettes classées, chacune protégée individuellement.
+  const railEl = document.createElement('div');
+  railEl.className = 'chart-rail';
+  top.slice(1).forEach((tr, i)=>{
     try{
-      const el = document.createElement('div');
-      el.className = 'rank-row';
-      const coverInner = tr.cover ? '' : `<div class="cover-glyph pal-pattern"></div>`;
+      const el = document.createElement('article');
+      el.className = 'chart-mini';
       el.innerHTML = `
-        <div class="rank-num">${String(i+1).padStart(2,'0')}</div>
-        <div class="rank-art ${tr.cover ? '' : (tr.p||'pal-1')}">${coverInner}</div>
-        <div class="rank-info">
-          <div class="rank-title"></div>
-          <div class="rank-artist"></div>
-        </div>
-        <button class="rank-mini-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
-      el.querySelector('.rank-title').textContent = tr.t;
-      el.querySelector('.rank-artist').textContent = tr.a;
-      if(tr.cover){
-        const artEl = el.querySelector('.rank-art');
-        const probe = new Image();
-        probe.onload = ()=>{ artEl.style.backgroundImage = `url("${tr.cover}")`; artEl.style.backgroundSize = 'cover'; artEl.style.backgroundPosition = 'center'; };
-        probe.onerror = ()=>{ artEl.classList.add(tr.p||'pal-1'); artEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>'; };
-        probe.src = tr.cover;
-      }
-      el.querySelector('.rank-mini-play').onclick = (e)=>{ e.stopPropagation(); handleTrackCardClick(tr); };
+        <div class="chart-mini-cover"><span class="chart-mini-rank">${String(i+2).padStart(2,'0')}</span></div>
+        <div class="chart-mini-title"></div><div class="chart-mini-artist"></div>`;
+      el.querySelector('.chart-mini-title').textContent = tr.t;
+      el.querySelector('.chart-mini-artist').textContent = tr.a;
+      setCover(el.querySelector('.chart-mini-cover'), tr);
       el.addEventListener('click', ()=> handleTrackCardClick(tr));
-      row.appendChild(el);
-    }catch(e){ console.error('[renderTopCongo] ligne ignorée après erreur :', e); }
+      railEl.appendChild(el);
+    }catch(e){ console.error('[renderTopCongo] entrée ignorée après erreur :', e); }
   });
+  row.appendChild(railEl);
 }
 fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
 renderTopCongo();

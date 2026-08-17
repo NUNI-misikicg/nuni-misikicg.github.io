@@ -1356,18 +1356,26 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 /* ---- Classement éditorial (Top Congo, accueil) — grand numéro, ligne discrète, jamais un
    tableau classique. Aucune flèche de tendance : NUNI ne garde pas encore d'historique de
    rang précédent, donc rien de fabriqué à sa place. ---- */
-.rank-list{ display:flex; flex-direction:column; gap:2px; width:100%; overflow-x:visible; }
-.rank-row{ display:flex; align-items:center; gap:16px; padding:11px 10px; border-radius:12px; cursor:pointer; transition:background .25s ease, transform .25s ease; }
-.rank-row:hover{ background:var(--bg-card); transform:translateX(3px); }
-.rank-num{ font-family:var(--font-display); font-style:italic; font-weight:600; font-size:22px; color:var(--text-faint); width:34px; flex-shrink:0; transition:color .25s ease; }
-.rank-row:hover .rank-num{ color:var(--accent); }
-.rank-art{ width:52px; height:52px; border-radius:9px; overflow:hidden; flex-shrink:0; background-size:cover; background-position:center; }
-.rank-info{ flex:1; min-width:0; }
-.rank-title{ font-size:14.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.rank-artist{ font-size:12.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.rank-mini-play{ width:32px; height:32px; border-radius:50%; background:var(--bg-card); border:none; flex-shrink:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s ease; color:var(--text); cursor:pointer; }
-.rank-mini-play svg{ width:12px; height:12px; }
-.rank-row:hover .rank-mini-play{ opacity:1; }
+/* ---- Top Congo façon Apple Music — grande pochette pour le #1, rail de mini-pochettes
+   classées pour la suite. Remplace l'ancienne liste uniforme .rank-list (le morceau le plus
+   écouté doit être le point focal, pas noyé dans une liste identique). ---- */
+.chart-flex{ display:flex; gap:32px; align-items:flex-start; }
+@media(max-width:760px){ .chart-flex{ flex-direction:column; } }
+.chart-leader{ flex:0 0 240px; cursor:pointer; }
+@media(max-width:760px){ .chart-leader{ flex-basis:auto; width:100%; max-width:280px; } }
+.chart-leader-cover{ position:relative; width:240px; height:240px; border-radius:var(--radius-m); overflow:hidden; background-size:cover; background-position:center; box-shadow:0 20px 40px -16px rgba(0,0,0,.5); margin-bottom:12px; }
+@media(max-width:760px){ .chart-leader-cover{ width:100%; height:auto; aspect-ratio:1; } }
+.chart-leader-rank{ position:absolute; left:-12px; bottom:-12px; background:var(--accent); color:var(--bg); font-family:var(--font-display); font-style:italic; font-weight:600; font-size:22px; width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px -6px rgba(0,0,0,.4); }
+.chart-leader h3{ font-size:16px; font-weight:600; color:var(--text); margin-bottom:2px; }
+.chart-leader p{ font-size:13px; color:var(--text-faint); }
+.chart-rail{ flex:1; min-width:0; display:flex; gap:20px; overflow-x:auto; padding-bottom:8px; scrollbar-width:none; }
+.chart-rail::-webkit-scrollbar{ display:none; }
+.chart-mini{ flex:0 0 118px; cursor:pointer; }
+.chart-mini-cover{ position:relative; width:118px; height:118px; border-radius:var(--radius-s); overflow:hidden; background-size:cover; background-position:center; margin-bottom:9px; }
+.chart-mini-rank{ position:absolute; left:6px; bottom:6px; font-family:var(--font-display); font-style:italic; font-weight:600; font-size:12px; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.7); }
+.chart-mini-title{ font-size:12.5px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chart-mini-artist{ font-size:11px; color:var(--text-faint); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 /* ---- Apparition des sections entières au défilement (pas juste les cartes qui les
    composent) — via IntersectionObserver, voir initShelfScrollReveal dans app.js. ---- */
 .shelf.scroll-reveal{ opacity:0; transform:translateY(26px); transition:opacity .65s var(--ease), transform .65s var(--ease); }
