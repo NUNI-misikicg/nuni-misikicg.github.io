@@ -2521,6 +2521,15 @@ async function renderContinueListening(){
     wrap.style.display = 'block';
     row.innerHTML = '';
     fillShelf('shelf-continue', recent.map(x=>x.tr));
+    if(typeof initShelfScrollReveal === 'function') initShelfScrollReveal(); // la section vient de devenir visible : lui donner sa chance d'apparaître en douceur, plutôt que de dépendre uniquement du délai fixe
+    // Filet de sécurité : si la section reste visible mais que les pochettes ne s'affichent
+    // pas (DOM pas encore prêt au tout premier passage), on retente une fois — même logique
+    // déjà en place pour "Nouveautés".
+    setTimeout(()=>{
+      if(row.children.length === 0 && recent.length > 0){
+        try{ fillShelf('shelf-continue', recent.map(x=>x.tr)); }catch(e){ console.error('[renderContinueListening] retry:', e); }
+      }
+    }, 400);
     // FIX : le badge "il y a X" est purement cosmétique — une erreur ici ne doit JAMAIS
     // cacher la section entière alors que les vraies cartes viennent d'être correctement
     // affichées juste au-dessus. Avant, ce bloc n'avait pas son propre try/catch : la
@@ -4912,6 +4921,11 @@ function initShelfScrollReveal(){
     }, { threshold:0.12, rootMargin:'0px 0px -40px 0px' });
   }
   document.querySelectorAll('#view-catalog .shelf:not([data-reveal-bound])').forEach(el=>{
+    // Une section encore display:none (ex: "Écoutés récemment", masquée tant que la vraie
+    // réponse serveur n'est pas arrivée) n'a aucune géométrie à observer — on ne la marque
+    // pas "liée" pour qu'un appel ultérieur (une fois réellement visible) puisse encore la
+    // prendre en compte.
+    if(el.offsetParent === null) return;
     el.dataset.revealBound = '1';
     el.classList.add('scroll-reveal');
     shelfRevealObserver.observe(el);
