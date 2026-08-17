@@ -4646,6 +4646,42 @@ function fillShelf(id, list){
     }catch(e){ console.error('[fillShelf] carte ignorée après erreur :', e); }
   });
 }
+// ---------- Nouveautés — composition éditoriale asymétrique (une grande pochette + deux
+// plus petites), plutôt qu'une rangée uniforme de cartes identiques. Sur les vraies sorties
+// récentes uniquement (mêmes données que fillShelf, juste une mise en page différente). ----------
+function fillNouveautesAsymmetric(id, list){
+  const row = document.getElementById(id);
+  if(!row) return;
+  row.innerHTML = '';
+  row.classList.add('release-grid');
+  const items = dedupeAlbums(list).slice(0, 3);
+  items.forEach((tr,i) => {
+    try{
+      const el = document.createElement('article');
+      el.className = 'release-card' + (i===0 ? ' is-lead' : '');
+      const coverInner = tr.cover ? '' : `<div class="cover-glyph pal-pattern"></div>`;
+      el.innerHTML = `
+        <div class="release-card-art ${tr.cover ? '' : (tr.p||'pal-1')}">${coverInner}</div>
+        <div class="release-card-info">
+          <span class="release-card-tag"></span>
+          <h3 class="release-card-title"></h3>
+          <p class="release-card-artist"></p>
+        </div>`;
+      el.querySelector('.release-card-tag').textContent = tr.releaseType || 'Single';
+      el.querySelector('.release-card-title').textContent = tr.t;
+      el.querySelector('.release-card-artist').textContent = tr.a;
+      if(tr.cover){
+        const artEl = el.querySelector('.release-card-art');
+        const probe = new Image();
+        probe.onload = ()=>{ artEl.style.backgroundImage = `url("${tr.cover}")`; artEl.style.backgroundSize = 'cover'; artEl.style.backgroundPosition = 'center'; };
+        probe.onerror = ()=>{ artEl.classList.add(tr.p||'pal-1'); artEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>'; };
+        probe.src = tr.cover;
+      }
+      el.addEventListener('click', ()=> handleTrackCardClick(tr));
+      row.appendChild(el);
+    }catch(e){ console.error('[fillNouveautesAsymmetric] carte ignorée après erreur :', e); }
+  });
+}
 function parseStreamsCount(v){
   if(typeof v === 'number') return v;
   const s = String(v||'0').trim().toUpperCase();
@@ -4824,7 +4860,7 @@ function renderTopCongo(){
   });
   row.appendChild(railEl);
 }
-fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5));
+fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3));
 renderTopCongo();
 fillShelf('shelf-artist', tracks.filter(t=>t.a==='Bibi Mwana').concat(tracks.slice(0,4)));
 fillShelf('shelf-artist-trending', [...tracks.filter(t=>t.a==='Bibi Mwana')].sort((a,b)=> b.likes - a.likes));
@@ -4837,7 +4873,7 @@ function refreshMainShelves(){
   // n'étaient jamais exécutées (une seule exception coupait net toute la chaîne).
   const row = document.getElementById('shelf-new');
   if(row) row.innerHTML = '';
-  try{ fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5)); }catch(e){ console.error('[refreshMainShelves] shelf-new:', e); }
+  try{ fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3)); }catch(e){ console.error('[refreshMainShelves] shelf-new:', e); }
   // Filet de sécurité final : si malgré tout ça la section reste visuellement vide alors que
   // de vrais morceaux existent bien en mémoire, on retente une fois après un court délai —
   // couvre le cas où le DOM n'était pas encore tout à fait prêt au moment du tout premier essai.
@@ -4845,7 +4881,7 @@ function refreshMainShelves(){
     const rowNow = document.getElementById('shelf-new');
     const realCount = tracks.filter(t=>t.isReal).length;
     if(rowNow && rowNow.children.length === 0 && realCount > 0){
-      try{ fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5)); }catch(e){ console.error('[refreshMainShelves] shelf-new (retry):', e); }
+      try{ fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3)); }catch(e){ console.error('[refreshMainShelves] shelf-new (retry):', e); }
     }
   }, 400);
   try{ renderTopCongo(); }catch(e){ console.error('[refreshMainShelves] renderTopCongo:', e); }
@@ -5854,7 +5890,7 @@ loadRealTracks();
     if(realCount > 0){
       const newRow = document.getElementById('shelf-new');
       if(newRow && newRow.children.length === 0){
-        try{ fillShelf('shelf-new', tracks.filter(t=>t.isReal).slice(0,5)); }
+        try{ fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3)); }
         catch(e){ console.error('[watchNeverEmptyShelves] shelf-new:', e); }
       }
       const topRow = document.getElementById('shelf-top');

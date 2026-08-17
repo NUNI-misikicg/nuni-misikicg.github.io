@@ -1305,6 +1305,33 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .shelf-head a{ font-size:12.5px; color:var(--text-faint); }
 .shelf-row{ display:flex; gap:18px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 
+/* ---- Nouveautés — composition éditoriale asymétrique (grande pochette + deux plus
+   petites), plutôt qu'une rangée uniforme. Réutilise les vrais jetons NUNI (--bg-card,
+   --accent, --text...), jamais une couleur propre à une maquette externe. ---- */
+.release-grid{ display:grid; grid-template-columns:1.4fr 1fr; grid-template-rows:1fr 1fr; gap:16px; overflow:visible; padding-bottom:0; }
+.release-card{ position:relative; border-radius:var(--radius-m); overflow:hidden; cursor:pointer; min-height:150px; background:var(--bg-card); }
+.release-card.is-lead{ grid-row:1/3; min-height:320px; }
+.release-card-art{ position:absolute; inset:0; background-size:cover; background-position:center; transition:transform .5s var(--ease); }
+.release-card:hover .release-card-art{ transform:scale(1.04); }
+.release-card:after{ content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(0,0,0,.78)); }
+.release-card-info{ position:absolute; z-index:1; left:18px; right:18px; bottom:16px; color:#fff; }
+.release-card-tag{ font-family:var(--font-data); font-size:9.5px; text-transform:uppercase; letter-spacing:.18em; opacity:.75; }
+.release-card.is-lead .release-card-title{ font-family:var(--font-display); font-style:italic; font-size:24px; font-weight:600; margin:6px 0 3px; }
+.release-card:not(.is-lead) .release-card-title{ font-size:14.5px; font-weight:600; margin:4px 0 2px; }
+.release-card-artist{ font-size:12px; opacity:.8; margin:0; }
+@media(max-width:680px){ .release-grid{ grid-template-columns:1fr; grid-template-rows:none; } .release-card.is-lead{ grid-row:auto; min-height:220px; } }
+
+/* ---- Clips — encart éditorial sombre façon magazine, distinct des autres sections.
+   Réutilise --noir/--noir-2, déjà des jetons NUNI existants (pas une couleur venue d'une
+   maquette externe), quel que soit le thème actif. ---- */
+.shelf-clips-feature{ position:relative; background:var(--noir); border-radius:var(--radius-l); padding:34px 30px 26px; margin-left:-4px; margin-right:-4px; overflow:hidden; }
+.shelf-clips-feature:before{ content:'CLIPS'; position:absolute; top:-18px; right:14px; font-family:var(--font-display); font-style:italic; font-weight:700; font-size:96px; color:rgba(255,255,255,.035); pointer-events:none; line-height:1; white-space:nowrap; }
+.shelf-clips-feature .shelf-head h3{ color:#fff; }
+.shelf-clips-feature .shelf-head a{ color:var(--violet-2); }
+.shelf-clips-feature .clip-info .t{ color:#fff; }
+.shelf-clips-feature .clip-info .a{ color:rgba(255,255,255,.6); }
+@media(max-width:680px){ .shelf-clips-feature:before{ font-size:64px; } }
+
 /* ---- "Nouveautés" façon Apple Music : pochettes énormes et verticales — même vraie
    pochette carrée uploadée par l'artiste, simplement recadrée en format "affiche" pour un
    rendu plus premium/éditorial, comme les cartes vedettes d'Apple Music. Jamais une image
