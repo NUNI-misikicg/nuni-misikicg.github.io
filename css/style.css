@@ -1309,17 +1309,17 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
    petites), plutôt qu'une rangée uniforme. Réutilise les vrais jetons NUNI (--bg-card,
    --accent, --text...), jamais une couleur propre à une maquette externe. ---- */
 .release-grid{ display:grid; grid-template-columns:1.4fr 1fr; grid-template-rows:1fr 1fr; gap:16px; overflow:visible; padding-bottom:0; }
-.release-card{ position:relative; border-radius:var(--radius-m); overflow:hidden; cursor:pointer; min-height:150px; background:var(--bg-card); }
-.release-card.is-lead{ grid-row:1/3; min-height:320px; }
-.release-card-art{ position:absolute; inset:0; background-size:cover; background-position:center; transition:transform .5s var(--ease); }
-.release-card:hover .release-card-art{ transform:scale(1.04); }
-.release-card:after{ content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(0,0,0,.78)); }
-.release-card-info{ position:absolute; z-index:1; left:18px; right:18px; bottom:16px; color:#fff; }
-.release-card-tag{ font-family:var(--font-data); font-size:9.5px; text-transform:uppercase; letter-spacing:.18em; opacity:.75; }
-.release-card.is-lead .release-card-title{ font-family:var(--font-display); font-style:italic; font-size:24px; font-weight:600; margin:6px 0 3px; }
-.release-card:not(.is-lead) .release-card-title{ font-size:14.5px; font-weight:600; margin:4px 0 2px; }
-.release-card-artist{ font-size:12px; opacity:.8; margin:0; }
-@media(max-width:680px){ .release-grid{ grid-template-columns:1fr; grid-template-rows:none; } .release-card.is-lead{ grid-row:auto; min-height:220px; } }
+.rls-card{ position:relative; border-radius:var(--radius-m); overflow:hidden; cursor:pointer; min-height:150px; background:var(--bg-card); }
+.rls-card.is-lead{ grid-row:1/3; min-height:320px; }
+.rls-art{ position:absolute; inset:0; background-size:cover; background-position:center; transition:transform .5s var(--ease); }
+.rls-card:hover .rls-art{ transform:scale(1.04); }
+.rls-card:after{ content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(0,0,0,.78)); }
+.rls-info{ position:absolute; z-index:1; left:18px; right:18px; bottom:16px; color:#fff; }
+.rls-tag{ font-family:var(--font-data); font-size:9.5px; text-transform:uppercase; letter-spacing:.18em; opacity:.75; }
+.rls-card.is-lead .rls-title{ font-family:var(--font-display); font-style:italic; font-size:24px; font-weight:600; margin:6px 0 3px; }
+.rls-card:not(.is-lead) .rls-title{ font-size:14.5px; font-weight:600; margin:4px 0 2px; }
+.rls-artist{ font-size:12px; opacity:.8; margin:0; }
+@media(max-width:680px){ .release-grid{ grid-template-columns:1fr; grid-template-rows:none; } .rls-card.is-lead{ grid-row:auto; min-height:220px; } }
 
 /* ---- Clips — encart éditorial sombre façon magazine, distinct des autres sections.
    Réutilise --noir/--noir-2, déjà des jetons NUNI existants (pas une couleur venue d'une
@@ -1403,11 +1403,6 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .chart-mini-title{ font-size:12.5px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .chart-mini-artist{ font-size:11px; color:var(--text-faint); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* ---- Apparition des sections entières au défilement (pas juste les cartes qui les
-   composent) — via IntersectionObserver, voir initShelfScrollReveal dans app.js. ---- */
-.shelf.scroll-reveal{ opacity:0; transform:translateY(26px); transition:opacity .65s var(--ease), transform .65s var(--ease); }
-.shelf.scroll-reveal.is-visible{ opacity:1; transform:translateY(0); }
-@media(prefers-reduced-motion: reduce){ .shelf.scroll-reveal{ transition:none; opacity:1; transform:none; } }
 @keyframes revealIn{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:translateY(0);} }
 .track-card:hover .cover{ transform:translateY(-6px) scale(1.02) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); }
 /* Focus clavier — même traitement visuel que le survol (halo signature + lift), pour que la

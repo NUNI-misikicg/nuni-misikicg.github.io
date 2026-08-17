@@ -2515,13 +2515,13 @@ async function renderContinueListening(){
     // déjà renvoyée par le serveur mais jamais exploitée jusqu'ici) est conservée pour
     // afficher un repère "il y a X" réel sur chaque carte, plus immersif.
     const recent = (data.tracks || [])
-      .map(r => { const tr = tracks.find(t => t.isReal && t.realId === r.id); return tr ? { tr, lastPlayedAt: r.last_played_at } : null; })
+      .map(r => { const tr = tracks.find(t => t.isReal && String(t.realId) === String(r.id)); return tr ? { tr, lastPlayedAt: r.last_played_at } : null; })
       .filter(Boolean);
     if(!recent.length){ wrap.style.display = 'none'; return; }
     wrap.style.display = 'block';
     row.innerHTML = '';
     fillShelf('shelf-continue', recent.map(x=>x.tr));
-    if(typeof initShelfScrollReveal === 'function') initShelfScrollReveal(); // la section vient de devenir visible : lui donner sa chance d'apparaître en douceur, plutôt que de dépendre uniquement du délai fixe
+    if(typeof initScrollReveal === 'function') initScrollReveal(); // la section vient de devenir visible : lui donner sa chance d'apparaître en douceur, plutôt que de dépendre uniquement du délai fixe
     // Filet de sécurité : si la section reste visible mais que les pochettes ne s'affichent
     // pas (DOM pas encore prêt au tout premier passage), on retente une fois — même logique
     // déjà en place pour "Nouveautés".
@@ -4578,7 +4578,7 @@ function dedupeAlbums(list){
    et l'affiche dans une grande carte plutôt que noyée dans la grille de discographie. */
 function renderArtistLatestRelease(artistTracks){
   const section = document.getElementById('artist-latest-release-section');
-  const box = document.getElementById('artist-latest-release-card');
+  const box = document.getElementById('artist-latest-rls-card');
   if(!section || !box) return;
   const deduped = dedupeAlbums([...artistTracks].sort((a,b)=> (b.releaseTs||0) - (a.releaseTs||0)));
   const latest = deduped[0];
@@ -4667,20 +4667,20 @@ function fillNouveautesAsymmetric(id, list){
   items.forEach((tr,i) => {
     try{
       const el = document.createElement('article');
-      el.className = 'release-card' + (i===0 ? ' is-lead' : '');
+      el.className = 'rls-card' + (i===0 ? ' is-lead' : '');
       const coverInner = tr.cover ? '' : `<div class="cover-glyph pal-pattern"></div>`;
       el.innerHTML = `
-        <div class="release-card-art ${tr.cover ? '' : (tr.p||'pal-1')}">${coverInner}</div>
-        <div class="release-card-info">
-          <span class="release-card-tag"></span>
-          <h3 class="release-card-title"></h3>
-          <p class="release-card-artist"></p>
+        <div class="rls-art ${tr.cover ? '' : (tr.p||'pal-1')}">${coverInner}</div>
+        <div class="rls-info">
+          <span class="rls-tag"></span>
+          <h3 class="rls-title"></h3>
+          <p class="rls-artist"></p>
         </div>`;
-      el.querySelector('.release-card-tag').textContent = tr.releaseType || 'Single';
-      el.querySelector('.release-card-title').textContent = tr.t;
-      el.querySelector('.release-card-artist').textContent = tr.a;
+      el.querySelector('.rls-tag').textContent = tr.releaseType || 'Single';
+      el.querySelector('.rls-title').textContent = tr.t;
+      el.querySelector('.rls-artist').textContent = tr.a;
       if(tr.cover){
-        const artEl = el.querySelector('.release-card-art');
+        const artEl = el.querySelector('.rls-art');
         const probe = new Image();
         probe.onload = ()=>{ artEl.style.backgroundImage = `url("${tr.cover}")`; artEl.style.backgroundSize = 'cover'; artEl.style.backgroundPosition = 'center'; };
         probe.onerror = ()=>{ artEl.classList.add(tr.p||'pal-1'); artEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>'; };
@@ -4899,37 +4899,9 @@ function refreshMainShelves(){
   try{ renderContinueListening(); }catch(e){ console.error('[refreshMainShelves] renderContinueListening:', e); }
   try{ renderResumeListening(); }catch(e){ console.error('[refreshMainShelves] renderResumeListening:', e); }
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
-  initShelfScrollReveal();
-  setTimeout(initShelfScrollReveal, 800); // couvre les sections qui se remplissent de façon asynchrone, un peu après
-}
-// ---------- Apparition des sections au défilement — chaque bloc .shelf de l'accueil entre
-// en douceur (fondu + léger déplacement) quand il devient visible, plutôt que d'apparaître
-// brutalement. Idempotent : peut être rappelée sans risque, ignore les sections déjà
-// observées (data-reveal-bound), donc sûr à appeler plusieurs fois pendant le chargement.
-let shelfRevealObserver = null;
-function initShelfScrollReveal(){
-  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduceMotion) return; // respecte le réglage système, pas d'animation forcée
-  if(!shelfRevealObserver){
-    shelfRevealObserver = new IntersectionObserver((entries)=>{
-      entries.forEach(entry=>{
-        if(entry.isIntersecting){
-          entry.target.classList.add('is-visible');
-          shelfRevealObserver.unobserve(entry.target); // une seule apparition, jamais répétée en re-scrollant
-        }
-      });
-    }, { threshold:0.12, rootMargin:'0px 0px -40px 0px' });
-  }
-  document.querySelectorAll('#view-catalog .shelf:not([data-reveal-bound])').forEach(el=>{
-    // Une section encore display:none (ex: "Écoutés récemment", masquée tant que la vraie
-    // réponse serveur n'est pas arrivée) n'a aucune géométrie à observer — on ne la marque
-    // pas "liée" pour qu'un appel ultérieur (une fois réellement visible) puisse encore la
-    // prendre en compte.
-    if(el.offsetParent === null) return;
-    el.dataset.revealBound = '1';
-    el.classList.add('scroll-reveal');
-    shelfRevealObserver.observe(el);
-  });
+  // L'apparition en douceur des sections au scroll est gérée par initScrollReveal() (plus
+  // bas dans ce fichier) — appelée automatiquement au chargement et rappelée par
+  // renderContinueListening() dès que sa section devient réellement visible.
 }
 // ---------- "Tendance dans votre région" — vraies écoutes de vrais auditeurs du même pays
 // que la personne connectée (voir /api/tracks/trending-region côté serveur). Jamais affichée
@@ -11793,6 +11765,11 @@ function initScrollReveal(){
     }, { threshold:0.12, rootMargin:'0px 0px -60px 0px' });
   }
   document.querySelectorAll('.shelf:not([data-scroll-observed])').forEach(el=>{
+    // Une section encore display:none (ex: "Écoutés récemment", masquée tant que la vraie
+    // réponse serveur n'est pas arrivée) n'a aucune géométrie à observer — ne pas la marquer
+    // "observée" pour qu'un appel ultérieur (une fois réellement visible) puisse encore la
+    // prendre en compte, au lieu de la laisser bloquée invisible pour toujours.
+    if(el.offsetParent === null) return;
     el.dataset.scrollObserved = '1';
     el.classList.add('scroll-chapter');
     scrollRevealObserver.observe(el);
