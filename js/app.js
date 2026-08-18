@@ -7876,12 +7876,16 @@ function renderHomeClipsShelf(){
   const row = document.getElementById('shelf-clips-home');
   if(!row) return;
   row.innerHTML = '';
-  const real = clips.filter(c=>c.isReal).slice(0,10);
+  const real = clips.filter(c=>c.isReal).slice(0,5);
   if(!real.length){
     row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucun clip publié pour le moment.</p>`;
     return;
   }
-  real.forEach(c=> row.appendChild(clipCard(c)));
+  real.forEach((c,i)=>{
+    const card = clipCard(c);
+    if(i===0) card.classList.add('is-main');
+    row.appendChild(card);
+  });
 }
 
 /* ============ LECTEUR VIDÉO CLIP (style iOS) ============ */
