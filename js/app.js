@@ -6239,7 +6239,31 @@ function loadLiveActivity(){
   }).catch(()=>{ strip.style.display = 'none'; });
 }
 loadLiveActivity();
-setInterval(loadLiveActivity, 5 * 60 * 1000); // se resynchronise toutes les 5 minutes
+setInterval(loadLiveActivity, 5 * 60 * 1000);
+
+// ---------- Sélecteur d'ambiances du formulaire de publication artiste — peuplé depuis le
+// vrai vocabulaire contrôlé par NUNI (/api/moods/available), jamais du texte libre. Limite
+// de 3 vraiment appliquée ici (en plus de la vérification côté serveur, qui reste la
+// garantie réelle si jamais ce contrôle client était contourné). ----------
+function populateMoodPicker(){
+  const picker = document.getElementById('rf-mood-picker');
+  if(!picker) return;
+  fetch(NUNI_API_BASE + '/api/moods/available').then(r=>r.json()).then(data=>{
+    const list = data.moods || [];
+    if(!list.length) return;
+    picker.innerHTML = list.map(m=>
+      `<label class="mood-chip"><input type="checkbox" value="${esc(m.key)}"><span>${esc(m.label)}</span></label>`
+    ).join('');
+    picker.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+      cb.addEventListener('change', ()=>{
+        const checkedCount = picker.querySelectorAll('input:checked').length;
+        picker.querySelectorAll('input:not(:checked)').forEach(other=> other.disabled = checkedCount >= 3);
+        if(checkedCount >= 3) toast('Maximum 3 ambiances par morceau.');
+      });
+    });
+  }).catch(()=>{ /* pas grave si indisponible — le champ reste optionnel de toute façon */ });
+}
+populateMoodPicker(); // se resynchronise toutes les 5 minutes
 // Le calendrier de la page artiste ('artist-release-row') se remplit désormais dynamiquement
 // avec les vraies sorties programmées, dans openArtistPage() — plus de données factices ici.
 
@@ -7889,6 +7913,7 @@ async function publishRelease(){
   const coverUrl = coverData.slice(5, -2); // strip url("...") — aperçu local immédiat
   const coverFile = pendingCoverFile; // vrai fichier, pour l'envoi direct vers Cloudinary
   const genre = document.getElementById('rf-genre').value;
+  const moodKeys = Array.from(document.querySelectorAll('#rf-mood-picker input:checked')).map(el=>el.value);
   const paroles = document.getElementById('rf-paroles').value.trim();
   const dateVal = document.getElementById('rf-date').value;
   const releaseLabel = dateVal ? new Date(dateVal).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) : "aujourd'hui";
@@ -7985,6 +8010,7 @@ async function publishRelease(){
               composer: composer || null, featuring: featuring || null, studio: studio || null, credits: credits || null,
               description: description || null, releaseDate: dateVal || null,
               scheduledReleaseAt: isScheduledForFuture ? dateVal : null,
+              moodKeys,
             })
           });
           if(res.ok){
