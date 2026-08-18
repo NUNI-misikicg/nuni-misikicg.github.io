@@ -4921,35 +4921,43 @@ function renderFeatureWeek(){
 }
 renderFeatureWeek();
 
-// ---------- Ça bouge — vraies écoutes triées, sans flèche de progression inventée. NUNI ne
-// garde pas d'historique de rang précédent par morceau, donc rien de fabriqué à sa place. ----------
+// ---------- Ça bouge — vraie progression semaine sur semaine, calculée en direct sur les
+// vraies écoutes horodatées (voir /api/tracks/rising). Section masquée s'il n'y a pas encore
+// assez d'écoutes pour un calcul significatif, jamais un pourcentage inventé à la place. ----------
 function renderMovingList(){
   const wrap = document.getElementById('shelf-moving-wrap');
   const row = document.getElementById('shelf-moving');
   if(!wrap || !row) return;
-  const top = getTopStreamedTracks(6);
-  if(!top.length){ wrap.style.display = 'none'; return; }
-  wrap.style.display = 'block';
-  row.innerHTML = '';
-  top.forEach((tr, i)=>{
-    try{
-      const el = document.createElement('div');
-      el.className = 'rls-row';
-      el.innerHTML = `<div class="rls-num"></div><div class="rls-art"></div><div class="rls-info"><div class="rls-title"></div><div class="rls-artist"></div></div>`;
-      el.querySelector('.rls-num').textContent = String(i+1).padStart(2,'0');
-      el.querySelector('.rls-title').textContent = tr.t;
-      el.querySelector('.rls-artist').textContent = tr.a;
-      const artEl = el.querySelector('.rls-art');
-      if(tr.cover){
-        const probe = new Image();
-        probe.onload = ()=>{ artEl.style.backgroundImage = `url("${tr.cover}")`; artEl.style.backgroundSize='cover'; artEl.style.backgroundPosition='center'; };
-        probe.onerror = ()=>{ artEl.classList.add(tr.p||'pal-1'); };
-        probe.src = tr.cover;
-      } else artEl.classList.add(tr.p||'pal-1');
-      el.onclick = ()=> handleTrackCardClick(tr);
-      row.appendChild(el);
-    }catch(e){ console.error('[renderMovingList] ligne ignorée après erreur :', e); }
-  });
+  fetch(NUNI_API_BASE + '/api/tracks/rising').then(r=>r.json()).then(data=>{
+    const list = data.tracks || [];
+    if(!list.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    row.innerHTML = '';
+    list.forEach((item, i)=>{
+      try{
+        // On relie au vrai morceau déjà chargé côté client (pour la vraie pochette et la
+        // vraie lecture) — jamais une pochette ou des métadonnées dupliquées séparément.
+        const tr = tracks.find(t=> t.isReal && String(t.realId) === String(item.id));
+        if(!tr) return;
+        const el = document.createElement('div');
+        el.className = 'mv-row';
+        el.innerHTML = `<div class="mv-num"></div><div class="mv-art"></div><div class="mv-info"><div class="mv-title"></div><div class="mv-artist"></div></div><div class="mv-growth">▲ +${item.growth_pct}%</div>`;
+        el.querySelector('.mv-num').textContent = String(i+1).padStart(2,'0');
+        el.querySelector('.mv-title').textContent = tr.t;
+        el.querySelector('.mv-artist').textContent = tr.a;
+        const artEl = el.querySelector('.mv-art');
+        if(tr.cover){
+          const probe = new Image();
+          probe.onload = ()=>{ artEl.style.backgroundImage = `url("${tr.cover}")`; artEl.style.backgroundSize='cover'; artEl.style.backgroundPosition='center'; };
+          probe.onerror = ()=>{ artEl.classList.add(tr.p||'pal-1'); };
+          probe.src = tr.cover;
+        } else artEl.classList.add(tr.p||'pal-1');
+        el.onclick = ()=> handleTrackCardClick(tr);
+        row.appendChild(el);
+      }catch(e){ console.error('[renderMovingList] ligne ignorée après erreur :', e); }
+    });
+    if(!row.children.length) wrap.style.display = 'none'; // aucune correspondance locale trouvée
+  }).catch(()=>{ wrap.style.display = 'none'; });
 }
 renderMovingList();
 fillShelf('shelf-artist', tracks.filter(t=>t.a==='Bibi Mwana').concat(tracks.slice(0,4)));

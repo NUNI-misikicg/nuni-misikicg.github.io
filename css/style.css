@@ -1448,15 +1448,16 @@ html[data-theme="light"] .ph-play-pill{ color:#2a1a06; }
 /* ---- Ça bouge — vraie liste musicale, sans flèche de progression inventée (NUNI ne garde
    pas d'historique de rang précédent par morceau, donc rien de fabriqué à sa place). ---- */
 .rank-list-simple{ display:flex; flex-direction:column; }
-.rls-row{ display:flex; align-items:center; gap:15px; padding:12px 4px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .2s ease, padding-left .2s ease; }
-.rls-row:last-child{ border-bottom:none; }
-.rls-row:hover{ padding-left:8px; background:var(--bg-card); }
-.rls-num{ font-family:var(--font-display); font-style:italic; font-weight:600; font-size:20px; color:var(--text-faint); width:30px; flex-shrink:0; transition:color .2s ease; }
-.rls-row:hover .rls-num{ color:var(--accent); }
-.rls-art{ width:48px; height:48px; border-radius:9px; flex-shrink:0; background-size:cover; background-position:center; }
-.rls-info{ flex:1; min-width:0; }
-.rls-title{ font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.rls-artist{ font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mv-row{ display:flex; align-items:center; gap:15px; padding:12px 4px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .2s ease, padding-left .2s ease; }
+.mv-row:last-child{ border-bottom:none; }
+.mv-row:hover{ padding-left:8px; background:var(--bg-card); }
+.mv-num{ font-family:var(--font-display); font-style:italic; font-weight:600; font-size:20px; color:var(--text-faint); width:30px; flex-shrink:0; transition:color .2s ease; }
+.mv-row:hover .mv-num{ color:var(--accent); }
+.mv-art{ width:48px; height:48px; border-radius:9px; flex-shrink:0; background-size:cover; background-position:center; }
+.mv-info{ flex:1; min-width:0; }
+.mv-title{ font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mv-artist{ font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mv-growth{ font-family:var(--font-data); font-size:12px; font-weight:700; color:#4a9c5a; flex-shrink:0; }
 
 @keyframes revealIn{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:translateY(0);} }
 .track-card:hover .cover{ transform:translateY(-6px) scale(1.02) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); }
