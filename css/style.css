@@ -1044,6 +1044,10 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .release-info .t{ font-size:13.5px; font-weight:600; }
 .release-info .a{ font-size:12px; color:var(--text-faint); margin-top:2px; }
 .release-info .c{ font-size:11px; color:var(--accent); margin-top:5px; }
+.release-notify-btn{ font-family:var(--font-data); font-size:10.5px; font-weight:600; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:none; color:var(--text-dim); cursor:pointer; flex-shrink:0; margin-left:auto; transition:.2s; }
+.release-notify-btn:hover{ border-color:var(--accent); color:var(--accent); }
+.release-notify-btn.is-active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+html[data-theme="light"] .release-notify-btn.is-active{ color:#2a1a06; }
 
 .talent-banner{
   display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap;

@@ -6066,7 +6066,7 @@ function loadUpcomingReleases(){
   const row = document.getElementById('release-row');
   if(!row) return;
   if(!navigator.onLine) return; // pas de réseau du tout : inutile de tenter, on réessaiera au prochain cycle
-  fetch(NUNI_API_BASE + '/api/releases/upcoming').then(r=>r.json()).then(data=>{
+  fetch(NUNI_API_BASE + '/api/releases/upcoming', { headers: realAuthToken ? {'Authorization':'Bearer '+realAuthToken} : {} }).then(r=>r.json()).then(data=>{
     const list = data.releases || [];
     row.innerHTML = '';
     if(!list.length){
@@ -6081,6 +6081,7 @@ function loadUpcomingReleases(){
         m: d.toLocaleDateString('fr-FR', {month:'short'}).replace('.',''),
         t: r.title, a: r.artist_name || r.first_name || 'Artiste NUNI',
         c: days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `Dans ${days} jours`,
+        id: r.id, notifyRequested: !!r.notify_requested,
       };
     });
     fillReleaseRow('release-row', mapped);
@@ -6094,11 +6095,36 @@ function fillReleaseRow(id, list){
   list.forEach(r=>{
     const card = document.createElement('div');
     card.className = 'release-card';
+    const notifyBtnHtml = r.id ? `<button class="release-notify-btn ${r.notifyRequested?'is-active':''}" data-track-id="${r.id}">${r.notifyRequested ? '✓ Prévenu·e' : 'Me prévenir'}</button>` : '';
     card.innerHTML = `
       <div class="release-date"><div class="d data">${r.d}</div><div class="m">${r.m}</div></div>
-      <div class="release-info"><div class="t">${r.t}</div><div class="a">${r.a}</div><div class="c">${r.c}</div></div>`;
+      <div class="release-info"><div class="t">${r.t}</div><div class="a">${r.a}</div><div class="c">${r.c}</div></div>
+      ${notifyBtnHtml}`;
+    const notifyBtn = card.querySelector('.release-notify-btn');
+    if(notifyBtn) notifyBtn.onclick = ()=> toggleReleaseNotify(notifyBtn, r.id);
     row.appendChild(card);
   });
+}
+// Bascule réelle de l'inscription "Me prévenir" — exige une vraie connexion (pas de fausse
+// confirmation visuelle pour un visiteur non connecté, qui ne recevrait jamais rien).
+async function toggleReleaseNotify(btn, trackId){
+  if(!realAuthToken){ toast('Connectez-vous pour être prévenu·e de cette sortie.'); return; }
+  const willActivate = !btn.classList.contains('is-active');
+  btn.disabled = true;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/releases/' + trackId + '/notify-me', {
+      method: willActivate ? 'POST' : 'DELETE',
+      headers: {'Authorization':'Bearer '+realAuthToken},
+    });
+    if(!res.ok) throw new Error('échec serveur');
+    btn.classList.toggle('is-active', willActivate);
+    btn.textContent = willActivate ? '✓ Prévenu·e' : 'Me prévenir';
+    toast(willActivate ? 'Vous serez notifié·e à la sortie.' : 'Rappel retiré.');
+  }catch(e){
+    toast("Impossible d'enregistrer votre demande pour le moment.");
+  }finally{
+    btn.disabled = false;
+  }
 }
 loadUpcomingReleases();
 setInterval(loadUpcomingReleases, 60000); // se resynchronise avec les vraies dates toutes les 60s
