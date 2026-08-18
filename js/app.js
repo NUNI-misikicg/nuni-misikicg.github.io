@@ -6263,7 +6263,52 @@ function populateMoodPicker(){
     });
   }).catch(()=>{ /* pas grave si indisponible — le champ reste optionnel de toute façon */ });
 }
-populateMoodPicker(); // se resynchronise toutes les 5 minutes
+populateMoodPicker();
+
+// ---------- Ambiances NUNI — vraie section éditoriale asymétrique, alimentée uniquement
+// par /api/moods (qui ne renvoie que les ambiances ayant réellement au moins 3 morceaux
+// tagués). La première ambiance devient la grande mise en avant, les autres restent plus
+// discrètes — jamais une grille uniforme de 6 cartes identiques. ----------
+function loadAmbiances(){
+  const wrap = document.getElementById('ambiances-wrap');
+  const grid = document.getElementById('ambiances-grid');
+  if(!wrap || !grid) return;
+  fetch(NUNI_API_BASE + '/api/moods').then(r=>r.json()).then(data=>{
+    const list = data.moods || [];
+    if(!list.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    grid.innerHTML = '';
+    list.forEach((mood, i)=>{
+      try{
+        const leadTrack = mood.tracks[0]; // le plus récent — déjà trié côté serveur
+        const el = document.createElement('div');
+        el.className = 'ambiance-tile' + (i===0 ? ' is-lead' : '');
+        el.innerHTML = `<div class="ambiance-art"></div><div class="ambiance-overlay"><span class="ambiance-label"></span><span class="ambiance-count"></span></div>`;
+        el.querySelector('.ambiance-label').textContent = mood.label;
+        el.querySelector('.ambiance-count').textContent = `${mood.tracks.length} titre${mood.tracks.length>1?'s':''}`;
+        const artEl = el.querySelector('.ambiance-art');
+        if(leadTrack && leadTrack.cover_url){
+          const probe = new Image();
+          probe.onload = ()=>{ artEl.style.backgroundImage = `url("${leadTrack.cover_url}")`; artEl.style.backgroundSize='cover'; artEl.style.backgroundPosition='center'; };
+          probe.src = leadTrack.cover_url;
+        }
+        el.onclick = ()=> openMoodPage(mood.key, mood.label);
+        grid.appendChild(el);
+      }catch(e){ console.error('[loadAmbiances] tuile ignorée après erreur :', e); }
+    });
+  }).catch(()=>{ wrap.style.display = 'none'; });
+}
+loadAmbiances();
+// Ouvre une page dédiée listant les vrais morceaux de cette ambiance — même mécanisme
+// générique que Top Congo, les pages de genre, etc. (openCategoryPage, qui exige une
+// fonction getList() synchrone — on récupère donc les vraies données d'abord).
+function openMoodPage(key, label){
+  fetch(NUNI_API_BASE + '/api/moods').then(r=>r.json()).then(data=>{
+    const mood = (data.moods||[]).find(m=>m.key===key);
+    const list = mood ? mood.tracks.map(mt=> tracks.find(t=> t.isReal && String(t.realId)===String(mt.id))).filter(Boolean) : [];
+    openCategoryPage(label, `Sélection éditoriale NUNI — ambiance "${label}".`, ()=> list, false);
+  }).catch(()=> toast('Impossible de charger cette ambiance pour le moment.'));
+}
 // Le calendrier de la page artiste ('artist-release-row') se remplit désormais dynamiquement
 // avec les vraies sorties programmées, dans openArtistPage() — plus de données factices ici.
 
