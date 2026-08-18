@@ -4871,6 +4871,87 @@ function renderTopCongo(){
 }
 fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3));
 renderTopCongo();
+
+// ---------- Sortie de la semaine — la vraie sortie la plus récente en vedette, plus
+// quelques autres discrètes à côté. Jamais de section vide affichée : masquée s'il n'y a
+// pas encore assez de vraies sorties. ----------
+function renderFeatureWeek(){
+  const wrap = document.getElementById('feature-week-wrap');
+  const box = document.getElementById('feature-week');
+  if(!wrap || !box) return;
+  const recent = tracks.filter(t=>t.isReal).slice().sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
+  if(!recent.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const setCover = (el, tr)=>{
+    if(tr.cover){
+      const probe = new Image();
+      probe.onload = ()=>{ el.style.backgroundImage = `url("${tr.cover}")`; el.style.backgroundSize='cover'; el.style.backgroundPosition='center'; };
+      probe.onerror = ()=>{ el.classList.add(tr.p||'pal-1'); };
+      probe.src = tr.cover;
+    } else el.classList.add(tr.p||'pal-1');
+  };
+  try{
+    const [main, ...others] = recent.slice(0, 4);
+    const mainEl = document.createElement('div');
+    mainEl.className = 'fw-main';
+    mainEl.innerHTML = `<div class="fw-main-art"></div><div class="fw-main-title"></div><div class="fw-main-artist"></div>`;
+    mainEl.querySelector('.fw-main-title').textContent = main.t;
+    mainEl.querySelector('.fw-main-artist').textContent = main.a;
+    setCover(mainEl.querySelector('.fw-main-art'), main);
+    mainEl.onclick = ()=> handleTrackCardClick(main);
+
+    const othersEl = document.createElement('div');
+    othersEl.className = 'fw-others';
+    others.forEach(tr=>{
+      try{
+        const row = document.createElement('div');
+        row.className = 'fw-other';
+        row.innerHTML = `<div class="fw-other-art"></div><div><div class="fw-other-title"></div><div class="fw-other-artist"></div></div>`;
+        row.querySelector('.fw-other-title').textContent = tr.t;
+        row.querySelector('.fw-other-artist').textContent = tr.a;
+        setCover(row.querySelector('.fw-other-art'), tr);
+        row.onclick = ()=> handleTrackCardClick(tr);
+        othersEl.appendChild(row);
+      }catch(e){ console.error('[renderFeatureWeek] entrée ignorée après erreur :', e); }
+    });
+    box.innerHTML = '';
+    box.appendChild(mainEl);
+    box.appendChild(othersEl);
+  }catch(e){ console.error('[renderFeatureWeek]', e); wrap.style.display = 'none'; }
+}
+renderFeatureWeek();
+
+// ---------- Ça bouge — vraies écoutes triées, sans flèche de progression inventée. NUNI ne
+// garde pas d'historique de rang précédent par morceau, donc rien de fabriqué à sa place. ----------
+function renderMovingList(){
+  const wrap = document.getElementById('shelf-moving-wrap');
+  const row = document.getElementById('shelf-moving');
+  if(!wrap || !row) return;
+  const top = getTopStreamedTracks(6);
+  if(!top.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  row.innerHTML = '';
+  top.forEach((tr, i)=>{
+    try{
+      const el = document.createElement('div');
+      el.className = 'rls-row';
+      el.innerHTML = `<div class="rls-num"></div><div class="rls-art"></div><div class="rls-info"><div class="rls-title"></div><div class="rls-artist"></div></div>`;
+      el.querySelector('.rls-num').textContent = String(i+1).padStart(2,'0');
+      el.querySelector('.rls-title').textContent = tr.t;
+      el.querySelector('.rls-artist').textContent = tr.a;
+      const artEl = el.querySelector('.rls-art');
+      if(tr.cover){
+        const probe = new Image();
+        probe.onload = ()=>{ artEl.style.backgroundImage = `url("${tr.cover}")`; artEl.style.backgroundSize='cover'; artEl.style.backgroundPosition='center'; };
+        probe.onerror = ()=>{ artEl.classList.add(tr.p||'pal-1'); };
+        probe.src = tr.cover;
+      } else artEl.classList.add(tr.p||'pal-1');
+      el.onclick = ()=> handleTrackCardClick(tr);
+      row.appendChild(el);
+    }catch(e){ console.error('[renderMovingList] ligne ignorée après erreur :', e); }
+  });
+}
+renderMovingList();
 fillShelf('shelf-artist', tracks.filter(t=>t.a==='Bibi Mwana').concat(tracks.slice(0,4)));
 fillShelf('shelf-artist-trending', [...tracks.filter(t=>t.a==='Bibi Mwana')].sort((a,b)=> b.likes - a.likes));
 fillShelf('shelf-artist-albums', tracks.filter(t=>t.a==='Bibi Mwana'));
@@ -4899,6 +4980,8 @@ function refreshMainShelves(){
   try{ renderContinueListening(); }catch(e){ console.error('[refreshMainShelves] renderContinueListening:', e); }
   try{ renderResumeListening(); }catch(e){ console.error('[refreshMainShelves] renderResumeListening:', e); }
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
+  try{ renderFeatureWeek(); }catch(e){ console.error('[refreshMainShelves] renderFeatureWeek:', e); }
+  try{ renderMovingList(); }catch(e){ console.error('[refreshMainShelves] renderMovingList:', e); }
   // L'apparition en douceur des sections au scroll est gérée par initScrollReveal() (plus
   // bas dans ce fichier) — appelée automatiquement au chargement et rappelée par
   // renderContinueListening() dès que sa section devient réellement visible.

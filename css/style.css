@@ -687,6 +687,11 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 ============================================================ */
 .poster-row{ gap:22px; padding-bottom:14px; }
 .poster-card{ width:220px; flex-shrink:0; cursor:pointer; }
+.poster-cover{ transition:transform .35s cubic-bezier(.22,.85,.32,1); }
+.poster-card:nth-child(3n+1) .poster-cover{ transform:rotate(-1.6deg); }
+.poster-card:nth-child(3n+2) .poster-cover{ transform:rotate(1.4deg); }
+.poster-card:nth-child(3n) .poster-cover{ transform:rotate(-2.2deg); }
+.poster-card:hover .poster-cover{ transform:rotate(0deg) translateY(-5px); }
 .poster-cover{
   position:relative; width:220px; height:300px; border-radius:18px; overflow:hidden;
   background-size:cover; background-position:center; display:flex; align-items:flex-end;
@@ -1408,6 +1413,36 @@ html[data-theme="light"] .ph-play-pill{ color:#2a1a06; }
 .chart-mini-title{ font-size:12.5px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .chart-mini-artist{ font-size:11px; color:var(--text-faint); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
+/* ---- Sortie de la semaine — vraie mise en scène unique, pas un rail générique de plus. ---- */
+.feature-week{ display:flex; gap:40px; align-items:flex-end; }
+@media(max-width:760px){ .feature-week{ flex-direction:column; gap:22px; } }
+.fw-main{ flex:0 0 auto; width:300px; cursor:pointer; }
+@media(max-width:760px){ .fw-main{ width:100%; } }
+.fw-main-art{ position:relative; width:300px; height:300px; border-radius:18px; background-size:cover; background-position:center; box-shadow:0 26px 54px -18px rgba(0,0,0,.4); transition:transform .35s var(--ease); }
+@media(max-width:760px){ .fw-main-art{ width:100%; height:auto; aspect-ratio:1; } }
+.fw-main:hover .fw-main-art{ transform:translateY(-5px); }
+.fw-main-title{ font-family:var(--font-display); font-style:italic; font-size:21px; font-weight:600; margin-top:14px; color:var(--text); }
+.fw-main-artist{ font-size:13px; color:var(--text-faint); margin-top:3px; }
+.fw-others{ flex:1; display:flex; flex-direction:column; gap:18px; padding-bottom:6px; }
+.fw-other{ display:flex; align-items:center; gap:13px; cursor:pointer; }
+.fw-other-art{ width:54px; height:54px; border-radius:9px; flex-shrink:0; background-size:cover; background-position:center; transition:transform .2s ease; }
+.fw-other:hover .fw-other-art{ transform:translateY(-2px); }
+.fw-other-title{ font-size:13.5px; font-weight:600; color:var(--text); }
+.fw-other-artist{ font-size:11.5px; color:var(--text-faint); margin-top:1px; }
+
+/* ---- Ça bouge — vraie liste musicale, sans flèche de progression inventée (NUNI ne garde
+   pas d'historique de rang précédent par morceau, donc rien de fabriqué à sa place). ---- */
+.rank-list-simple{ display:flex; flex-direction:column; }
+.rls-row{ display:flex; align-items:center; gap:15px; padding:12px 4px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .2s ease, padding-left .2s ease; }
+.rls-row:last-child{ border-bottom:none; }
+.rls-row:hover{ padding-left:8px; background:var(--bg-card); }
+.rls-num{ font-family:var(--font-display); font-style:italic; font-weight:600; font-size:20px; color:var(--text-faint); width:30px; flex-shrink:0; transition:color .2s ease; }
+.rls-row:hover .rls-num{ color:var(--accent); }
+.rls-art{ width:48px; height:48px; border-radius:9px; flex-shrink:0; background-size:cover; background-position:center; }
+.rls-info{ flex:1; min-width:0; }
+.rls-title{ font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rls-artist{ font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 @keyframes revealIn{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:translateY(0);} }
 .track-card:hover .cover{ transform:translateY(-6px) scale(1.02) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); }
 /* Focus clavier — même traitement visuel que le survol (halo signature + lift), pour que la
@@ -1872,6 +1907,8 @@ html.is-playing .app-footer-wordmark{ animation:footerWordmarkPulse 1.1s ease-in
 /* ============ CLIPS ============ */
 .clips-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:20px; }
 .clip-card{ cursor:pointer; }
+.shelf-clips-feature #shelf-clips-home .clip-card:first-child{ width:340px; }
+.shelf-clips-feature #shelf-clips-home .clip-card:first-child .clip-thumb{ aspect-ratio:16/11; }
 .clip-thumb{
   position:relative; width:100%; aspect-ratio:16/9; border-radius:14px; overflow:hidden;
   display:flex; align-items:center; justify-content:center; transition:transform .3s var(--ease);
