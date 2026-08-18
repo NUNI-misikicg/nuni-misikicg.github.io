@@ -895,6 +895,26 @@
 
       <div id="nuni-selection-hero" style="display:none;"></div>
 
+      <div class="shelf" id="feature-week-wrap" style="display:none;">
+        <div class="shelf-head"><h3 class="serif">Sortie de la semaine</h3></div>
+        <div class="feature-week" id="feature-week"></div>
+      </div>
+
+      <div class="shelf" id="shelf-moving-wrap" style="display:none;">
+        <div class="shelf-head"><h3 class="serif">Ça bouge</h3></div>
+        <div class="rank-list-simple" id="shelf-moving"></div>
+      </div>
+
+      <div class="shelf"><div class="shelf-head"><h3 class="serif">Playlists NUNI</h3><a href="#" onclick="event.preventDefault(); openAllPlaylistsPage();">Tout voir</a></div><div class="shelf-row poster-row" id="shelf-playlists"></div></div>
+      <div class="shelf"><div class="shelf-head"><h3 class="serif">Nouveautés</h3><a href="#" onclick="event.preventDefault(); openNewReleasesPage();">Tout voir</a></div><div class="shelf-row" id="shelf-new"></div></div>
+      <div class="shelf shelf-clips-feature"><div class="shelf-head"><h3 class="serif">Clips</h3><a href="#" onclick="event.preventDefault(); enterApp('clips');">Tout voir</a></div><div class="shelf-row" id="shelf-clips-home"></div></div>
+      <div class="shelf">
+        <div class="shelf-head"><h3 class="serif">Artistes à suivre</h3><a href="#" onclick="event.preventDefault(); openTop100ArtistsPage();">Tout voir</a></div>
+        <div class="artist-suggest-row" id="artist-suggest-row"></div>
+      </div>
+      <div class="shelf" id="shelf-for-you-wrap" style="display:none;"><div class="shelf-head"><h3 class="serif">Découvertes pour vous</h3></div><div class="shelf-row" id="shelf-for-you"></div></div>
+      <div class="shelf"><div class="shelf-head"><h3 class="serif">Top Congo</h3><a href="#" onclick="event.preventDefault(); openTopCongoPage();">Tout voir</a></div><div class="shelf-row" id="shelf-top"></div></div>
+
       <div class="shelf">
         <div id="level-progress-wrap" style="display:none; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-m); padding:18px 22px; margin-bottom:24px;"></div>
         <div class="shelf-head"><h3 class="serif">Vos badges d'auditeur</h3><a href="#">Tout voir</a></div>
@@ -917,25 +937,6 @@
         <div id="leaderboard-my-rank" style="display:none; margin-top:10px; font-size:12px; color:var(--text-faint);"></div>
       </div>
 
-      <div class="shelf" id="feature-week-wrap" style="display:none;">
-        <div class="shelf-head"><h3 class="serif">Sortie de la semaine</h3></div>
-        <div class="feature-week" id="feature-week"></div>
-      </div>
-
-      <div class="shelf" id="shelf-moving-wrap" style="display:none;">
-        <div class="shelf-head"><h3 class="serif">Ça bouge</h3></div>
-        <div class="rank-list-simple" id="shelf-moving"></div>
-      </div>
-
-      <div class="shelf"><div class="shelf-head"><h3 class="serif">Playlists NUNI</h3><a href="#" onclick="event.preventDefault(); openAllPlaylistsPage();">Tout voir</a></div><div class="shelf-row poster-row" id="shelf-playlists"></div></div>
-      <div class="shelf"><div class="shelf-head"><h3 class="serif">Nouveautés</h3><a href="#" onclick="event.preventDefault(); openNewReleasesPage();">Tout voir</a></div><div class="shelf-row" id="shelf-new"></div></div>
-      <div class="shelf shelf-clips-feature"><div class="shelf-head"><h3 class="serif">Clips</h3><a href="#" onclick="event.preventDefault(); enterApp('clips');">Tout voir</a></div><div class="shelf-row" id="shelf-clips-home"></div></div>
-      <div class="shelf">
-        <div class="shelf-head"><h3 class="serif">Artistes à suivre</h3><a href="#" onclick="event.preventDefault(); openTop100ArtistsPage();">Tout voir</a></div>
-        <div class="artist-suggest-row" id="artist-suggest-row"></div>
-      </div>
-      <div class="shelf" id="shelf-for-you-wrap" style="display:none;"><div class="shelf-head"><h3 class="serif">Découvertes pour vous</h3></div><div class="shelf-row" id="shelf-for-you"></div></div>
-      <div class="shelf"><div class="shelf-head"><h3 class="serif">Top Congo</h3><a href="#" onclick="event.preventDefault(); openTopCongoPage();">Tout voir</a></div><div class="shelf-row" id="shelf-top"></div></div>
       <div class="shelf" id="shelf-trending-region-wrap" style="display:none;"><div class="shelf-head"><h3 class="serif" id="shelf-trending-region-title">Tendance dans votre région</h3></div><div class="shelf-row" id="shelf-trending-region"></div></div>
 
       <div class="shelf">
