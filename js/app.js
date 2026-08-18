@@ -6128,6 +6128,37 @@ async function toggleReleaseNotify(btn, trackId){
 }
 loadUpcomingReleases();
 setInterval(loadUpcomingReleases, 60000); // se resynchronise avec les vraies dates toutes les 60s
+
+// ---------- "À surveiller" — vrais artistes récemment inscrits avec au moins un vrai
+// morceau publié. Légende construite uniquement à partir de vraies données (ville, genre,
+// nombre de titres) — jamais une accroche éditoriale inventée par section. ----------
+function loadEmergingArtists(){
+  const wrap = document.getElementById('shelf-emerging-wrap');
+  const row = document.getElementById('emerging-row');
+  if(!wrap || !row) return;
+  fetch(NUNI_API_BASE + '/api/artists/emerging').then(r=>r.json()).then(data=>{
+    const list = data.artists || [];
+    if(!list.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    row.innerHTML = '';
+    list.forEach(a=>{
+      try{
+        const name = a.artist_name || a.first_name || 'Artiste NUNI';
+        const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        const bits = [a.city, a.top_genre, a.track_count ? `${a.track_count} titre${a.track_count>1?'s':''} publié${a.track_count>1?'s':''}` : null].filter(Boolean);
+        const card = document.createElement('div');
+        card.className = 'emerging-card';
+        card.innerHTML = `
+          <div class="emerging-photo" style="${a.avatar_url ? `background-image:url(${a.avatar_url})` : ''}">${a.avatar_url ? '' : `<span>${initials}</span>`}</div>
+          <div class="emerging-name">${esc(name)}${a.is_verified ? ' ' + ico('check') : ''}</div>
+          <div class="emerging-meta">${esc(bits.join(' · '))}</div>`;
+        card.onclick = ()=> openArtistPage(name, a.id);
+        row.appendChild(card);
+      }catch(e){ console.error('[loadEmergingArtists] carte ignorée après erreur :', e); }
+    });
+  }).catch(()=>{ wrap.style.display = 'none'; });
+}
+loadEmergingArtists();
 // Le calendrier de la page artiste ('artist-release-row') se remplit désormais dynamiquement
 // avec les vraies sorties programmées, dans openArtistPage() — plus de données factices ici.
 

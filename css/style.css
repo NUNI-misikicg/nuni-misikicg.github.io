@@ -1045,6 +1045,17 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .release-info .a{ font-size:12px; color:var(--text-faint); margin-top:2px; }
 .release-info .c{ font-size:11px; color:var(--accent); margin-top:5px; }
 .release-notify-btn{ font-family:var(--font-data); font-size:10.5px; font-weight:600; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:none; color:var(--text-dim); cursor:pointer; flex-shrink:0; margin-left:auto; transition:.2s; }
+
+/* ---- À surveiller — présentation éditoriale des vrais artistes récemment inscrits ---- */
+.emerging-row{ display:flex; gap:26px; overflow-x:auto; padding-bottom:8px; scrollbar-width:none; }
+.emerging-row::-webkit-scrollbar{ display:none; }
+.emerging-card{ flex:0 0 auto; width:150px; text-align:center; cursor:pointer; }
+.emerging-photo{ position:relative; width:130px; height:130px; border-radius:50%; margin:0 auto 14px; background-size:cover; background-position:center; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; border:1px solid var(--border); transition:transform .25s ease, box-shadow .25s ease; }
+.emerging-photo span{ font-family:var(--font-data); font-weight:700; font-size:30px; color:rgba(255,255,255,.85); }
+.emerging-card:hover .emerging-photo{ transform:translateY(-4px); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); }
+.emerging-name{ font-family:var(--font-display); font-style:italic; font-weight:600; font-size:15.5px; color:var(--text); display:flex; align-items:center; justify-content:center; gap:5px; }
+.emerging-name svg{ width:13px; height:13px; flex-shrink:0; }
+.emerging-meta{ font-size:11.5px; color:var(--text-faint); margin-top:3px; }
 .release-notify-btn:hover{ border-color:var(--accent); color:var(--accent); }
 .release-notify-btn.is-active{ background:var(--accent); color:#fff; border-color:var(--accent); }
 html[data-theme="light"] .release-notify-btn.is-active{ color:#2a1a06; }
