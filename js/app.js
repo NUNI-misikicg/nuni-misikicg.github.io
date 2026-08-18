@@ -4165,7 +4165,7 @@ function openAlbumView(tr){
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
 
-  const coverStyle = tr.cover ? `background-image:url(${tr.cover});` : `background:linear-gradient(135deg,#1E8449,#0E3D2C);`;
+  const coverStyle = tr.cover ? `background-image:url(${tr.cover});` : `background:var(--grad-envol);`;
   const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
   const artistAvatarStyle = tr.artistAvatar ? `background-image:url(${tr.artistAvatar});` : '';
   const artistInitial = (tr.a || '?').charAt(0).toUpperCase();
@@ -10754,6 +10754,7 @@ function playlistCard(p){
   card.querySelector('.poster-play-fab').onclick = (e)=>{ e.stopPropagation(); openPlaylistPage(p.id); };
   return card;
 }
+let searchPlaylistsCache = [];
 async function loadPlaylistsShelf(){
   const row = document.getElementById('shelf-playlists');
   if(!row) return;
@@ -10761,6 +10762,7 @@ async function loadPlaylistsShelf(){
     const res = await fetch(NUNI_API_BASE + '/api/playlists');
     const data = await res.json();
     const list = data.playlists || [];
+    searchPlaylistsCache = list; // réutilisé par la recherche instantanée, pas de requête dupliquée
     row.innerHTML = '';
     if(!list.length){
       row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucune playlist NUNI publiée pour le moment.</p>`;
@@ -11388,8 +11390,11 @@ function runSearchView(q){
   const clipMatches = clips.filter(c =>
     (c.title||'').toLowerCase().includes(query) || (c.artist||'').toLowerCase().includes(query)
   ).slice(0, 6);
+  const playlistMatches = searchPlaylistsCache.filter(p =>
+    (p.title||'').toLowerCase().includes(query)
+  ).slice(0, 6);
 
-  if(!artistMatches.length && !albumMatches.length && !trackMatches.length && !clipMatches.length){
+  if(!artistMatches.length && !albumMatches.length && !trackMatches.length && !clipMatches.length && !playlistMatches.length){
     box.innerHTML = `<div class="asv-empty">Aucun résultat pour « ${q} ».</div>`;
     return;
   }
@@ -11464,6 +11469,15 @@ function runSearchView(q){
       </div>`;
     }).join('')}</div>`;
   }
+  if(playlistMatches.length){
+    html += `<div class="asv-section"><div class="asv-section-title">Playlists</div>${playlistMatches.map(p=>{
+      const coverStyle = p.cover_url ? `background-image:url(${p.cover_url});` : '';
+      return `<div class="asv-row" data-kind="playlist" data-playlist-id="${p.id}">
+        <div class="asv-row-cover ${p.cover_url ? '' : 'pal-1'}" style="${coverStyle}"></div>
+        <div><div class="asv-row-title">${esc(p.title)}</div><div class="asv-row-sub">Playlist NUNI · ${p.track_count} titre${p.track_count>1?'s':''}</div></div>
+      </div>`;
+    }).join('')}</div>`;
+  }
   box.innerHTML = html;
 
   if(spotlightName){
@@ -11499,6 +11513,9 @@ function runSearchView(q){
   });
   box.querySelectorAll('.asv-row[data-kind="clip"]').forEach(row=>{
     row.onclick = ()=>{ const c = clips[Number(row.dataset.idx)]; enterApp('clips'); openClipWatchPage(c); };
+  });
+  box.querySelectorAll('.asv-row[data-kind="playlist"]').forEach(row=>{
+    row.onclick = ()=>{ enterApp('catalog'); openPlaylistPage(Number(row.dataset.playlistId)); };
   });
 }
 
