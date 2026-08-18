@@ -1459,6 +1459,26 @@ html[data-theme="light"] .ph-play-pill{ color:#2a1a06; }
 .mv-artist{ font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mv-growth{ font-family:var(--font-data); font-size:12px; font-weight:700; color:#4a9c5a; flex-shrink:0; }
 
+/* ---- En ce moment — bande discrète, texte défilant si nécessaire ---- */
+.live-activity-strip{ align-items:center; gap:10px; overflow-x:auto; white-space:nowrap; padding:10px 2px 22px; scrollbar-width:none; font-size:12.5px; color:var(--text-dim); }
+.live-activity-strip::-webkit-scrollbar{ display:none; }
+.live-dot{ width:7px; height:7px; border-radius:50%; background:#4a9c5a; flex-shrink:0; animation:liveDotPulse 1.8s ease-in-out infinite; }
+@keyframes liveDotPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+@media(prefers-reduced-motion: reduce){ .live-dot{ animation:none; } }
+.live-item{ cursor:pointer; transition:color .2s ease; }
+.live-item:hover{ color:var(--accent); }
+.live-item b{ color:var(--text); font-weight:600; }
+.live-sep{ color:var(--text-faint); }
+
+/* ---- En ce moment — petit indicateur animé, texte honnête (jamais un faux "en direct") ---- */
+.right-now-list{ display:flex; flex-direction:column; gap:12px; }
+.rn-row{ display:flex; align-items:center; gap:11px; }
+.rn-dot{ width:8px; height:8px; border-radius:50%; background:#4a9c5a; flex-shrink:0; animation:rnPulse 1.8s ease-in-out infinite; }
+@keyframes rnPulse{ 0%,100%{ opacity:1; transform:scale(1); } 50%{ opacity:.5; transform:scale(1.3); } }
+@media(prefers-reduced-motion: reduce){ .rn-dot{ animation:none; } }
+.rn-text{ font-size:13.5px; color:var(--text-dim); }
+.rn-text b{ color:var(--text); font-weight:600; }
+
 @keyframes revealIn{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:translateY(0);} }
 .track-card:hover .cover{ transform:translateY(-6px) scale(1.02) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); box-shadow:0 16px 36px -10px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); }
 /* Focus clavier — même traitement visuel que le survol (halo signature + lift), pour que la

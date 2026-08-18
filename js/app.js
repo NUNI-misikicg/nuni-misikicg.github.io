@@ -4990,6 +4990,7 @@ function refreshMainShelves(){
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
   try{ renderFeatureWeek(); }catch(e){ console.error('[refreshMainShelves] renderFeatureWeek:', e); }
   try{ renderMovingList(); }catch(e){ console.error('[refreshMainShelves] renderMovingList:', e); }
+  try{ loadRightNow(); }catch(e){ console.error('[refreshMainShelves] loadRightNow:', e); }
   // L'apparition en douceur des sections au scroll est gérée par initScrollReveal() (plus
   // bas dans ce fichier) — appelée automatiquement au chargement et rappelée par
   // renderContinueListening() dès que sa section devient réellement visible.
@@ -6140,6 +6141,34 @@ setInterval(loadUpcomingReleases, 60000); // se resynchronise avec les vraies da
 // ---------- "À surveiller" — vrais artistes récemment inscrits avec au moins un vrai
 // morceau publié. Légende construite uniquement à partir de vraies données (ville, genre,
 // nombre de titres) — jamais une accroche éditoriale inventée par section. ----------
+// ---------- "En ce moment" — vrais nouveaux auditeurs uniques du jour, par morceau. Jamais
+// un compteur de lecture "en direct" (NUNI ne garde aucune notion d'écoute en temps réel) —
+// texte honnête : "a découvert ce morceau aujourd'hui", pas "écoute en ce moment". ----------
+function loadRightNow(){
+  const wrap = document.getElementById('shelf-right-now-wrap');
+  const list = document.getElementById('right-now-list');
+  if(!wrap || !list) return;
+  fetch(NUNI_API_BASE + '/api/tracks/discovered-today').then(r=>r.json()).then(data=>{
+    const items = data.tracks || [];
+    if(!items.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    list.innerHTML = '';
+    items.forEach(item=>{
+      try{
+        const artist = item.artist_name || item.first_name || 'Artiste NUNI';
+        const tr = tracks.find(t=> t.isReal && String(t.realId) === String(item.id));
+        const row = document.createElement('div');
+        row.className = 'rn-row';
+        row.innerHTML = `<span class="rn-dot"></span><span class="rn-text"><b>${item.listener_count}</b> personne${item.listener_count>1?'s ont':' a'} découvert <b>${esc(item.title)}</b> de ${esc(artist)} aujourd'hui</span>`;
+        if(tr){ row.style.cursor = 'pointer'; row.onclick = ()=> handleTrackCardClick(tr); }
+        list.appendChild(row);
+      }catch(e){ console.error('[loadRightNow] ligne ignorée après erreur :', e); }
+    });
+  }).catch(()=>{ wrap.style.display = 'none'; });
+}
+loadRightNow();
+setInterval(loadRightNow, 120000); // se resynchronise toutes les 2 minutes, données réellement fraîches
+
 function loadEmergingArtists(){
   const wrap = document.getElementById('shelf-emerging-wrap');
   const row = document.getElementById('emerging-row');
@@ -6167,6 +6196,27 @@ function loadEmergingArtists(){
   }).catch(()=>{ wrap.style.display = 'none'; });
 }
 loadEmergingArtists();
+
+// ---------- "En ce moment" — vrais nouveaux auditeurs des dernières 24h. Libellé
+// volontairement honnête ("découvert aujourd'hui"), jamais "écoute en direct" puisque NUNI
+// ne garde aucune notion de lecture en cours. Bande discrète masquée s'il n'y a aucune
+// activité réelle à montrer. ----------
+function loadLiveActivity(){
+  const strip = document.getElementById('live-activity-strip');
+  if(!strip) return;
+  fetch(NUNI_API_BASE + '/api/activity/today').then(r=>r.json()).then(data=>{
+    const list = data.activity || [];
+    if(!list.length){ strip.style.display = 'none'; return; }
+    strip.style.display = 'flex';
+    strip.innerHTML = `<span class="live-dot"></span>` + list.map(a=>{
+      const name = esc(a.artist_name || a.first_name || 'Un artiste NUNI');
+      const n = a.new_listeners_today;
+      return `<span class="live-item" onclick="openArtistPage('${name.replace(/'/g,"\\'")}', ${a.id})">${n} nouv${n>1?'eaux':'el'} auditeur${n>1?'s':''} pour <b>${name}</b> aujourd'hui</span>`;
+    }).join('<span class="live-sep">·</span>');
+  }).catch(()=>{ strip.style.display = 'none'; });
+}
+loadLiveActivity();
+setInterval(loadLiveActivity, 5 * 60 * 1000); // se resynchronise toutes les 5 minutes
 // Le calendrier de la page artiste ('artist-release-row') se remplit désormais dynamiquement
 // avec les vraies sorties programmées, dans openArtistPage() — plus de données factices ici.
 
