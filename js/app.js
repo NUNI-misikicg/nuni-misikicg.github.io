@@ -5127,17 +5127,40 @@ async function renderForYouShelf(){
   if(!wrap) return;
   if(!realAuthToken){ wrap.style.display = 'none'; return; }
   try{
-    const res = await fetch(NUNI_API_BASE + '/api/me/following', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
-    if(!res.ok){ wrap.style.display = 'none'; return; }
-    const data = await res.json();
-    const followedIds = new Set((data.following||[]).map(a=>a.id));
-    if(!followedIds.size){ wrap.style.display = 'none'; return; }
-    const picks = tracks
-      .filter(t=> t.isReal && followedIds.has(t.artistId))
+    const [followRes, recentRes] = await Promise.all([
+      fetch(NUNI_API_BASE + '/api/me/following', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
+      fetch(NUNI_API_BASE + '/api/me/recently-played?limit=15', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
+    ]);
+    const followData = followRes.ok ? await followRes.json() : { following: [] };
+    const recentData = recentRes.ok ? await recentRes.json() : { tracks: [] };
+    const followedIds = new Set((followData.following||[]).map(a=>a.id));
+
+    // Signal 1 : nouveautés des artistes suivis
+    const fromFollows = tracks.filter(t=> t.isReal && followedIds.has(t.artistId));
+
+    // Signal 2 : mêmes genres que ce que vous avez réellement écouté récemment (vraie donnée
+    // serveur persistée — jamais la session locale, qui se vide à chaque rechargement).
+    const recentIds = new Set((recentData.tracks||[]).map(r=>r.id));
+    const recentGenres = new Set(
+      tracks.filter(t=> t.isReal && recentIds.has(t.realId)).map(t=> t.genre).filter(Boolean)
+    );
+    const fromGenres = recentGenres.size
+      ? tracks.filter(t=> t.isReal && !recentIds.has(t.realId) && recentGenres.has(t.genre))
+      : [];
+
+    // Fusion + dédoublonnage — un morceau des deux signaux à la fois n'apparaît qu'une fois.
+    const seen = new Set();
+    const picks = [...fromFollows, ...fromGenres]
+      .filter(t=>{ if(seen.has(t.realId)) return false; seen.add(t.realId); return true; })
       .sort((a,b)=> b.releaseTs - a.releaseTs)
       .slice(0, 10);
+
     if(!picks.length){ wrap.style.display = 'none'; return; }
     wrap.style.display = 'block';
+    const sub = document.getElementById('shelf-for-you-sub');
+    if(sub) sub.textContent = fromFollows.length && fromGenres.length
+      ? 'Basé sur les artistes que vous suivez et ce que vous écoutez vraiment.'
+      : fromFollows.length ? 'Basé sur les artistes que vous suivez.' : 'Basé sur ce que vous écoutez vraiment.';
     const row = document.getElementById('shelf-for-you');
     row.innerHTML = '';
     picks.forEach(tr=>{ try{ row.appendChild(trackCard(tr)); }catch(e){ console.error('[renderForYouShelf] carte ignorée:', e); } });

@@ -1326,6 +1326,7 @@ html[data-theme="light"] .ph-play-pill{ color:#2a1a06; }
   .scroll-chapter{ opacity:1; transform:none; transition:none; }
 }
 .shelf-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:22px; }
+.shelf-sub{ font-size:12.5px; color:var(--text-faint); margin-top:4px; }
 .shelf-head h3{ font-family:var(--font-display); font-size:28px; font-weight:800; letter-spacing:-0.03em; }
 .shelf-head a{ font-size:12.5px; color:var(--text-faint); }
 .shelf-row{ display:flex; gap:18px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
