@@ -3971,7 +3971,18 @@ function ensureAlbumViewStyles(){
     .av-hero{position:relative; padding:calc(64px + env(safe-area-inset-top,0)) 20px 20px; display:flex; flex-direction:column; align-items:center; overflow:hidden;}
     .av-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(60px) saturate(1.4) brightness(0.55); transform:scale(1.3);}
     .av-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0.25) 0%, var(--av-bg, #0A0A0A) 88%); transition:background .5s ease;}
-    .av-cover{position:relative; width:min(58vw, 240px); height:min(58vw, 240px); border-radius:6px; background-size:cover; background-position:center; box-shadow:0 18px 46px rgba(0,0,0,0.65); flex-shrink:0;}
+    .av-cover-wrap{position:relative; width:min(58vw, 240px); height:min(58vw, 240px); flex-shrink:0;}
+    .av-cover{position:relative; width:100%; height:100%; border-radius:6px; background-size:cover; background-position:center; box-shadow:0 18px 46px rgba(0,0,0,0.65); z-index:1;}
+    /* ---- Halo — dépasse largement la pochette, très flou, donne l'impression qu'elle
+       éclaire son environnement. Deux couches (dominant + secondary) pour de la profondeur,
+       jamais un néon plat : les couleurs viennent des mêmes bornes déjà garanties par
+       NuniPalette (mêmes valeurs que le fond, cohérence assurée). ---- */
+    .av-cover-halo{
+      position:absolute; width:220%; height:220%; left:50%; top:50%; transform:translate(-50%,-50%);
+      border-radius:50%; filter:blur(70px); opacity:.55; pointer-events:none; z-index:0;
+      background:radial-gradient(circle at 50% 45%, var(--av-halo-1, transparent) 0%, var(--av-halo-2, transparent) 45%, transparent 72%);
+      transition:opacity .5s ease;
+    }
 
     /* ---- Bloc titre/artiste, aligné à gauche sous la pochette, comme Spotify ---- */
     .av-info{position:relative; width:100%; max-width:640px; margin:18px auto 0; text-align:left;}
@@ -4014,13 +4025,13 @@ function ensureAlbumViewStyles(){
     .av-list-panel{display:flex; flex-direction:column;}
     .av-row{display:flex; align-items:center; gap:12px; padding:9px 4px; border-radius:4px; cursor:pointer; opacity:0; animation:avRowIn .3s ease forwards;}
     @keyframes avRowIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
-    .av-row:hover{background:rgba(255,255,255,0.06);}
+    .av-row:hover{background:var(--av-hover-tint, rgba(255,255,255,0.06));}
     .av-row-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
-    .av-row-title{color:#fff; font-size:15px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .av-row-artist{color:#B3B3B3; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .av-row.is-playing .av-row-title{color:#3BC26A;}
+    .av-row-title{color:var(--av-text-primary, #fff); font-size:15px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .av-row-artist{color:var(--av-text-secondary, #B3B3B3); font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .av-row.is-playing .av-row-title{color:var(--av-accent, #3BC26A);}
     .av-row-eq{display:flex; align-items:flex-end; gap:2px; width:14px; height:14px; flex-shrink:0;}
-    .av-row-eq span{width:3px; background:#3BC26A; border-radius:1px; animation:avEqBounce 0.9s ease-in-out infinite;}
+    .av-row-eq span{width:3px; background:var(--av-accent, #3BC26A); border-radius:1px; animation:avEqBounce 0.9s ease-in-out infinite;}
     .av-row-eq span:nth-child(1){height:40%; animation-delay:0s;}
     .av-row-eq span:nth-child(2){height:100%; animation-delay:.2s;}
     .av-row-eq span:nth-child(3){height:65%; animation-delay:.4s;}
@@ -4174,21 +4185,38 @@ function openAlbumView(tr){
   const releaseYear = tr.release ? String(tr.release).slice(-4) : '';
 
   // ---- Immersion couleur — la pochette devient la source visuelle de la page. Réutilise
-  // NuniPalette (même système que le Hero), jamais une deuxième extraction. Choisit dark ou
-  // pale selon le VRAI thème actif (data-theme), jamais un noir fixe identique pour tous les
-  // albums. Valeur de repli neutre posée immédiatement (comportement actuel inchangé) le
-  // temps du calcul asynchrone — jamais de flash de couleur.
+  // NuniPalette (même système que le Hero), jamais une deuxième extraction, qui a déjà son
+  // propre cache (aucun recalcul si la même pochette est rouverte). Choisit dark ou pale
+  // selon le VRAI thème actif, jamais un noir fixe identique pour tous les albums.
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  function applyAlbumPalette(overlayEl, palette){
+    const bg = currentTheme === 'light' ? palette.pale : palette.dark;
+    overlayEl.style.setProperty('--av-bg', bg);
+    overlayEl.style.setProperty('--av-accent', palette.accent);
+    overlayEl.style.setProperty('--av-halo-1', currentTheme === 'light'
+      ? `color-mix(in srgb, ${palette.dominant} 22%, transparent)`
+      : `color-mix(in srgb, ${palette.dominant} 45%, transparent)`);
+    overlayEl.style.setProperty('--av-halo-2', currentTheme === 'light'
+      ? `color-mix(in srgb, ${palette.secondary} 14%, transparent)`
+      : `color-mix(in srgb, ${palette.secondary} 30%, transparent)`);
+    overlayEl.style.setProperty('--av-hover-tint', currentTheme === 'light'
+      ? `color-mix(in srgb, ${palette.dominant} 8%, transparent)`
+      : `color-mix(in srgb, ${palette.dominant} 14%, transparent)`);
+    if(currentTheme === 'light'){
+      overlayEl.style.setProperty('--av-text-primary', 'var(--text)');
+      overlayEl.style.setProperty('--av-text-secondary', 'var(--text-dim)');
+    }
+    // thème sombre : on laisse les valeurs de repli existantes (#fff/#B3B3B3), déjà correctes
+  }
+  // Morph réel entre deux ouvertures : on pose D'ABORD la dernière ambiance connue (jamais une
+  // valeur neutre par défaut), puis on transitionne vers la nouvelle une fois calculée — même
+  // à travers une recréation d'overlay, la sensation reste "l'ambiance précédente se transforme".
+  if(window.__lastAlbumPalette) applyAlbumPalette(overlay, window.__lastAlbumPalette);
   if(tr.cover){
     NuniPalette.extract(tr.cover).then(palette=>{
       if(!document.body.contains(overlay)) return; // fermé entre-temps, rien à faire
-      const bg = currentTheme === 'light' ? palette.pale : palette.dark;
-      overlay.style.setProperty('--av-bg', bg);
-      if(currentTheme === 'light'){
-        overlay.style.setProperty('--av-text-primary', 'var(--text)');
-        overlay.style.setProperty('--av-text-secondary', 'var(--text-dim)');
-      }
-      // thème sombre : on laisse les valeurs de repli existantes (#fff/#B3B3B3), déjà correctes
+      window.__lastAlbumPalette = palette;
+      requestAnimationFrame(()=> applyAlbumPalette(overlay, palette)); // transition CSS déclenchée proprement
     });
   }
 
@@ -4197,7 +4225,10 @@ function openAlbumView(tr){
     <div class="av-hero">
       <div class="av-hero-bg" style="${coverStyle}"></div>
       <div class="av-hero-fade"></div>
-      <div class="av-cover" style="${coverStyle}"></div>
+      <div class="av-cover-wrap">
+        <div class="av-cover-halo"></div>
+        <div class="av-cover" style="${coverStyle}"></div>
+      </div>
       <div class="av-info">
         <div class="av-type">${tr.releaseType || 'Album'}</div>
         <div class="av-title">${tr.album}</div>
