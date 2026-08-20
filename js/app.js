@@ -3959,7 +3959,7 @@ function ensureAlbumViewStyles(){
   const style = document.createElement('style');
   style.id = 'album-view-styles';
   style.textContent = `
-    #album-view-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A0A; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #album-view-overlay{position:fixed; inset:0; z-index:9999; background:var(--av-bg, #0A0A0A); overflow-y:auto; opacity:0; transition:opacity .25s ease, background-color .5s ease;}
     #album-view-overlay.show{opacity:1;}
 
     /* ---- Bouton retour, en haut à gauche, façon navigation Spotify (plutôt qu'un X) ---- */
@@ -3970,17 +3970,17 @@ function ensureAlbumViewStyles(){
        comme la page album de Spotify (dégradé issu de la couleur dominante de la pochette) ---- */
     .av-hero{position:relative; padding:calc(64px + env(safe-area-inset-top,0)) 20px 20px; display:flex; flex-direction:column; align-items:center; overflow:hidden;}
     .av-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(60px) saturate(1.4) brightness(0.55); transform:scale(1.3);}
-    .av-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0.25) 0%, #0A0A0A 88%);}
+    .av-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0.25) 0%, var(--av-bg, #0A0A0A) 88%); transition:background .5s ease;}
     .av-cover{position:relative; width:min(58vw, 240px); height:min(58vw, 240px); border-radius:6px; background-size:cover; background-position:center; box-shadow:0 18px 46px rgba(0,0,0,0.65); flex-shrink:0;}
 
     /* ---- Bloc titre/artiste, aligné à gauche sous la pochette, comme Spotify ---- */
     .av-info{position:relative; width:100%; max-width:640px; margin:18px auto 0; text-align:left;}
-    .av-type{color:#B3B3B3; font-size:13px; font-weight:600;}
-    .av-title{color:#fff; font-size:26px; font-weight:800; line-height:1.2; margin:6px 0 10px; word-break:break-word;}
+    .av-type{color:var(--av-text-secondary, #B3B3B3); font-size:13px; font-weight:600;}
+    .av-title{color:var(--av-text-primary, #fff); font-size:26px; font-weight:800; line-height:1.2; margin:6px 0 10px; word-break:break-word;}
     .av-artist-row{display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:4px; width:fit-content;}
     .av-artist-avatar{width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#1E8449,#0E3D2C); color:#F3E6C8; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; background-size:cover; background-position:center; flex-shrink:0;}
-    .av-artist-name{color:#fff; font-size:14.5px; font-weight:700;}
-    .av-meta{color:#B3B3B3; font-size:13px;}
+    .av-artist-name{color:var(--av-text-primary, #fff); font-size:14.5px; font-weight:700;}
+    .av-meta{color:var(--av-text-secondary, #B3B3B3); font-size:13px;}
 
     /* ---- Rangée d'actions : coche/ajouter, télécharger, options … puis aléatoire + gros
        bouton lecture rond, exactement la disposition Spotify (cluster gauche / cluster droite) ---- */
@@ -4003,8 +4003,8 @@ function ensureAlbumViewStyles(){
 
     /* ---- Liste des pistes : deux lignes (titre + artiste), sans numéro, menu "…" à droite,
        exactement le motif de rangée utilisé sur les pages album de Spotify ---- */
-    .av-list{max-width:640px; margin:22px auto calc(120px + env(safe-area-inset-bottom,0)); padding:0 20px;}
-    .av-total-duration{font-size:12px; color:#727272; margin-top:14px; padding:0 20px;}
+    .av-list{max-width:640px; margin:22px auto calc(120px + env(safe-area-inset-bottom,0)); padding:0 20px; background:var(--av-bg, #0A0A0A); transition:background-color .5s ease;}
+    .av-total-duration{font-size:12px; color:var(--av-text-secondary, #727272); margin-top:14px; padding:0 20px;}
     .av-followed-section{max-width:640px; margin:36px auto 40px; padding:24px 20px 0; border-top:1px solid rgba(255,255,255,.08);}
     .av-followed-title{color:#fff; font-size:14px; font-weight:700; margin-bottom:14px;}
     .av-followed-row{display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px;}
@@ -4172,6 +4172,25 @@ function openAlbumView(tr){
   const artistAvatarStyle = tr.artistAvatar ? `background-image:url(${tr.artistAvatar});` : '';
   const artistInitial = (tr.a || '?').charAt(0).toUpperCase();
   const releaseYear = tr.release ? String(tr.release).slice(-4) : '';
+
+  // ---- Immersion couleur — la pochette devient la source visuelle de la page. Réutilise
+  // NuniPalette (même système que le Hero), jamais une deuxième extraction. Choisit dark ou
+  // pale selon le VRAI thème actif (data-theme), jamais un noir fixe identique pour tous les
+  // albums. Valeur de repli neutre posée immédiatement (comportement actuel inchangé) le
+  // temps du calcul asynchrone — jamais de flash de couleur.
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  if(tr.cover){
+    NuniPalette.extract(tr.cover).then(palette=>{
+      if(!document.body.contains(overlay)) return; // fermé entre-temps, rien à faire
+      const bg = currentTheme === 'light' ? palette.pale : palette.dark;
+      overlay.style.setProperty('--av-bg', bg);
+      if(currentTheme === 'light'){
+        overlay.style.setProperty('--av-text-primary', 'var(--text)');
+        overlay.style.setProperty('--av-text-secondary', 'var(--text-dim)');
+      }
+      // thème sombre : on laisse les valeurs de repli existantes (#fff/#B3B3B3), déjà correctes
+    });
+  }
 
   overlay.innerHTML = `
     <button class="av-back" title="Retour"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
@@ -6442,7 +6461,7 @@ const NuniPalette = (function(){
   const cache = new Map();
   const FALLBACK = {
     dominant:'hsl(262, 45%, 40%)', secondary:'hsl(230, 40%, 18%)',
-    accent:'hsl(38, 65%, 62%)', dark:'hsl(250, 35%, 11%)', light:'hsl(38, 40%, 72%)'
+    accent:'hsl(38, 65%, 62%)', dark:'hsl(250, 35%, 11%)', light:'hsl(38, 40%, 72%)', pale:'hsl(262, 12%, 94%)'
   };
 
   function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
@@ -6515,6 +6534,10 @@ const NuniPalette = (function(){
       // pour que le texte clair du lecteur reste toujours lisible par-dessus (accessibilité)
       dark: hslCss(dh2, clamp(ds2, 0.3, 0.55), clamp(Math.min(dl2, 0.2), 0.08, 0.2)),
       light: hslCss(dh2, clamp(ds2*0.55, 0.08, 0.35), clamp(Math.max(dl2, 0.68), 0.6, 0.8)),
+      // "pale" — équivalent de "dark" mais pour le thème clair NUNI : très haute luminosité,
+      // très faible saturation. La pochette doit être RESSENTIE, jamais CRIÉE sur un fond
+      // crème. Texte sombre garanti lisible par-dessus, comme partout ailleurs en thème clair.
+      pale: hslCss(dh2, clamp(ds2*0.35, 0.06, 0.22), clamp(0.94, 0.90, 0.97)),
     };
   }
 
@@ -6557,12 +6580,12 @@ const NuniPalette = (function(){
   function forPaletteClass(palClass){
     // Palette de secours pour les pochettes générées (pal-1 à pal-6), cohérente avec leurs dégradés existants
     const map = {
-      'pal-1': { dominant:'#6E45A8', secondary:'#141A38', accent:'#A98AD6', dark:'#141A38', light:'#A98AD6' },
-      'pal-2': { dominant:'#D4AF6A', secondary:'#7A4E2A', accent:'#E8C77E', dark:'#3D2712', light:'#F2DDA8' },
-      'pal-3': { dominant:'#C9667A', secondary:'#3A1530', accent:'#E497A8', dark:'#2A0F22', light:'#E9AFBC' },
-      'pal-4': { dominant:'#1D2550', secondary:'#0A0A10', accent:'#8E63C9', dark:'#0A0A10', light:'#A98AD6' },
-      'pal-5': { dominant:'#8E63C9', secondary:'#D4AF6A', accent:'#E8C77E', dark:'#2A1D40', light:'#F2DDA8' },
-      'pal-6': { dominant:'#2E7D6B', secondary:'#0F2D27', accent:'#5FBBA0', dark:'#0F2D27', light:'#9FDFCC' },
+      'pal-1': { dominant:'#6E45A8', secondary:'#141A38', accent:'#A98AD6', dark:'#141A38', light:'#A98AD6', pale:'#F1EDF8' },
+      'pal-2': { dominant:'#D4AF6A', secondary:'#7A4E2A', accent:'#E8C77E', dark:'#3D2712', light:'#F2DDA8', pale:'#F8F1E4' },
+      'pal-3': { dominant:'#C9667A', secondary:'#3A1530', accent:'#E497A8', dark:'#2A0F22', light:'#E9AFBC', pale:'#F8ECEE' },
+      'pal-4': { dominant:'#1D2550', secondary:'#0A0A10', accent:'#8E63C9', dark:'#0A0A10', light:'#A98AD6', pale:'#EEEFF5' },
+      'pal-5': { dominant:'#8E63C9', secondary:'#D4AF6A', accent:'#E8C77E', dark:'#2A1D40', light:'#F2DDA8', pale:'#F3EDF8' },
+      'pal-6': { dominant:'#2E7D6B', secondary:'#0F2D27', accent:'#5FBBA0', dark:'#0F2D27', light:'#9FDFCC', pale:'#ECF6F2' },
     };
     return map[palClass] || FALLBACK;
   }
