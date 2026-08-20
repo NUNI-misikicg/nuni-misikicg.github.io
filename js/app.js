@@ -10705,21 +10705,22 @@ async function loadChallenges(){
     data.challenges.forEach(c=>{
       const pct = Math.min(100, Math.round((c.progress / c.target) * 100));
       const card = document.createElement('div');
-      card.className = 'challenge-card' + (c.claimed ? ' is-claimed' : c.completed ? ' is-ready' : '');
+      card.className = 'challenge-row' + (c.claimed ? ' is-claimed' : c.completed ? ' is-ready' : '');
       card.innerHTML = `
-        <div class="cc-top">
-          <span class="cc-tag">${c.period === 'weekly' ? 'Hebdo' : 'Quotidien'}</span>
-          <span class="cc-xp">+${c.xp} XP</span>
+        <div class="cr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+        <div class="cr-body">
+          <div class="cr-top">
+            <span class="cr-title">${esc(c.title)}</span>
+            <span class="cr-xp">+${c.xp} XP</span>
+          </div>
+          <div class="cc-bar-track"><div class="cc-bar-fill" style="width:${pct}%;"></div></div>
         </div>
-        <div class="cc-title">${esc(c.title)}</div>
-        <div class="cc-bar-track"><div class="cc-bar-fill" style="width:${pct}%;"></div></div>
-        <div class="cc-foot">
-          <span>${c.progress}/${c.target}</span>
+        <div class="cr-action">
           ${c.claimed
-            ? '<span><svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg> Récupéré</span>'
+            ? '<svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>'
             : c.completed
               ? `<button class="cc-claim" onclick="claimChallenge('${c.key}', this)">Récupérer</button>`
-              : '<span>En cours</span>'}
+              : `<span class="cr-progress-text">${c.progress}/${c.target}</span>`}
         </div>`;
       row.appendChild(card);
     });
