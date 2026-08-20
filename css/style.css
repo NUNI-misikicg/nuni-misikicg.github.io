@@ -1073,6 +1073,7 @@ html[data-theme="light"] .release-notify-btn.is-active{ color:#2a1a06; }
 }
 .talent-banner-photos{ position:absolute; inset:0; display:flex; }
 .talent-banner-photos .tbp-photo{ flex:1; background-size:cover; background-position:center top; }
+.talent-banner-photos .tbp-photo:first-child{ flex:1.6; }
 .talent-banner-scrim{ position:absolute; inset:0; background:linear-gradient(0deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.35) 55%, rgba(0,0,0,.05) 100%); }
 .talent-banner-content{ position:relative; z-index:1; padding:26px 28px; }
 .talent-banner-eyebrow{ font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,.75); font-weight:700; }
@@ -1084,9 +1085,9 @@ html[data-theme="light"] .release-notify-btn.is-active{ color:#2a1a06; }
 }
 .talent-banner-cta:hover{ transform:translateY(-2px); }
 @media(max-width:760px){
-  .talent-banner{ min-height:170px; }
-  .talent-banner-content{ padding:20px 18px; }
-  .talent-banner .talent-banner-content h3{ font-size:18px; max-width:220px; margin:6px 0 12px; }
+  .talent-banner{ min-height:150px; }
+  .talent-banner-content{ padding:18px 16px; }
+  .talent-banner .talent-banner-content h3{ font-size:17px; max-width:210px; margin:6px 0 12px; }
 }
 
 .ads-row{ display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
