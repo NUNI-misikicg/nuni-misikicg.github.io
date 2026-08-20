@@ -401,6 +401,70 @@
 </div>
 
 <!-- ============ NUNI TALENT — TOP 100 ============ -->
+<div class="ai-modal-overlay" id="collab-detail-modal-overlay" onclick="if(event.target===this) closeCollaborationDetail()">
+  <div class="ai-modal">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px; z-index:2;" onclick="closeCollaborationDetail()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <span class="ai-modal-eyebrow">Proposition de collaboration</span>
+    <div id="cd-body">Chargement…</div>
+    <div id="cd-actions" style="display:flex; gap:10px; margin-top:18px;"></div>
+  </div>
+</div>
+
+<div class="ai-modal-overlay" id="add-collab-modal-overlay" onclick="if(event.target===this) closeAddCollaboratorModal()">
+  <div class="ai-modal">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px; z-index:2;" onclick="closeAddCollaboratorModal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <span class="ai-modal-eyebrow">Collaboration</span>
+    <h2 class="serif">Ajouter un collaborateur</h2>
+    <div class="release-fields" style="margin-top:16px;">
+      <div class="field full">
+        <label>Qui ?</label>
+        <div class="field-row">
+          <input type="text" id="ac-search" placeholder="Rechercher un artiste NUNI..." oninput="searchCollaboratorArtist(this.value)" style="flex:1;">
+        </div>
+        <div id="ac-search-results" style="margin-top:6px; display:flex; flex-direction:column; gap:4px;"></div>
+        <div id="ac-selected-artist" style="display:none; margin-top:8px; padding:8px 12px; background:var(--bg-card); border-radius:10px; font-size:13px;"></div>
+        <p style="font-size:11.5px; color:var(--text-faint); margin-top:8px;">Pas encore sur NUNI ?</p>
+        <input type="text" id="ac-external-name" placeholder="Nom de la personne (hors NUNI)">
+      </div>
+      <div class="field full">
+        <label>Rôle</label>
+        <select id="ac-role">
+          <option value="featured">Featured</option>
+          <option value="co-artist">Co-artiste</option>
+          <option value="producer">Producteur</option>
+          <option value="composer">Compositeur</option>
+          <option value="label">Label</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Master %</label><input type="number" id="ac-master-pct" min="0" max="100" placeholder="0"></div>
+        <div class="field"><label>Publishing %</label><input type="number" id="ac-publishing-pct" min="0" max="100" placeholder="0"></div>
+      </div>
+      <div class="field full">
+        <label>Type d'accord</label>
+        <select id="ac-payment-type" onchange="updateAddCollabFields()">
+          <option value="forfait">Forfait déjà payé</option>
+          <option value="avance_recoupable">Avance recoupable</option>
+          <option value="royalties">Part de revenus (royalties)</option>
+          <option value="forfait_et_royalties">Forfait + royalties</option>
+          <option value="aucun_paiement">Aucun paiement</option>
+        </select>
+      </div>
+      <div class="field full" id="ac-upfront-wrap">
+        <label id="ac-upfront-label">Montant (FCFA)</label>
+        <input type="number" id="ac-upfront-amount" min="0" placeholder="0">
+        <p id="ac-recoupment-hint" style="display:none; font-size:11.5px; color:var(--text-faint); margin-top:6px;">Les royalties futures de cette personne serviront d'abord à rembourser ce montant, avant tout versement en espèces.</p>
+      </div>
+      <div class="field full"><label>Note (optionnel)</label><textarea id="ac-notes" rows="2" placeholder="Contexte de l'accord..."></textarea></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px; width:100%;" onclick="addPendingCollaborator()">Ajouter</button>
+  </div>
+</div>
+
 <div class="ai-modal-overlay" id="talent-modal-overlay" onclick="if(event.target===this) closeTalentModal()">
   <div class="ai-modal talent-modal">
     <div class="talent-bubbles" id="talent-bubbles"></div>
@@ -889,25 +953,6 @@
         <div class="right-now-list" id="right-now-list"></div>
       </div>
 
-      <div class="shelf"><div class="shelf-head"><h3 class="serif">Nouveautés</h3><a href="#" onclick="event.preventDefault(); openNewReleasesPage();">Tout voir</a></div><div class="shelf-row" id="shelf-new"></div></div>
-
-      <div class="shelf" id="shelf-emerging-wrap" style="display:none;">
-        <div class="shelf-head"><h3 class="serif">À surveiller</h3></div>
-        <div class="emerging-row" id="emerging-row"></div>
-      </div>
-
-      <div class="shelf" id="shelf-resume-wrap" style="display:none;">
-        <div class="shelf-head"><h3 class="serif">Reprendre l'écoute</h3></div>
-        <div class="resume-row" id="resume-row"></div>
-      </div>
-
-      <div class="shelf" id="shelf-continue-wrap" style="display:none;">
-        <div class="shelf-head"><h3 class="serif">Écoutés récemment</h3><a href="#" onclick="event.preventDefault(); openRecentlyPlayedPage();">Tout voir</a></div>
-        <div class="shelf-row" id="shelf-continue"></div>
-      </div>
-
-      <div id="nuni-selection-hero" style="display:none;"></div>
-
       <div class="shelf" id="feature-week-wrap" style="display:none;">
         <div class="shelf-head"><h3 class="serif">Sortie de la semaine</h3></div>
         <div class="feature-week" id="feature-week"></div>
@@ -920,6 +965,20 @@
 
       <div class="shelf"><div class="shelf-head"><h3 class="serif">Playlists NUNI</h3><a href="#" onclick="event.preventDefault(); openAllPlaylistsPage();">Tout voir</a></div><div class="shelf-row poster-row" id="shelf-playlists"></div></div>
 
+      <div class="shelf"><div class="shelf-head"><h3 class="serif">Nouveautés</h3><a href="#" onclick="event.preventDefault(); openNewReleasesPage();">Tout voir</a></div><div class="shelf-row" id="shelf-new"></div></div>
+
+      <div class="shelf" id="shelf-emerging-wrap" style="display:none;">
+        <div class="shelf-head"><h3 class="serif">À surveiller</h3></div>
+        <div class="emerging-row" id="emerging-row"></div>
+      </div>
+
+      <div class="shelf" id="shelf-resume-wrap" style="display:none;">
+        <div class="shelf-head"><h3 class="serif">Reprendre l'écoute</h3></div>
+        <div class="resume-row" id="resume-row"></div>
+      </div>
+
+      <div id="nuni-selection-hero" style="display:none;"></div>
+
       <div class="shelf" id="ambiances-wrap" style="display:none;">
         <div class="shelf-head"><h3 class="serif">Ambiances NUNI</h3></div>
         <div class="ambiances-grid" id="ambiances-grid"></div>
@@ -931,6 +990,11 @@
       </div>
       <div class="shelf" id="shelf-for-you-wrap" style="display:none;"><div class="shelf-head"><div><h3 class="serif">Écouter comme toi</h3><p class="shelf-sub" id="shelf-for-you-sub"></p></div></div><div class="shelf-row" id="shelf-for-you"></div></div>
       <div class="shelf"><div class="shelf-head"><h3 class="serif">Top Congo</h3><a href="#" onclick="event.preventDefault(); openTopCongoPage();">Tout voir</a></div><div class="shelf-row" id="shelf-top"></div></div>
+
+      <div class="shelf" id="shelf-continue-wrap" style="display:none;">
+        <div class="shelf-head"><h3 class="serif">Écoutés récemment</h3><a href="#" onclick="event.preventDefault(); openRecentlyPlayedPage();">Tout voir</a></div>
+        <div class="shelf-row" id="shelf-continue"></div>
+      </div>
 
       <div class="shelf">
         <div id="level-progress-wrap" style="display:none; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-m); padding:18px 22px; margin-bottom:24px;"></div>
@@ -1547,9 +1611,23 @@
           <div class="field checkbox-field"><label><input type="checkbox" id="rf-explicit"> Contenu explicite</label></div>
           <div class="field checkbox-field"><label><input type="checkbox" id="rf-droits"> Je confirme détenir les droits sur ce contenu *</label></div>
         </div>
+        <div class="field full" style="margin-top:6px;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openAddCollaboratorModal()">+ Ajouter un collaborateur <span style="color:var(--text-faint); font-weight:400;">(optionnel)</span></button>
+          <div id="rf-collaborators-list" style="margin-top:10px; display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
       </div>
 
       <button class="btn btn-primary" style="margin-top:18px;" onclick="publishRelease()">Publier ce projet sur NUNI</button>
+    </div>
+    <div class="dash-panel">
+      <h3 class="serif">Mes collaborations</h3>
+      <p style="font-size:12.5px; color:var(--text-faint); margin-top:-16px; margin-bottom:14px;">Les collaborateurs que vous avez ajoutés sur vos morceaux, et leur statut réel.</p>
+      <div id="my-collaborations-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+    <div class="dash-panel">
+      <h3 class="serif">Collaborations reçues</h3>
+      <p style="font-size:12.5px; color:var(--text-faint); margin-top:-16px; margin-bottom:14px;">Les collaborations que d'autres artistes vous ont proposées.</p>
+      <div id="my-collaborations-received-list" style="display:flex; flex-direction:column; gap:8px;"></div>
     </div>
     <div class="dash-panel" id="clip-upload-panel">
       <h3 class="serif">Publier un clip</h3>
