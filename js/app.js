@@ -4956,6 +4956,66 @@ function renderFeatureWeek(){
 }
 renderFeatureWeek();
 
+// ---------- Sorties — grande sortie album éditoriale (immersion couleur via NuniPalette,
+// même système que le Hero et la page Album, jamais dupliqué) + liste compacte de singles
+// récents. Masquée entièrement si aucune vraie sortie n'existe encore. ----------
+function renderReleasesSplit(){
+  const wrap = document.getElementById('releases-split-wrap');
+  const albumBox = document.getElementById('rs-album');
+  const singlesBox = document.getElementById('rs-singles');
+  if(!wrap || !albumBox || !singlesBox) return;
+  const real = tracks.filter(t=>t.isReal);
+  const albums = real.filter(t=>t.releaseType && t.releaseType !== 'Single').sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
+  const singles = real.filter(t=>!t.releaseType || t.releaseType === 'Single').sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)).slice(0, 5);
+  if(!albums.length && !singles.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  if(albums.length){
+    const album = albums[0];
+    const albumTrackCount = real.filter(t=> t.album === album.album && t.a === album.a).length;
+    albumBox.innerHTML = `
+      <div class="rs-album-halo"></div>
+      <div class="rs-album-cover" style="${album.cover ? `background-image:url(${album.cover});` : 'background:var(--grad-envol);'}"></div>
+      <div class="rs-album-info">
+        <span class="rs-album-label">Sortie album</span>
+        <div class="rs-album-artist">${esc(album.a)}</div>
+        <div class="rs-album-title">${esc(album.album)}</div>
+        <div class="rs-album-meta">${esc(album.releaseType || 'Album')}${albumTrackCount>1 ? ' · ' + albumTrackCount + ' titres' : ''}${album.release ? ' · ' + esc(album.release) : ''}</div>
+        <button class="rs-album-play"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg> Écouter</button>
+      </div>`;
+    albumBox.querySelector('.rs-album-cover').onclick = ()=> handleTrackCardClick(album);
+    albumBox.querySelector('.rs-album-play').onclick = ()=> handleTrackCardClick(album);
+    if(album.cover){
+      NuniPalette.extract(album.cover).then(palette=>{
+        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const tint = theme === 'light'
+          ? `color-mix(in srgb, ${palette.dominant} 10%, transparent)`
+          : `color-mix(in srgb, ${palette.dominant} 20%, transparent)`;
+        albumBox.style.setProperty('--rs-tint', tint);
+        albumBox.querySelector('.rs-album-halo').style.background =
+          `radial-gradient(circle at 30% 30%, color-mix(in srgb, ${palette.dominant} 40%, transparent) 0%, transparent 70%)`;
+      });
+    }
+    albumBox.style.display = '';
+  } else { albumBox.style.display = 'none'; }
+
+  if(singles.length){
+    singlesBox.innerHTML = `<div class="rs-singles-label">Sorties single</div>` + singles.map(s => `
+      <div class="rs-single-row" data-t="${esc(s.t)}">
+        <div class="rs-single-cover" style="${s.cover ? `background-image:url(${s.cover});` : 'background:var(--grad-envol);'}"></div>
+        <div class="rs-single-info"><div class="rs-single-title">${esc(s.t)}</div><div class="rs-single-artist">${esc(s.a)}</div></div>
+        <button class="rs-single-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M8 5v14l11-7z"/></svg></button>
+      </div>`).join('');
+    singlesBox.querySelectorAll('.rs-single-row').forEach((row, i)=>{
+      const s = singles[i];
+      row.querySelector('.rs-single-play').onclick = (e)=>{ e.stopPropagation(); playTrack(s); };
+      row.onclick = ()=> handleTrackCardClick(s);
+    });
+    singlesBox.style.display = '';
+  } else { singlesBox.style.display = 'none'; }
+}
+renderReleasesSplit();
+
 // ---------- Ça bouge — vraie progression semaine sur semaine, calculée en direct sur les
 // vraies écoutes horodatées (voir /api/tracks/rising). Section masquée s'il n'y a pas encore
 // assez d'écoutes pour un calcul significatif, jamais un pourcentage inventé à la place. ----------
