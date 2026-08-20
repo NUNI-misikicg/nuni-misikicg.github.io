@@ -2611,6 +2611,8 @@ function enterApp(view){
       loadDashboardChart();
       loadPaymentsHistory();
       loadRealPaymentStatus();
+      loadMyCollaborationsGiven();
+      loadMyCollaborationsReceived();
       applySavedRevenuePrivacy();
       const momoInput = document.getElementById('momo-number-input');
       if(momoInput) momoInput.value = (currentUser && currentUser.momo_number) || '';
@@ -5930,7 +5932,13 @@ initHomeAmbientScrollEngine();
 })();
 
 function applyHeroTrack(top, hero, titleEl, subEl, playBtn, coverEl, liveCountEl, shareBtn){
-  if(top.cover && coverEl) coverEl.style.backgroundImage = `url(${top.cover})`;
+  // Vraie chaîne de repli : photo réelle de l'artiste (avatar_url, seul champ photo qui
+  // existe vraiment côté NUNI) en priorité si elle existe et semble correcte (évite les
+  // avatars minuscules/par défaut) — sinon la pochette du morceau. Jamais une donnée
+  // inventée pour combler un champ qui n'existe pas réellement dans le schéma.
+  const heroImageUrl = (top.artistAvatarUrl && !/default|placeholder/i.test(top.artistAvatarUrl))
+    ? top.artistAvatarUrl : top.cover;
+  if(heroImageUrl && coverEl) coverEl.style.backgroundImage = `url(${heroImageUrl})`;
   if(titleEl) titleEl.innerHTML = `<em>${top.t}</em>`;
   if(subEl) subEl.textContent = `${top.a} · parmi les morceaux les plus écoutés cette semaine`;
   if(playBtn) playBtn.onclick = ()=>{ playTrack(top); openFullPlayer(); };
@@ -5947,12 +5955,12 @@ function applyHeroTrack(top, hero, titleEl, subEl, playBtn, coverEl, liveCountEl
   }
   // Halo de couleur dynamique — la teinte du Hero suit la pochette affichée, en réutilisant
   // le même système d'extraction que le lecteur plein écran (voir NuniPalette).
-  if(top.cover && typeof NuniPalette !== 'undefined'){
-    NuniPalette.extract(top.cover).then(palette=>{
+  if(heroImageUrl && typeof NuniPalette !== 'undefined'){
+    NuniPalette.extract(heroImageUrl).then(palette=>{
       hero.style.setProperty('--nuni-hero-glow', palette.accent);
     });
   }
-  if(top.cover && typeof NuniAura !== 'undefined') NuniAura.applyRestingHero(top.cover);
+  if(heroImageUrl && typeof NuniAura !== 'undefined') NuniAura.applyRestingHero(heroImageUrl);
 }
 // ---------- Nav qui se voile progressivement au défilement — plus translucide tout en
 // haut (laisse respirer le hero), plus opaque/floutée une fois qu'on a défilé un peu.
@@ -8060,6 +8068,7 @@ async function publishRelease(){
               description: description || null, releaseDate: dateVal || null,
               scheduledReleaseAt: isScheduledForFuture ? dateVal : null,
               moodKeys,
+              collaborators: pendingCollaborators,
             })
           });
           if(res.ok){
@@ -8075,6 +8084,8 @@ async function publishRelease(){
         toast(isScheduledForFuture
           ? 'Programmation confirmée sur le serveur NUNI.'
           : 'Vos morceaux ont bien été envoyés sur le serveur NUNI — visibles par tous les auditeurs.');
+        pendingCollaborators.length = 0;
+        renderPendingCollaboratorsList();
       } else if(successCount > 0){
  toast(` ️ ${successCount} morceau(x) envoyé(s), ${failCount} échec(s) : ${lastError}`);
       } else {
@@ -9627,6 +9638,346 @@ async function openTalentModal(){
     wrap.innerHTML = `<p style="color:var(--text-faint); font-size:13px; text-align:center; padding:20px 0;">Classement momentanément indisponible.</p>`;
   }
 }
+// ============================================================
+// A2 — Ajouter un collaborateur (avant publication). Les collaborateurs restent en
+// attente côté client (comme moodKeys) jusqu'à la vraie publication du morceau, moment
+// où trackId existe enfin réellement.
+// ============================================================
+let pendingCollaborators = [];
+let selectedCollaboratorArtist = null;
+let collabSearchDebounce = null;
+
+function openAddCollaboratorModal(){
+  selectedCollaboratorArtist = null;
+  document.getElementById('ac-search').value = '';
+  document.getElementById('ac-search-results').innerHTML = '';
+  document.getElementById('ac-selected-artist').style.display = 'none';
+  document.getElementById('ac-external-name').value = '';
+  document.getElementById('ac-master-pct').value = '';
+  document.getElementById('ac-publishing-pct').value = '';
+  document.getElementById('ac-upfront-amount').value = '';
+  document.getElementById('ac-notes').value = '';
+  document.getElementById('ac-payment-type').value = 'royalties';
+  updateAddCollabFields();
+  document.getElementById('add-collab-modal-overlay').classList.add('show');
+}
+function closeAddCollaboratorModal(){
+  document.getElementById('add-collab-modal-overlay').classList.remove('show');
+}
+function updateAddCollabFields(){
+  const type = document.getElementById('ac-payment-type').value;
+  const label = document.getElementById('ac-upfront-label');
+  const hint = document.getElementById('ac-recoupment-hint');
+  const wrap = document.getElementById('ac-upfront-wrap');
+  wrap.style.display = (type === 'aucun_paiement' || type === 'royalties') ? 'none' : 'block';
+  label.textContent = type === 'avance_recoupable' ? 'Montant de l\'avance (FCFA)' : 'Montant forfaitaire (FCFA)';
+  hint.style.display = type === 'avance_recoupable' ? 'block' : 'none';
+}
+function searchCollaboratorArtist(q){
+  clearTimeout(collabSearchDebounce);
+  const box = document.getElementById('ac-search-results');
+  if(q.trim().length < 2){ box.innerHTML = ''; return; }
+  collabSearchDebounce = setTimeout(async ()=>{
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/artists/search?q=' + encodeURIComponent(q), { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+      const data = await res.json();
+      box.innerHTML = (data.artists||[]).map(a=>
+        `<div class="ac-search-result" onclick='selectCollaboratorArtist(${a.id}, ${JSON.stringify(a.artist_name || a.first_name)})' style="padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13px; background:var(--bg-card);">${esc(a.artist_name || a.first_name)}</div>`
+      ).join('');
+    }catch(e){ box.innerHTML = ''; }
+  }, 300);
+}
+function selectCollaboratorArtist(id, name){
+  selectedCollaboratorArtist = { id, name };
+  document.getElementById('ac-search-results').innerHTML = '';
+  document.getElementById('ac-search').value = '';
+  const sel = document.getElementById('ac-selected-artist');
+  sel.style.display = 'block';
+  sel.innerHTML = `✓ ${esc(name)} <button type="button" onclick="selectedCollaboratorArtist=null; document.getElementById('ac-selected-artist').style.display='none';" style="margin-left:8px; color:var(--accent);">Retirer</button>`;
+  document.getElementById('ac-external-name').value = '';
+}
+function addPendingCollaborator(){
+  const role = document.getElementById('ac-role').value;
+  const paymentType = document.getElementById('ac-payment-type').value;
+  const masterPctRaw = document.getElementById('ac-master-pct').value;
+  const publishingPctRaw = document.getElementById('ac-publishing-pct').value;
+  const upfrontAmountFcfa = document.getElementById('ac-upfront-amount').value;
+  const agreementNotes = document.getElementById('ac-notes').value.trim();
+  const externalName = document.getElementById('ac-external-name').value.trim();
+
+  if(!selectedCollaboratorArtist && !externalName){ toast('Choisissez un artiste NUNI ou indiquez un nom.'); return; }
+  const masterPct = masterPctRaw === '' ? null : Number(masterPctRaw);
+  const publishingPct = publishingPctRaw === '' ? null : Number(publishingPctRaw);
+  if(masterPct === null && publishingPct === null){ toast('Indiquez au moins une part (master ou publishing), même 0%.'); return; }
+  if([masterPct, publishingPct].some(v=> v!==null && (v<0 || v>100))){ toast('Un pourcentage doit être entre 0 et 100.'); return; }
+  if(paymentType === 'avance_recoupable' && (!upfrontAmountFcfa || Number(upfrontAmountFcfa) <= 0)){ toast('Une avance recoupable exige un montant supérieur à 0.'); return; }
+  if((paymentType === 'royalties' || paymentType === 'forfait_et_royalties') && !(masterPct>0) && !(publishingPct>0)){ toast('Un accord en royalties exige au moins une part supérieure à 0%.'); return; }
+
+  pendingCollaborators.push({
+    collaboratorArtistId: selectedCollaboratorArtist ? selectedCollaboratorArtist.id : null,
+    externalName: externalName || null,
+    role, paymentType,
+    upfrontAmountFcfa: upfrontAmountFcfa || null,
+    masterPct, publishingPct,
+    agreementNotes: agreementNotes || null,
+    _displayName: selectedCollaboratorArtist ? selectedCollaboratorArtist.name : externalName,
+  });
+  renderPendingCollaboratorsList();
+  closeAddCollaboratorModal();
+  toast('Collaborateur ajouté — sera proposé après la publication.');
+}
+function renderPendingCollaboratorsList(){
+  const box = document.getElementById('rf-collaborators-list');
+  if(!box) return;
+  box.innerHTML = pendingCollaborators.map((c,i)=>
+    `<div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--bg-card); border-radius:10px; font-size:12.5px;">
+      <span>${esc(c._displayName)} — ${esc(c.role)} — Master ${c.masterPct??0}% / Publishing ${c.publishingPct??0}%</span>
+      <button type="button" onclick="pendingCollaborators.splice(${i},1); renderPendingCollaboratorsList();" style="color:var(--text-faint);">Retirer</button>
+    </div>`
+  ).join('');
+}
+
+// ---------- Badge de statut partagé — utilisé partout (A3, C4) pour éviter toute
+// ambiguïté entre les écrans sur le sens d'un même statut. ----------
+function collabStatusBadge(status){
+  const map = {
+    pending:  { icon:'🟡', label:'En attente' },
+    accepted: { icon:'🟢', label:'Accepté' },
+    disputed: { icon:'🔴', label:'Contesté' },
+    rejected: { icon:'⚫', label:'Refusé' },
+  };
+  const s = map[status] || { icon:'⚪', label: status };
+  return `<span class="collab-status-badge">${s.icon} ${s.label}</span>`;
+}
+
+// ---------- A3 — "Mes collaborations" : collaborateurs ajoutés sur mes morceaux ----------
+async function loadMyCollaborationsGiven(){
+  const box = document.getElementById('my-collaborations-list');
+  if(!box || !realAuthToken) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/collaborations-given', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    const data = await res.json();
+    const items = data.items || [];
+    if(!items.length){
+      box.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucun collaborateur ajouté pour le moment.</p>`;
+      return;
+    }
+    const byTrack = {};
+    items.forEach(it=>{ (byTrack[it.track_id] ||= { title: it.track_title, rows: [] }).rows.push(it); });
+    box.innerHTML = Object.values(byTrack).map(group => `
+      <div style="padding:12px 14px; background:var(--bg-card); border-radius:12px;">
+        <div style="font-weight:600; font-size:13.5px; margin-bottom:8px;">🎵 ${esc(group.title)}</div>
+        ${group.rows.map(r=>{
+          const name = esc(r.artist_name || r.first_name || r.external_name || 'Collaborateur');
+          const frozen = Number(r.frozen_amount_fcfa) > 0
+            ? `<div style="font-size:11px; color:var(--text-faint); margin-top:2px;">Montant gelé : ${Number(r.frozen_amount_fcfa).toLocaleString('fr-FR')} FCFA</div>` : '';
+          const disputeNote = r.dispute_reason ? `<div style="font-size:11px; color:var(--text-faint); margin-top:2px;">Motif : ${esc(r.dispute_reason)}</div>` : '';
+          return `<div style="display:flex; align-items:flex-start; justify-content:space-between; padding:6px 0; border-top:1px solid var(--border);">
+            <div>
+              <div style="font-size:13px;">${name} — ${esc(r.role)} — ${esc(r.rights_type)} ${r.share_pct}%</div>
+              ${frozen}${disputeNote}
+            </div>
+            ${collabStatusBadge(r.status)}
+          </div>`;
+        }).join('')}
+      </div>`
+    ).join('');
+  }catch(e){
+    box.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Collaborations momentanément indisponibles.</p>`;
+  }
+}
+
+
+// ============================================================
+// C2 — Détail complet d'une proposition de collaboration. Toutes les données viennent
+// du backend telles quelles — aucun calcul financier n'est jamais recréé ici.
+// ============================================================
+let currentCollabDetail = null;
+async function openCollaborationDetail(collaboratorId){
+  const overlay = document.getElementById('collab-detail-modal-overlay');
+  const body = document.getElementById('cd-body');
+  const actions = document.getElementById('cd-actions');
+  body.innerHTML = 'Chargement…';
+  actions.innerHTML = '';
+  overlay.classList.add('show');
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/track-collaborators/' + collaboratorId + '/detail', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    if(!res.ok){ const e = await res.json().catch(()=>({})); body.innerHTML = `<p style="color:var(--text-faint);">${esc(e.error || 'Impossible de charger cette proposition.')}</p>`; return; }
+    const data = await res.json();
+    currentCollabDetail = data;
+    renderCollaborationDetail(data);
+  }catch(e){
+    body.innerHTML = `<p style="color:var(--text-faint);">Connexion au serveur impossible.</p>`;
+  }
+}
+function closeCollaborationDetail(){
+  document.getElementById('collab-detail-modal-overlay').classList.remove('show');
+  currentCollabDetail = null;
+}
+function renderCollaborationDetail(data){
+  const body = document.getElementById('cd-body');
+  const actions = document.getElementById('cd-actions');
+  const masterRow = data.terms.find(t=>t.rights_type==='master');
+  const publishingRow = data.terms.find(t=>t.rights_type==='publishing');
+  const masterPct = masterRow ? Number(masterRow.share_pct) : 0;
+  const publishingPct = publishingRow ? Number(publishingRow.share_pct) : 0;
+  // Le type d'accord/montant sont partagés entre les deux lignes (même déclaration) —
+  // on affiche celui de la première ligne trouvée, jamais recalculé.
+  const ref = masterRow || publishingRow;
+  const paymentTypeLabels = { forfait:'Forfait déjà payé', avance_recoupable:'Avance recoupable', royalties:'Part de revenus (royalties)', forfait_et_royalties:'Forfait + royalties', aucun_paiement:'Aucun paiement', autre:'Autre accord' };
+  const roleLabels = { featured:'Featured', 'co-artist':'Co-artiste', producer:'Producteur', composer:'Compositeur', label:'Label' };
+  const anyPending = data.terms.some(t=>t.status==='pending');
+  const anyDisputed = data.terms.some(t=>t.status==='disputed');
+  const anyRejected = data.terms.every(t=>t.status==='rejected');
+  const anyAccepted = data.terms.every(t=>t.status==='accepted');
+
+  let html = `
+    <div style="display:flex; gap:14px; align-items:center; margin:10px 0 16px;">
+      <div style="width:56px; height:56px; border-radius:10px; background-size:cover; background-position:center; background-image:url('${data.track.coverUrl||''}'); background-color:var(--bg-card); flex-shrink:0;"></div>
+      <div><h2 class="serif" style="margin:0;">${esc(data.track.title)}</h2><p style="font-size:12.5px; color:var(--text-faint); margin:2px 0 0;">Artiste principal : ${esc(data.primaryArtist.name)}</p></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
+      <div><b>Votre rôle :</b> ${esc(roleLabels[data.role] || data.role)}</div>
+      <div><b>Master :</b> ${masterPct}%</div>
+      <div><b>Publishing :</b> ${publishingPct}%</div>
+      <div><b>Type d'accord :</b> ${esc(paymentTypeLabels[ref?.payment_type] || ref?.payment_type || '—')}</div>`;
+
+  if(masterPct === 0 && publishingPct === 0){
+    html += `<div style="padding:8px 12px; background:var(--bg-card); border-radius:8px; font-weight:600;">Aucun revenu attaché à cet accord</div>`;
+  }
+  if(ref && (ref.payment_type === 'forfait' || ref.payment_type === 'forfait_et_royalties') && ref.upfront_amount_fcfa){
+    html += `<div><b>Forfait :</b> ${Number(ref.upfront_amount_fcfa).toLocaleString('fr-FR')} FCFA</div>`;
+  }
+  if(ref && ref.payment_type === 'avance_recoupable' && ref.upfront_amount_fcfa){
+    html += `<div><b>Avance :</b> ${Number(ref.upfront_amount_fcfa).toLocaleString('fr-FR')} FCFA</div>
+      <div style="padding:8px 12px; background:var(--bg-card); border-radius:8px; font-size:12.5px;">Vos royalties futures serviront d'abord à rembourser ce montant, avant tout versement en espèces.</div>`;
+  }
+  if(ref && ref.agreement_notes){
+    html += `<div><b>Note :</b> ${esc(ref.agreement_notes)}</div>`;
+  }
+  if(data.documents.length){
+    html += `<div><b>Document joint :</b> <a href="${data.documents[0].file_url}" target="_blank" rel="noopener">Voir le document</a></div>
+      <div style="font-size:11.5px; color:var(--text-faint);">Ce document est une référence, jamais une validation juridique automatique de l'accord.</div>`;
+  } else {
+    html += `<div style="font-size:12.5px; color:var(--text-faint);">Aucun document joint — accord déclaré sans pièce justificative. NUNI ne peut pas vérifier un accord conclu hors plateforme.</div>`;
+  }
+  html += `</div>`;
+
+  if(anyDisputed){
+    const d = data.disputes.find(d=>d.status==='open');
+    html += `<div style="margin-top:14px; padding:10px 12px; background:var(--bg-card); border-radius:10px; font-size:12.5px;">${collabStatusBadge('disputed')}<div style="margin-top:6px;">Votre contestation est en cours d'examen par l'équipe NUNI.${d?` Motif : ${esc(d.reason)}`:''}</div></div>`;
+  } else if(anyRejected){
+    html += `<div style="margin-top:14px;">${collabStatusBadge('rejected')}</div>`;
+  } else if(anyAccepted){
+    html += `<div style="margin-top:14px;">${collabStatusBadge('accepted')}<p style="font-size:12px; color:var(--text-faint); margin-top:4px;">Ces conditions sont celles réellement enregistrées côté NUNI.</p></div>`;
+  }
+
+  body.innerHTML = html;
+
+  // Actions — uniquement si au moins une ligne est encore pending (jamais deux fois, jamais
+  // sur une proposition déjà tranchée).
+  if(anyPending){
+    actions.innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="respondToCollaboration('rejected')">Refuser</button>
+      <button class="btn btn-ghost btn-sm" onclick="promptDisputeCollaboration()">Contester</button>
+      <button class="btn btn-primary btn-sm" style="flex:1;" onclick="respondToCollaboration('accepted')">Accepter</button>`;
+  } else {
+    actions.innerHTML = '';
+  }
+}
+
+// ============================================================
+// C3 — Réponse à une proposition (Accepter / Contester / Refuser). Une décision porte
+// sur l'ensemble de la proposition — si master+publishing ont été proposés ensemble, les
+// deux lignes reçoivent la même réponse en une fois.
+// ============================================================
+async function respondToCollaboration(status){
+  if(!currentCollabDetail) return;
+  if(status === 'rejected' && !confirm('Confirmer le refus ? Aucun droit ne vous sera attribué sur ce morceau.')) return;
+  const pendingTermsIds = currentCollabDetail.terms.filter(t=>t.status==='pending').map(t=>t.id);
+  let allOk = true;
+  for(const termsId of pendingTermsIds){
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/collaboration-terms/' + termsId + '/respond', {
+        method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+realAuthToken },
+        body: JSON.stringify({ status }),
+      });
+      if(!res.ok){ allOk = false; const e = await res.json().catch(()=>({})); toast(e.error || 'Erreur serveur.'); }
+    }catch(e){ allOk = false; toast('Connexion au serveur impossible.'); }
+  }
+  if(allOk){
+    toast(status==='accepted' ? '✓ Vous avez accepté. Le morceau apparaît dans votre catalogue.' : '✓ Vous avez refusé. Aucun droit ne vous sera attribué.');
+    closeCollaborationDetail();
+    loadMyCollaborationsReceived();
+  }
+}
+function promptDisputeCollaboration(){
+  if(!currentCollabDetail) return;
+  const reason = prompt('Pourquoi contestez-vous cet accord ? (obligatoire)');
+  if(!reason || !reason.trim()){ toast('Un motif est requis pour contester un accord.'); return; }
+  disputeCollaborationWithReason(reason.trim());
+}
+async function disputeCollaborationWithReason(reason){
+  const pendingTermsIds = currentCollabDetail.terms.filter(t=>t.status==='pending').map(t=>t.id);
+  let allOk = true;
+  for(const termsId of pendingTermsIds){
+    try{
+      const res = await fetch(NUNI_API_BASE + '/api/collaboration-terms/' + termsId + '/respond', {
+        method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+realAuthToken },
+        body: JSON.stringify({ status:'disputed', disputeReason: reason }),
+      });
+      if(!res.ok) allOk = false;
+    }catch(e){ allOk = false; }
+  }
+  if(allOk){
+    toast('Votre contestation a été transmise à l\'équipe NUNI.');
+    closeCollaborationDetail();
+    loadMyCollaborationsReceived();
+  } else {
+    toast('Erreur lors de l\'envoi de la contestation.');
+  }
+}
+
+// ============================================================
+// C4 — "Mes collaborations" côté collaborateur : accords sur des morceaux d'autres
+// artistes, symétrique de A3. Même badge de statut partagé.
+// ============================================================
+async function loadMyCollaborationsReceived(){
+  const box = document.getElementById('my-collaborations-received-list');
+  if(!box || !realAuthToken) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/collaborations-received', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    const data = await res.json();
+    const items = data.items || [];
+    if(!items.length){
+      box.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucune collaboration reçue pour le moment.</p>`;
+      return;
+    }
+    const byTrack = {};
+    items.forEach(it=>{ (byTrack[it.track_id] ||= { title: it.track_title, primaryName: it.primary_artist_name, rows: [] }).rows.push(it); });
+    box.innerHTML = Object.values(byTrack).map(group => `
+      <div style="padding:12px 14px; background:var(--bg-card); border-radius:12px; cursor:pointer;" onclick="openCollaborationDetail(${group.rows[0].collaborator_id})">
+        <div style="font-weight:600; font-size:13.5px; margin-bottom:4px;">🎵 ${esc(group.title)}</div>
+        <div style="font-size:12px; color:var(--text-faint); margin-bottom:8px;">Artiste principal : ${esc(group.primaryName)}</div>
+        ${group.rows.map(r=>{
+          const frozen = Number(r.frozen_amount_fcfa) > 0
+            ? `<div style="font-size:11px; color:var(--text-faint); margin-top:2px;">Montant gelé : ${Number(r.frozen_amount_fcfa).toLocaleString('fr-FR')} FCFA</div>` : '';
+          const disputeNote = r.dispute_reason ? `<div style="font-size:11px; color:var(--text-faint); margin-top:2px;">Motif : ${esc(r.dispute_reason)}</div>` : '';
+          return `<div style="display:flex; align-items:flex-start; justify-content:space-between; padding:6px 0; border-top:1px solid var(--border);">
+            <div>
+              <div style="font-size:13px;">${esc(r.role)} — ${esc(r.rights_type)} ${r.share_pct}%</div>
+              ${frozen}${disputeNote}
+            </div>
+            ${collabStatusBadge(r.status)}
+          </div>`;
+        }).join('')}
+      </div>`
+    ).join('');
+  }catch(e){
+    box.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Collaborations momentanément indisponibles.</p>`;
+  }
+}
+
 function closeTalentModal(){
   document.getElementById('talent-modal-overlay').classList.remove('show');
 }
@@ -12399,7 +12750,8 @@ async function loadNotifications(){
         if(!link) return;
         el.onclick = ()=>{
           document.getElementById('notif-panel').classList.remove('open');
-          if(link.includes('opportunites')) enterApp('ads');
+          if(link.startsWith('/collab:')) openCollaborationDetail(Number(link.split(':')[1]));
+          else if(link.includes('opportunites')) enterApp('ads');
           else if(link.startsWith('/')) enterApp(link.slice(1));
         };
       });

@@ -1236,6 +1236,7 @@ html[data-theme="light"] .release-notify-btn.is-active{ color:#2a1a06; }
 .chip:hover:not(.is-active){ border-color:var(--accent); color:var(--text); }
 
 .shelf{ margin-bottom:58px; }
+@media(max-width:760px){ .shelf{ margin-bottom:28px; } }
 /* ---- Hero premium — grande carte éditoriale avec pochette/collage en fond, jamais stylée
    jusqu'ici malgré son usage pour Top Congo (complètement invisible visuellement). Réutilisé
    maintenant aussi pour "Votre sélection NUNI". ---- */
@@ -1326,6 +1327,7 @@ html[data-theme="light"] .ph-play-pill{ color:#2a1a06; }
   .scroll-chapter{ opacity:1; transform:none; transition:none; }
 }
 .shelf-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:22px; }
+@media(max-width:760px){ .shelf-head{ margin-bottom:14px; } }
 .shelf-sub{ font-size:12.5px; color:var(--text-faint); margin-top:4px; }
 
 .mood-picker{ display:flex; flex-wrap:wrap; gap:9px; }
@@ -1334,6 +1336,9 @@ html[data-theme="light"] .ph-play-pill{ color:#2a1a06; }
 html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 .mood-chip:has(input:disabled:not(:checked)){ opacity:.4; cursor:not-allowed; }
 .mood-chip input{ position:absolute; opacity:0; width:0; height:0; }
+
+.collab-status-badge{ font-size:11.5px; font-weight:600; white-space:nowrap; flex-shrink:0; padding-left:10px; color:var(--text-dim); }
+.ac-search-result:hover{ background:var(--border) !important; }
 
 /* ---- Ambiances NUNI — composition asymétrique, grande tuile en tête + tuiles plus
    discrètes, jamais une grille uniforme de cartes identiques. ---- */
@@ -1351,6 +1356,14 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 .shelf-head h3{ font-family:var(--font-display); font-size:28px; font-weight:800; letter-spacing:-0.03em; }
 .shelf-head a{ font-size:12.5px; color:var(--text-faint); }
 .shelf-row{ display:flex; gap:18px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
+@media(max-width:760px){
+  .shelf-row{ gap:12px; margin:0 -20px; padding-left:20px; padding-right:20px; }
+  .track-card{ width:150px !important; }
+  .track-card .cover, .track-card .fp-cover-wrap{ aspect-ratio:1; }
+}
+@media(max-width:380px){
+  .track-card{ width:135px !important; }
+}
 
 /* ---- Nouveautés — composition éditoriale asymétrique (grande pochette + deux plus
    petites), plutôt qu'une rangée uniforme. Réutilise les vrais jetons NUNI (--bg-card,
@@ -2255,8 +2268,8 @@ html.nuni-immersive .demo-nav{
 .full-player::before{
   content:''; position:absolute; inset:-20%; z-index:0; pointer-events:none;
   background:
-    radial-gradient(40% 32% at 50% 16%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) calc(28% + var(--nuni-aura-live-boost, 0) * 18%), transparent), transparent 72%),
-    radial-gradient(55% 45% at 50% 100%, color-mix(in srgb, var(--nuni-aura-color, #6E45A8) 9%, transparent), transparent 78%),
+    radial-gradient(40% 32% at 50% 16%, color-mix(in srgb, var(--nuni-aura-color, #8A63A8) calc(28% + var(--nuni-aura-live-boost, 0) * 18%), transparent), transparent 72%),
+    radial-gradient(55% 45% at 50% 100%, color-mix(in srgb, var(--nuni-aura-color, #8A63A8) 9%, transparent), transparent 78%),
     linear-gradient(180deg, #0a0806 0%, #050403 40%, #000 100%);
   filter:blur(64px); transform:scale(calc(1.1 + var(--nuni-aura-live-boost, 0) * 0.1)); transition:background 1s ease, transform .08s linear;
 }
@@ -2282,7 +2295,7 @@ html.nuni-immersive .demo-nav{
 
 .fp-mini-info{ flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:8px; opacity:0; transform:translateY(-6px); transition:opacity .2s ease, transform .2s ease; pointer-events:none; }
 .fp-topbar.fp2-scrolled .fp-mini-info{ opacity:1; transform:translateY(0); pointer-events:auto; }
-.fp-mini-cover{ width:26px; height:26px; border-radius:6px; flex:0 0 auto; overflow:hidden; background-size:cover; background-position:center; background:linear-gradient(155deg, var(--nuni-aura-color,#6E45A8), #16110c); }
+.fp-mini-cover{ width:26px; height:26px; border-radius:6px; flex:0 0 auto; overflow:hidden; background-size:cover; background-position:center; background:linear-gradient(155deg, var(--nuni-aura-color,#8A63A8), #16110c); }
 .fp-mini-text{ min-width:0; text-align:center; }
 .fp-mini-title{ font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .fp-mini-artist{ font-size:11px; color:rgba(255,255,255,.65); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -2311,7 +2324,7 @@ html.nuni-immersive .demo-nav{
   box-shadow:0 24px 55px -18px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.05) inset;
   background-size:cover; background-position:center;
 }
-.fp-cover-placeholder{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(155deg, var(--nuni-aura-color,#6E45A8) 0%, #0c0805 88%); }
+.fp-cover-placeholder{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(155deg, var(--nuni-aura-color,#8A63A8) 0%, #0c0805 88%); }
 .fp-cover-placeholder::before{ content:''; position:absolute; inset:14px; border:1px solid rgba(255,255,255,.16); border-radius:16px; }
 .fp-cover-mark{ font-family:var(--font-display); font-weight:700; font-size:18px; letter-spacing:.4em; color:rgba(255,255,255,.7); padding-left:.4em; }
 
