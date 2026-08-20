@@ -8132,6 +8132,22 @@ async function publishRelease(){
       }catch(e){ console.error('[publishTrack] carte ignorée:', e); }
     });
     toast(`"${titre}" (${currentReleaseType}) publié — disponible dans votre discographie. Lecture en cours…`);
+
+    // "Meilleurs titres" et "Discographie" utilisent leurs propres fonctions de rendu
+    // (pas un simple prepend de carte comme les 3 rangées ci-dessus) — elles doivent être
+    // réappelées avec les données à jour, sinon elles restent bloquées sur l'instantané
+    // chargé avant cette publication. Même logique de filtre que celle qui a servi à les
+    // peupler la première fois (artistId si connu, sinon nom affiché), rien de nouveau.
+    if(currentUser){
+      const freshArtistTracks = currentArtistPageRealId
+        ? tracks.filter(t=>t.artistId===currentArtistPageRealId)
+        : tracks.filter(t=>t.a===artistDisplayName);
+      if(freshArtistTracks.length){
+        renderArtistTopTracksList(freshArtistTracks);
+        const albumsRow = document.getElementById('shelf-artist-albums');
+        if(albumsRow){ albumsRow.innerHTML = ''; fillShelf('shelf-artist-albums', freshArtistTracks); }
+      }
+    }
   }
 
   // Envoi réel au serveur NUNI — scheduledReleaseAt fait la vraie différence : le serveur
