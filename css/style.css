@@ -1448,31 +1448,20 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 /* ---- Classement éditorial (Top Congo, accueil) — grand numéro, ligne discrète, jamais un
    tableau classique. Aucune flèche de tendance : NUNI ne garde pas encore d'historique de
    rang précédent, donc rien de fabriqué à sa place. ---- */
-/* ---- Top Congo façon Apple Music — grande pochette pour le #1, rail de mini-pochettes
-   classées pour la suite. Remplace l'ancienne liste uniforme .rank-list (le morceau le plus
-   écouté doit être le point focal, pas noyé dans une liste identique). ---- */
-.chart-flex{ display:flex; gap:32px; align-items:flex-start; }
-@media(max-width:760px){
-  .chart-flex{ flex-direction:column; gap:16px; }
-  .chart-leader{ flex:0 0 auto !important; width:100%; }
-  .chart-leader-cover{ width:100%; height:auto; aspect-ratio:1; }
-  .chart-rail{ width:100%; margin:0 -20px; padding-left:20px; padding-right:20px; }
-}
-@media(max-width:760px){ .chart-flex{ flex-direction:column; } }
-.chart-leader{ flex:0 0 240px; cursor:pointer; }
-@media(max-width:760px){ .chart-leader{ flex-basis:auto; width:100%; max-width:280px; } }
-.chart-leader-cover{ position:relative; width:240px; height:240px; border-radius:var(--radius-m); overflow:hidden; background-size:cover; background-position:center; box-shadow:0 20px 40px -16px rgba(0,0,0,.5); margin-bottom:12px; }
-@media(max-width:760px){ .chart-leader-cover{ width:100%; height:auto; aspect-ratio:1; } }
-.chart-leader-rank{ position:absolute; left:-12px; bottom:-12px; background:var(--accent); color:var(--bg); font-family:var(--font-display); font-style:italic; font-weight:600; font-size:22px; width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px -6px rgba(0,0,0,.4); }
-.chart-leader h3{ font-size:16px; font-weight:600; color:var(--text); margin-bottom:2px; }
-.chart-leader p{ font-size:13px; color:var(--text-faint); }
-.chart-rail{ flex:1; min-width:0; display:flex; gap:20px; overflow-x:auto; padding-bottom:8px; scrollbar-width:none; }
-.chart-rail::-webkit-scrollbar{ display:none; }
-.chart-mini{ flex:0 0 118px; cursor:pointer; }
-.chart-mini-cover{ position:relative; width:118px; height:118px; border-radius:var(--radius-s); overflow:hidden; background-size:cover; background-position:center; margin-bottom:9px; }
-.chart-mini-rank{ position:absolute; left:6px; bottom:6px; font-family:var(--font-display); font-style:italic; font-weight:600; font-size:12px; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.7); }
-.chart-mini-title{ font-size:12.5px; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.chart-mini-artist{ font-size:11px; color:var(--text-faint); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* ---- Top Congo — classement musical compact. Chaque morceau (1 à 10) traité
+   uniformément dans une liste, le numéro fait le travail de mise en avant du #1 —
+   jamais une grande pochette séparée du reste (grammaire visuelle NUNI). ---- */
+.chart-list{ display:flex; flex-direction:column; }
+.chart-row{ display:flex; align-items:center; gap:14px; padding:10px 4px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .2s ease, padding-left .2s ease; }
+.chart-row:last-child{ border-bottom:none; }
+.chart-row:hover{ padding-left:8px; background:var(--bg-card); }
+.chart-row-rank{ font-family:var(--font-display); font-style:italic; font-weight:700; font-size:22px; color:var(--text-faint); width:34px; flex-shrink:0; text-align:center; transition:color .2s ease; }
+.chart-row:nth-child(1) .chart-row-rank, .chart-row:nth-child(2) .chart-row-rank, .chart-row:nth-child(3) .chart-row-rank{ color:var(--accent); }
+.chart-row:hover .chart-row-rank{ color:var(--accent); }
+.chart-row-cover{ width:56px; height:56px; border-radius:10px; flex-shrink:0; background-size:cover; background-position:center; }
+.chart-row-info{ flex:1; min-width:0; }
+.chart-row-title{ font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chart-row-artist{ font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
 
 /* ---- Sortie de la semaine — vraie mise en scène unique, pas un rail générique de plus. ---- */
 .feature-week{ display:flex; gap:40px; align-items:flex-end; }

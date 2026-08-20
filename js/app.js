@@ -4816,8 +4816,8 @@ function renderTopCongo(){
   const row = document.getElementById('shelf-top');
   if(!row) return;
   row.innerHTML = '';
-  row.classList.remove('rank-list', 'shelf-row');
-  row.classList.add('chart-flex');
+  row.classList.remove('rank-list', 'shelf-row', 'chart-flex');
+  row.classList.add('chart-list');
   const top = getTopStreamedTracks(10);
   if(!top.length){
     row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez d'écoutes réelles pour établir un classement — revenez bientôt !</p>`;
@@ -4835,41 +4835,23 @@ function renderTopCongo(){
     }
   };
 
-  // #1 — grande pochette, point focal du classement (comme sur les plateformes musicales
-  // premium : le morceau le plus écouté doit se voir immédiatement, pas être noyé dans une
-  // liste uniforme).
-  try{
-    const leader = top[0];
-    const leaderEl = document.createElement('div');
-    leaderEl.className = 'chart-leader';
-    leaderEl.innerHTML = `
-      <div class="chart-leader-cover"><span class="chart-leader-rank">01</span></div>
-      <h3></h3><p></p>`;
-    leaderEl.querySelector('h3').textContent = leader.t;
-    leaderEl.querySelector('p').textContent = leader.a;
-    setCover(leaderEl.querySelector('.chart-leader-cover'), leader);
-    leaderEl.addEventListener('click', ()=> handleTrackCardClick(leader));
-    row.appendChild(leaderEl);
-  }catch(e){ console.error('[renderTopCongo] leader ignoré après erreur :', e); }
-
-  // 02 à 10 — rail de mini-pochettes classées, chacune protégée individuellement.
-  const railEl = document.createElement('div');
-  railEl.className = 'chart-rail';
-  top.slice(1).forEach((tr, i)=>{
+  // Classement musical compact — chaque morceau (1 à 10) traité uniformément, le numéro
+  // fait le travail de mise en avant du #1, jamais une grande pochette séparée du reste.
+  top.forEach((tr, i)=>{
     try{
-      const el = document.createElement('article');
-      el.className = 'chart-mini';
+      const el = document.createElement('div');
+      el.className = 'chart-row';
       el.innerHTML = `
-        <div class="chart-mini-cover"><span class="chart-mini-rank">${String(i+2).padStart(2,'0')}</span></div>
-        <div class="chart-mini-title"></div><div class="chart-mini-artist"></div>`;
-      el.querySelector('.chart-mini-title').textContent = tr.t;
-      el.querySelector('.chart-mini-artist').textContent = tr.a;
-      setCover(el.querySelector('.chart-mini-cover'), tr);
+        <span class="chart-row-rank">${String(i+1).padStart(2,'0')}</span>
+        <div class="chart-row-cover"></div>
+        <div class="chart-row-info"><div class="chart-row-title"></div><div class="chart-row-artist"></div></div>`;
+      el.querySelector('.chart-row-title').textContent = tr.t;
+      el.querySelector('.chart-row-artist').textContent = tr.a;
+      setCover(el.querySelector('.chart-row-cover'), tr);
       el.addEventListener('click', ()=> handleTrackCardClick(tr));
-      railEl.appendChild(el);
+      row.appendChild(el);
     }catch(e){ console.error('[renderTopCongo] entrée ignorée après erreur :', e); }
   });
-  row.appendChild(railEl);
 }
 fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3));
 renderTopCongo();
