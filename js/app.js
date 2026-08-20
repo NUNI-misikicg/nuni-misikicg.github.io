@@ -4896,11 +4896,12 @@ function renderFeatureWeek(){
     const [main, ...others] = recent.slice(0, 4);
     const mainEl = document.createElement('div');
     mainEl.className = 'fw-main';
-    mainEl.innerHTML = `<div class="fw-main-art"></div><div class="fw-main-title"></div><div class="fw-main-artist"></div>`;
+    mainEl.innerHTML = `<div class="fw-main-art"></div><div class="fw-main-info"><div class="fw-main-title"></div><div class="fw-main-artist"></div></div><button class="fw-main-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
     mainEl.querySelector('.fw-main-title').textContent = main.t;
     mainEl.querySelector('.fw-main-artist').textContent = main.a;
     setCover(mainEl.querySelector('.fw-main-art'), main);
     mainEl.onclick = ()=> handleTrackCardClick(main);
+    mainEl.querySelector('.fw-main-play').onclick = (e)=>{ e.stopPropagation(); playTrack(main); };
 
     const othersEl = document.createElement('div');
     othersEl.className = 'fw-others';

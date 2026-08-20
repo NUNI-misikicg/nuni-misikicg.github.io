@@ -698,6 +698,10 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   box-shadow:0 20px 44px -16px rgba(0,0,0,0.6);
   transition:transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s cubic-bezier(.2,.8,.2,1);
 }
+@media(max-width:760px){
+  .poster-card{ width:165px !important; }
+  .poster-cover{ width:165px; height:225px; }
+}
 .poster-card:hover .poster-cover{ transform:translateY(-6px) scale(1.015); box-shadow:0 28px 54px -14px rgba(0,0,0,0.65); }
 /* Même grain photographique que le Hero — cohérence de la signature visuelle NUNI. */
 .poster-grain{
@@ -1472,20 +1476,32 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 
 /* ---- Sortie de la semaine — vraie mise en scène unique, pas un rail générique de plus. ---- */
 .feature-week{ display:flex; gap:40px; align-items:flex-end; }
-@media(max-width:760px){ .feature-week{ flex-direction:column; gap:22px; } }
 .fw-main{ flex:0 0 auto; width:300px; cursor:pointer; }
-@media(max-width:760px){ .fw-main{ width:100%; } }
 .fw-main-art{ position:relative; width:300px; height:300px; border-radius:18px; background-size:cover; background-position:center; box-shadow:0 26px 54px -18px rgba(0,0,0,.4); transition:transform .35s var(--ease); }
-@media(max-width:760px){ .fw-main-art{ width:100%; height:auto; aspect-ratio:1; } }
 .fw-main:hover .fw-main-art{ transform:translateY(-5px); }
 .fw-main-title{ font-family:var(--font-display); font-style:italic; font-size:21px; font-weight:600; margin-top:14px; color:var(--text); }
 .fw-main-artist{ font-size:13px; color:var(--text-faint); margin-top:3px; }
+.fw-main-play{ width:44px; height:44px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:14px; border:none; cursor:pointer; box-shadow:0 6px 16px -4px color-mix(in srgb, var(--accent) 60%, transparent); transition:transform .2s ease; }
+.fw-main-play:hover{ transform:scale(1.08); }
 .fw-others{ flex:1; display:flex; flex-direction:column; gap:18px; padding-bottom:6px; }
 .fw-other{ display:flex; align-items:center; gap:13px; cursor:pointer; }
 .fw-other-art{ width:54px; height:54px; border-radius:9px; flex-shrink:0; background-size:cover; background-position:center; transition:transform .2s ease; }
 .fw-other:hover .fw-other-art{ transform:translateY(-2px); }
 .fw-other-title{ font-size:13.5px; font-weight:600; color:var(--text); }
 .fw-other-artist{ font-size:11.5px; color:var(--text-faint); margin-top:1px; }
+/* ---- Mobile : carte horizontale compacte façon Spotify — pochette modérée à gauche,
+   infos + bouton play à droite, jamais une grande pochette carrée empilée au-dessus d'une
+   liste séparée. Une seule unité visuelle cohérente. ---- */
+@media(max-width:760px){
+  .feature-week{ flex-direction:column; gap:16px; }
+  .fw-main{ width:100%; display:flex; align-items:center; gap:14px; }
+  .fw-main-art{ width:110px; height:110px; flex-shrink:0; border-radius:14px; }
+  .fw-main-title{ font-size:16px; margin-top:0; }
+  .fw-main-artist{ font-size:12px; }
+  .fw-main-info{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .fw-main-play{ width:38px; height:38px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:10px; box-shadow:0 6px 16px -4px color-mix(in srgb, var(--accent) 60%, transparent); }
+  .fw-others{ gap:10px; }
+}
 
 /* ---- Ça bouge — vraie liste musicale, sans flèche de progression inventée (NUNI ne garde
    pas d'historique de rang précédent par morceau, donc rien de fabriqué à sa place). ---- */
