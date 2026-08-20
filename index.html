@@ -1025,13 +1025,14 @@
         <div class="release-row" id="release-row"></div>
       </div>
 
-      <div class="talent-banner">
-        <div>
-          <span class="plan-tag" style="background:rgba(212,175,106,.18); color:var(--accent);">NUNI Talent</span>
-          <h3 class="serif">Découvrez la prochaine voix du Congo</h3>
-          <p>Votez chaque semaine pour un nouvel artiste émergent et aidez-le à percer.</p>
+      <div class="talent-banner" id="talent-banner">
+        <div class="talent-banner-photos" id="talent-banner-photos"></div>
+        <div class="talent-banner-scrim"></div>
+        <div class="talent-banner-content">
+          <span class="talent-banner-eyebrow">NUNI Talent</span>
+          <h3 class="serif">Les artistes qui méritent votre attention</h3>
+          <button class="talent-banner-cta" onclick="openTalentModal()">Découvrir et voter</button>
         </div>
-        <button class="btn btn-primary" onclick="openTalentModal()">Voter cette semaine</button>
       </div>
     </div>
   </main>

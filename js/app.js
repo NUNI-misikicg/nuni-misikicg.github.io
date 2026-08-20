@@ -9559,6 +9559,18 @@ async function loadHomeTalentRowInner(){
     if(!list.length){ wrap.style.display = 'none'; return; }
     wrap.style.display = '';
     row.innerHTML = '';
+
+    // Mosaïque du bandeau éditorial — vraies photos des artistes en tête de classement,
+    // jamais un fond générique. Repli sur le gradient déjà posé en CSS si personne n'a
+    // encore d'avatar (cas réaliste en tout début de vie de la plateforme).
+    const photosWrap = document.getElementById('talent-banner-photos');
+    if(photosWrap){
+      const withPhoto = list.filter(a=>a.avatar_url).slice(0, 3);
+      photosWrap.innerHTML = withPhoto.map(a=>
+        `<div class="tbp-photo" style="background-image:url('${a.avatar_url}')"></div>`
+      ).join('');
+    }
+
     list.forEach(a=>{
       const name = a.artist_name || a.first_name;
       const card = document.createElement('div');
