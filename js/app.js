@@ -4816,7 +4816,7 @@ function renderTopCongo(){
   const row = document.getElementById('shelf-top');
   if(!row) return;
   row.innerHTML = '';
-  row.classList.remove('rank-list');
+  row.classList.remove('rank-list', 'shelf-row');
   row.classList.add('chart-flex');
   const top = getTopStreamedTracks(10);
   if(!top.length){
