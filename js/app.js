@@ -10580,7 +10580,8 @@ async function loadProgressInner(){
       data.badges.forEach(b=>{
         const chip = document.createElement('div');
         chip.className = 'badge-chip' + (b.locked ? ' locked' : '');
-        chip.innerHTML = `<div class="ic">${badgeIconSvg(b.icon)}</div><div class="n">${b.n}</div><div class="d">${b.d}</div>`;
+        chip.title = b.d;
+        chip.innerHTML = `<div class="ic">${badgeIconSvg(b.icon)}</div><div class="n">${b.n}</div>`;
         badgesRow.appendChild(chip);
       });
     }

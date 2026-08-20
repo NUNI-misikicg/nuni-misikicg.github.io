@@ -891,14 +891,22 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .resume-play-btn svg{ width:16px; height:16px; }
 .badges-row{ display:flex; gap:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 .badge-chip{
-  flex-shrink:0; width:120px; text-align:center; background:var(--bg-elev); border:1px solid var(--border);
-  border-radius:16px; padding:16px 10px; transition:transform .3s var(--ease);
+  flex-shrink:0; width:76px; text-align:center; cursor:default;
 }
-.badge-chip:hover{ transform:translateY(-3px); }
-.badge-chip .ic{ font-size:26px; margin-bottom:8px; }
-.badge-chip.locked{ opacity:.4; }
-.badge-chip .n{ font-size:11.5px; font-weight:600; line-height:1.3; }
-.badge-chip .d{ font-size:10px; color:var(--text-faint); margin-top:4px; }
+.badge-chip .ic{
+  width:56px; height:56px; margin:0 auto 8px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--bg-card); color:var(--accent,#D4AF6A);
+  transition:transform .25s ease, box-shadow .25s ease;
+}
+.badge-chip .ic svg{ width:24px; height:24px; }
+/* ---- Badge obtenu — lueur douce sur l'icône uniquement, jamais toute la carte. ---- */
+.badge-chip:not(.locked) .ic{ box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent), 0 0 18px -4px color-mix(in srgb, var(--accent) 55%, transparent); animation:badgeGlow 3s ease-in-out infinite; }
+@keyframes badgeGlow{ 0%,100%{ box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent), 0 0 18px -4px color-mix(in srgb, var(--accent) 55%, transparent); } 50%{ box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent), 0 0 10px -4px color-mix(in srgb, var(--accent) 35%, transparent); } }
+@media(prefers-reduced-motion: reduce){ .badge-chip:not(.locked) .ic{ animation:none; } }
+.badge-chip .n{ font-size:11px; font-weight:600; line-height:1.3; color:var(--text); }
+.badge-chip.locked .ic{ color:var(--text-faint); filter:grayscale(1); opacity:.55; box-shadow:none; }
+.badge-chip.locked .n{ color:var(--text-faint); opacity:.65; }
 
 .challenges-row{ display:flex; gap:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 
