@@ -8133,6 +8133,15 @@ async function publishRelease(){
     });
     toast(`"${titre}" (${currentReleaseType}) publié — disponible dans votre discographie. Lecture en cours…`);
 
+    // Sans ça, currentReleaseType restait bloqué sur le dernier type choisi (ex. "Album")
+    // même après un publish réussi — la prochaine publication d'un simple morceau, sans
+    // reclic explicite sur "Single", était alors silencieusement classée comme un album.
+    // C'est très précisément ce qui faisait disparaître les sorties single de la home.
+    currentReleaseType = 'Single';
+    document.querySelectorAll('.rt-btn').forEach(btn=>{
+      btn.classList.toggle('is-active', btn.dataset.type === 'Single');
+    });
+
     // "Meilleurs titres" et "Discographie" utilisent leurs propres fonctions de rendu
     // (pas un simple prepend de carte comme les 3 rangées ci-dessus) — elles doivent être
     // réappelées avec les données à jour, sinon elles restent bloquées sur l'instantané
@@ -8147,6 +8156,7 @@ async function publishRelease(){
         const albumsRow = document.getElementById('shelf-artist-albums');
         if(albumsRow){ albumsRow.innerHTML = ''; fillShelf('shelf-artist-albums', freshArtistTracks); }
       }
+      if(typeof renderReleasesSplit === 'function') renderReleasesSplit();
     }
   }
 
