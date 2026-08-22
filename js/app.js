@@ -11075,6 +11075,62 @@ setInterval(loadFeaturedArtists, 30*60*1000);
 // filtre inline sans titre dédié (genres). Ici : une seule fonction réutilisable pour
 // toutes les catégories, toujours de vrais morceaux (t.isReal), jamais de données inventées.
 let categoryShuffleTimer = null;
+function ensureNewReleasesEditorialStyles(){
+  if(document.getElementById('nre-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'nre-styles';
+  style.textContent = `
+    .nre-overlay{position:fixed; inset:0; z-index:9999; background:var(--bg); overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    .nre-overlay.show{opacity:1;}
+    .nre-wrap{max-width:1080px; margin:0 auto; padding:calc(70px + env(safe-area-inset-top,0)) 24px 80px;}
+    .nre-titlebar{margin-bottom:32px;}
+    .nre-title{font-size:34px; font-weight:800; color:var(--text);}
+    .nre-sub{font-size:13.5px; color:var(--text-dim); margin-top:6px;}
+    .nre-empty, .nre-empty-inline{font-size:13px; color:var(--text-faint); padding:20px 0;}
+
+    .nre-top{display:flex; gap:44px; align-items:flex-start;}
+    .nre-featured{flex:0 0 320px; position:relative; cursor:pointer;}
+    .nre-featured-halo{position:absolute; inset:-40px; filter:blur(55px); opacity:.5; pointer-events:none; z-index:0;}
+    .nre-featured-cover{position:relative; z-index:1; width:100%; aspect-ratio:3/4; border-radius:12px; background-size:cover; background-position:center; box-shadow:0 26px 54px -18px rgba(0,0,0,.45);}
+    .nre-featured-info{position:relative; z-index:1; margin-top:16px;}
+    .nre-featured-label{font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-faint); font-weight:700;}
+    .nre-featured-title{font-size:24px; font-style:italic; font-weight:700; color:var(--text); margin-top:4px;}
+    .nre-featured-artist{font-size:13.5px; color:var(--text-dim); margin-top:2px;}
+    .nre-featured-meta{font-size:12px; color:var(--text-faint); margin-top:4px;}
+
+    .nre-singles{flex:1; min-width:0;}
+    .nre-singles-label{font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-faint); font-weight:700; margin-bottom:12px;}
+    .nre-single-row{display:flex; align-items:center; gap:13px; padding:10px 4px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .2s ease, padding-left .2s ease;}
+    .nre-single-row:last-child{border-bottom:none;}
+    .nre-single-row:hover{padding-left:6px; background:var(--bg-card);}
+    .nre-single-cover{width:58px; height:58px; border-radius:9px; flex-shrink:0; background-size:cover; background-position:center;}
+    .nre-single-info{flex:1; min-width:0;}
+    .nre-single-label{font-size:9.5px; letter-spacing:.8px; text-transform:uppercase; color:var(--text-faint); font-weight:700;}
+    .nre-single-title{font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .nre-single-artist{font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .nre-single-play{width:36px; height:36px; border-radius:50%; flex-shrink:0; border:1px solid var(--border); background:none; color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .2s ease, color .2s ease;}
+    .nre-single-row:hover .nre-single-play{border-color:var(--accent); color:var(--accent);}
+
+    .nre-others{margin-top:48px;}
+    .nre-others-label{font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-faint); font-weight:700; margin-bottom:14px;}
+    .nre-others-row{display:flex; gap:18px; overflow-x:auto; padding-bottom:10px;}
+    .nre-other-card{flex:0 0 170px; cursor:pointer;}
+    .nre-other-cover{width:170px; height:170px; border-radius:10px; background-size:cover; background-position:center; margin-bottom:8px;}
+    .nre-other-title{font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .nre-other-artist{font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+    @media(max-width:760px){
+      .nre-wrap{padding:calc(60px + env(safe-area-inset-top,0)) 18px 60px;}
+      .nre-top{flex-direction:column; gap:26px;}
+      .nre-featured{flex:0 0 auto; width:100%; max-width:280px; margin:0 auto;}
+      .nre-other-card{flex:0 0 140px;}
+      .nre-other-cover{width:140px; height:140px;}
+      .nre-single-cover{width:52px; height:52px;}
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function ensureCategoryPageStyles(){
   if(document.getElementById('categorypage-styles')) return;
   const style = document.createElement('style');
@@ -11202,12 +11258,102 @@ function openCategoryPage(title, description, getList, shuffle){
   if(shuffle) categoryShuffleTimer = setInterval(()=> renderCategoryGrid(getList, true), 20000);
 }
 function openNewReleasesPage(){
-  openCategoryPage(
-    'Nouveautés',
-    "Ce que le Congo écoute en ce moment — de vrais sons, fraîchement publiés par de vrais artistes NUNI.",
-    ()=> tracks.filter(t=> t.isReal),
-    true,
-  );
+  ensureCategoryPageStyles(); // réutilisé pour .cp-close, jamais dupliqué
+  ensureNewReleasesEditorialStyles();
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+    setTimeout(()=> overlay.remove(), 200);
+  };
+
+  const real = tracks.filter(t=>t.isReal).sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
+  if(!real.length){
+    overlay.innerHTML = `<button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><p class="nre-empty">Aucune sortie réelle pour le moment.</p>`;
+    overlay.querySelector('.cp-close').onclick = closeOverlay;
+    requestAnimationFrame(()=> overlay.classList.add('show'));
+    return;
+  }
+  const featured = real[0]; // sortie la plus récente, toutes catégories confondues — vraie donnée
+  const singles = real.filter(t=>(!t.releaseType || t.releaseType==='Single') && t!==featured).slice(0,5);
+  const others = real.filter(t=> t!==featured && !singles.includes(t)).slice(0, 20);
+  const featuredTrackCount = real.filter(t=> t.album && t.album===featured.album && t.a===featured.a).length;
+
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap">
+      <div class="nre-titlebar"><div class="nre-title serif">Nouveautés</div><p class="nre-sub">Les dernières sorties de la scène NUNI.</p></div>
+      <div class="nre-top">
+        <div class="nre-featured" id="nre-featured"></div>
+        <div class="nre-singles">
+          <div class="nre-singles-label">Dernières sorties</div>
+          <div class="nre-singles-list" id="nre-singles-list"></div>
+        </div>
+      </div>
+      <div class="nre-others" id="nre-others-wrap" style="display:${others.length ? '' : 'none'};">
+        <div class="nre-others-label">Autres sorties</div>
+        <div class="nre-others-row" id="nre-others-row"></div>
+      </div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  // ---- Sortie principale — grande composition éditoriale, immersion couleur via
+  // NuniPalette (même système que Hero/Album/Sorties, jamais un 2e moteur de palette) ----
+  const featBox = document.getElementById('nre-featured');
+  featBox.innerHTML = `
+    <div class="nre-featured-halo"></div>
+    <div class="nre-featured-cover" style="${featured.cover ? `background-image:url(${featured.cover});` : 'background:var(--grad-envol);'}"></div>
+    <div class="nre-featured-info">
+      <span class="nre-featured-label">${esc(featured.releaseType || 'Album')}</span>
+      <div class="nre-featured-title serif">${esc(featured.album || featured.t)}</div>
+      <div class="nre-featured-artist">${esc(featured.a)}</div>
+      ${featuredTrackCount>1 ? `<div class="nre-featured-meta">${featuredTrackCount} titres</div>` : ''}
+    </div>`;
+  featBox.querySelector('.nre-featured-cover').onclick = ()=>{ closeOverlay(); handleTrackCardClick(featured); };
+  if(featured.cover){
+    NuniPalette.extract(featured.cover).then(p=>{
+      const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+      featBox.querySelector('.nre-featured-halo').style.background =
+        `radial-gradient(circle at 35% 35%, color-mix(in srgb, ${p.dominant} ${theme==='light'?20:42}%, transparent) 0%, transparent 70%)`;
+    });
+  }
+
+  // ---- Singles récents — max 5, réutilise playTrack/handleTrackCardClick tels quels ----
+  const singlesList = document.getElementById('nre-singles-list');
+  singlesList.innerHTML = singles.map((s,i)=>`
+    <div class="nre-single-row" data-i="${i}">
+      <div class="nre-single-cover" style="${s.cover ? `background-image:url(${s.cover});` : 'background:var(--grad-envol);'}"></div>
+      <div class="nre-single-info"><span class="nre-single-label">Single</span><div class="nre-single-title">${esc(s.t)}</div><div class="nre-single-artist">${esc(s.a)}</div></div>
+      <button class="nre-single-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M8 5v14l11-7z"/></svg></button>
+    </div>`).join('') || `<p class="nre-empty-inline">Aucun single récent pour le moment.</p>`;
+  singlesList.querySelectorAll('.nre-single-row').forEach(row=>{
+    const s = singles[Number(row.dataset.i)];
+    row.querySelector('.nre-single-play').onclick = (e)=>{ e.stopPropagation(); playTrack(s); };
+    row.onclick = ()=>{ closeOverlay(); handleTrackCardClick(s); };
+  });
+
+  // ---- Autres sorties — rail horizontal, pochettes musicales (pas des vignettes 40px) ----
+  if(others.length){
+    const othersRow = document.getElementById('nre-others-row');
+    othersRow.innerHTML = others.map((o,i)=>`
+      <div class="nre-other-card" data-i="${i}">
+        <div class="nre-other-cover" style="${o.cover ? `background-image:url(${o.cover});` : 'background:var(--grad-envol);'}"></div>
+        <div class="nre-other-title">${esc(o.t)}</div>
+        <div class="nre-other-artist">${esc(o.a)}</div>
+      </div>`).join('');
+    othersRow.querySelectorAll('.nre-other-card').forEach(card=>{
+      const o = others[Number(card.dataset.i)];
+      card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(o); };
+    });
+  }
 }
 function openTopCongoPage(){
   openCategoryPage(
