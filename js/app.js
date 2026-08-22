@@ -9888,7 +9888,7 @@ async function openTalentModal(){
     <div class="nre-wrap" style="max-width:760px;">
       <div class="nre-titlebar"><div class="nre-title serif">NUNI Talent</div><p class="nre-sub">Votez chaque semaine pour un artiste émergent et aidez-le à percer.</p></div>
       <div id="talent-winner-card" class="talent-winner-card talent-winner-card-full"></div>
-      <div id="talent-rank-list" class="talent-rank-list-full"></div>
+      <div id="talent-rank-list" class="talent-rank-list talent-rank-list-full"></div>
     </div>`;
   requestAnimationFrame(()=> overlay.classList.add('show'));
   attachSwipeDownToClose(overlay, closeTalentModal);
@@ -11876,7 +11876,9 @@ async function openAddToPlaylistPicker(tr){
   if(!realAuthToken){ toast('Connectez-vous pour ajouter un morceau à une playlist.'); return; }
   if(!tr.isReal || !tr.realId){ toast("Ce morceau de démonstration ne peut pas être ajouté à une playlist."); return; }
   ensureAddToPlaylistStyles();
-  const overlay = document.createElement('div'); overlay.id = 'atp-overlay';
+  let overlay = document.getElementById('atp-overlay');
+  if(overlay) overlay.remove(); // évite un vrai doublon d'ID en cas de double clic rapide
+  overlay = document.createElement('div'); overlay.id = 'atp-overlay';
   overlay.innerHTML = `<div id="atp-card"><h4>Ajouter « ${esc(tr.t)} » à…</h4><div id="atp-list">Chargement…</div></div>`;
   document.body.appendChild(overlay);
   requestAnimationFrame(()=> overlay.classList.add('show'));
