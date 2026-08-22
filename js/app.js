@@ -2598,6 +2598,100 @@ async function openRecentlyPlayedPage(){
   });
 }
 
+// ---------- Bientôt sur NUNI — vue complète, réutilise fillReleaseRow() (déjà générique,
+// accepte n'importe quel id de conteneur) et le même endpoint que la home. ----------
+async function openUpcomingReleasesPage(){
+  ensureCategoryPageStyles();
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:640px;">
+      <div class="nre-titlebar"><div class="nre-title serif">Bientôt sur NUNI</div><p class="nre-sub">Toutes les sorties programmées par les artistes NUNI.</p></div>
+      <div class="release-row" id="upcoming-full-list" style="flex-direction:column; overflow-x:visible;">Chargement…</div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/releases/upcoming', { headers: realAuthToken ? {'Authorization':'Bearer '+realAuthToken} : {} });
+    const data = await res.json();
+    const list = document.getElementById('upcoming-full-list');
+    if(!list) return;
+    const releases = data.releases || [];
+    if(!releases.length){ list.innerHTML = `<p class="nre-empty">Aucune sortie programmée pour le moment.</p>`; return; }
+    list.innerHTML = '';
+    const mapped = releases.map(r=>{
+      const d = new Date(r.scheduled_release_at);
+      const days = Math.max(0, Math.ceil((d - new Date()) / 86400000));
+      return {
+        d: String(d.getDate()).padStart(2,'0'), m: d.toLocaleDateString('fr-FR', {month:'short'}).replace('.',''),
+        t: r.title, a: r.artist_name || r.first_name || 'Artiste NUNI',
+        c: days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `Dans ${days} jours`,
+        id: r.id, notifyRequested: !!r.notify_requested,
+      };
+    });
+    fillReleaseRow('upcoming-full-list', mapped);
+  }catch(e){
+    const list = document.getElementById('upcoming-full-list');
+    if(list) list.innerHTML = `<p class="nre-empty">Calendrier momentanément indisponible.</p>`;
+  }
+}
+
+// ---------- Vos badges d'auditeur — vue complète, réutilise .badge-chip et badgeIconSvg()
+// tels quels (même composant que la home), depuis la même vraie source /api/me/progress. ----------
+async function openAllBadgesPage(){
+  ensureCategoryPageStyles();
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:720px;">
+      <div class="nre-titlebar"><div class="nre-title serif">Vos badges d'auditeur</div><p class="nre-sub">Votre vraie progression sur NUNI — débloqués et à débloquer.</p></div>
+      <div class="badges-full-grid" id="badges-full-grid">Chargement…</div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  if(!realAuthToken){
+    const grid = document.getElementById('badges-full-grid');
+    if(grid) grid.innerHTML = `<p class="nre-empty">Connectez-vous pour voir votre progression.</p>`;
+    return;
+  }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/progress', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    const data = await res.json();
+    const grid = document.getElementById('badges-full-grid');
+    if(!grid) return;
+    if(!data.badges || !data.badges.length){ grid.innerHTML = `<p class="nre-empty">Aucun badge pour le moment.</p>`; return; }
+    grid.innerHTML = '';
+    data.badges.forEach(b=>{
+      const chip = document.createElement('div');
+      chip.className = 'badge-chip' + (b.locked ? ' locked' : '');
+      chip.title = b.d;
+      chip.innerHTML = `<div class="ic">${badgeIconSvg(b.icon)}</div><div class="n">${b.n}</div>`;
+      grid.appendChild(chip);
+    });
+  }catch(e){
+    const grid = document.getElementById('badges-full-grid');
+    if(grid) grid.innerHTML = `<p class="nre-empty">Progression momentanément indisponible.</p>`;
+  }
+}
+
 let isOpeningArtistPage = false; // garde-fou anti-boucle : openArtistPage appelle enterApp('artist'),
                                    // qui sans ce garde-fou rappellerait openArtistPage indéfiniment.
 function enterApp(view){
