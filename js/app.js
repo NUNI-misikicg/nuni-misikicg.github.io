@@ -9867,10 +9867,26 @@ async function loadHomeTalentRowInner(){
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
 }
 async function openTalentModal(){
+  ensureTalentFullPageStyles();
+  let overlay = document.getElementById('talent-modal-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'talent-modal-overlay';
+  overlay.className = 'nre-overlay'; // même environnement plein écran que les autres vues déjà converties
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer" onclick="closeTalentModal()"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:760px;">
+      <div class="nre-titlebar"><div class="nre-title serif">NUNI Talent</div><p class="nre-sub">Votez chaque semaine pour un artiste émergent et aidez-le à percer.</p></div>
+      <div id="talent-winner-card" class="talent-winner-card-full"></div>
+      <div id="talent-rank-list" class="talent-rank-list-full"></div>
+    </div>`;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeTalentModal);
+
   const wrap = document.getElementById('talent-rank-list');
-  wrap.innerHTML = '<p style="color:var(--text-faint); font-size:13px; text-align:center; padding:20px 0;">Chargement…</p>';
-  spawnTalentBubbles();
-  document.getElementById('talent-modal-overlay').classList.add('show');
+  wrap.innerHTML = '<p class="nre-empty">Chargement…</p>';
 
   try{
     const headers = realAuthToken ? { 'Authorization':'Bearer ' + realAuthToken } : {};
@@ -9881,7 +9897,7 @@ async function openTalentModal(){
 
     wrap.innerHTML = '';
     if(!talentTop100.length){
-      wrap.innerHTML = `<p style="color:var(--text-faint); font-size:13px; text-align:center; padding:20px 0;">Aucun artiste avec un Pass actif pour le moment.</p>`;
+      wrap.innerHTML = `<p class="nre-empty">Aucun artiste avec un Pass actif pour le moment.</p>`;
     }
     talentTop100.forEach(a=>{
       const name = a.artist_name || a.first_name;
@@ -9903,8 +9919,19 @@ async function openTalentModal(){
     });
     renderWeeklyWinner(data.weekly_winner);
   }catch(e){
-    wrap.innerHTML = `<p style="color:var(--text-faint); font-size:13px; text-align:center; padding:20px 0;">Classement momentanément indisponible.</p>`;
+    wrap.innerHTML = `<p class="nre-empty">Classement momentanément indisponible.</p>`;
   }
+}
+function ensureTalentFullPageStyles(){
+  if(document.getElementById('talent-full-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'talent-full-styles';
+  style.textContent = `
+    .talent-winner-card-full{ margin-bottom:32px; }
+    .talent-winner-card-full:empty{ display:none; }
+    .talent-rank-list-full{ display:flex; flex-direction:column; }
+  `;
+  document.head.appendChild(style);
 }
 // ============================================================
 // A2 — Ajouter un collaborateur (avant publication). Les collaborateurs restent en
@@ -10247,7 +10274,11 @@ async function loadMyCollaborationsReceived(){
 }
 
 function closeTalentModal(){
-  document.getElementById('talent-modal-overlay').classList.remove('show');
+  const overlay = document.getElementById('talent-modal-overlay');
+  if(!overlay) return;
+  overlay.classList.remove('show');
+  document.body.style.overflow = '';
+  setTimeout(()=> overlay.remove(), 200);
 }
 function renderWeeklyWinner(winner){
   const card = document.getElementById('talent-winner-card');
