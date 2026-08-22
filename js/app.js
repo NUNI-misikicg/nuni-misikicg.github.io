@@ -6310,11 +6310,21 @@ function loadEmergingArtists(){
         const card = document.createElement('div');
         card.className = 'emerging-card';
         card.innerHTML = `
-          <div class="emerging-photo" style="${a.avatar_url ? `background-image:url(${a.avatar_url})` : ''}">${a.avatar_url ? '' : `<span>${initials}</span>`}</div>
+          <div class="emerging-photo"><span>${initials}</span></div>
           <div class="emerging-name">${esc(name)}${a.is_verified ? ' ' + ico('check') : ''}</div>
           <div class="emerging-meta">${esc(bits.join(' · '))}</div>`;
         card.onclick = ()=> openArtistPage(name, a.id);
         row.appendChild(card);
+        // Repli réel si avatar_url existe mais échoue à charger (URL cassée/supprimée) —
+        // sans ce contrôle, l'utilisateur voyait un cercle gris/blanc vide au lieu des
+        // initiales, cassant l'immersion sans qu'aucune vraie erreur ne soit visible.
+        if(a.avatar_url){
+          const photoEl = card.querySelector('.emerging-photo');
+          const probe = new Image();
+          probe.onload = ()=>{ photoEl.style.backgroundImage = `url(${a.avatar_url})`; photoEl.querySelector('span').style.display = 'none'; };
+          probe.onerror = ()=>{}; // reste sur les initiales déjà affichées, jamais un cercle vide
+          probe.src = a.avatar_url;
+        }
       }catch(e){ console.error('[loadEmergingArtists] carte ignorée après erreur :', e); }
     });
   }).catch(()=>{ wrap.style.display = 'none'; });
@@ -8099,12 +8109,17 @@ async function publishRelease(){
   // toujours retrouvé des champs vides, et serait retombé sur l'ancien "Piste N" générique
   // pour les VRAIES données sauvegardées, même si l'aperçu local affichait le bon titre.
   const capturedTitles = filesForUpload.map((_, i) => trackTitleFor(i, i));
+  // Capturé ici pour la même raison que capturedTitles juste au-dessus : currentReleaseType
+  // est remis à 'Single' plus bas (pour préparer la PROCHAINE publication) avant même que
+  // l'envoi réseau réel (asynchrone, tout en bas de cette fonction) ne parte. Sans cette
+  // capture, le serveur recevait toujours 'Single', peu importe le bouton réellement cliqué.
+  const capturedReleaseType = currentReleaseType;
   const newTracks = filesForUpload.map((file, i)=>{
     const trackTitle = capturedTitles[i];
     return {
       t: trackTitle, a: artistDisplayName, p: 'pal-1', album: titre, genre: genre, year: new Date().getFullYear(),
       streams: '0', release: releaseLabel, verified: true, likes: 0,
-      cover: coverUrl, audioUrl: URL.createObjectURL(file), releaseType: currentReleaseType,
+      cover: coverUrl, audioUrl: URL.createObjectURL(file), releaseType: capturedReleaseType,
       lyrics: paroles || null,
       description: description || null, featuring: featuring || null, composer: composer || null, studio: studio || null, credits: credits || null,
       isReal: true, // aperçu local déjà considéré comme réel — sinon exclu du pool suivant/précédent/aléatoire juste après publication
@@ -8185,7 +8200,7 @@ async function publishRelease(){
             method:'POST',
             headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
             body: JSON.stringify({
-              title: perTrackTitle, album: titre, genre: genre, releaseType: currentReleaseType,
+              title: perTrackTitle, album: titre, genre: genre, releaseType: capturedReleaseType,
               coverUrl: cloudCoverUrl, audioUrl: cloudAudioUrl, lyrics: paroles || null,
               composer: composer || null, featuring: featuring || null, studio: studio || null, credits: credits || null,
               description: description || null, releaseDate: dateVal || null,
