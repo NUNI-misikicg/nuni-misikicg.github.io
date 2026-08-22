@@ -8483,7 +8483,11 @@ async function handlePhotoUpload(e, kind){
   }
   toast('Envoi de la photo en cours…');
   try{
-    const cloudUrl = await uploadFileToCloudinary(file, 'image');
+    const rawCloudUrl = await uploadFileToCloudinary(file, 'image');
+    // Recadrage carré centré sur le vrai visage détecté par Cloudinary (g_face) — corrige
+    // les avatars mal cadrés dans les cercles. Avant : la photo brute (n'importe quel format)
+    // était stockée telle quelle, jamais recadrée, d'où des centrages parfois absurdes.
+    const cloudUrl = rawCloudUrl.replace('/upload/', '/upload/c_fill,g_face,w_400,h_400,q_auto/');
     const res = await fetch(NUNI_API_BASE + '/api/artist/avatar', {
       method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
       body: JSON.stringify({ avatarUrl: cloudUrl })
@@ -9165,7 +9169,11 @@ async function handleProfileAvatarUpload(e){
   }
   toast('Envoi de la photo en cours…');
   try{
-    const cloudUrl = await uploadFileToCloudinary(file, 'image');
+    const rawCloudUrl = await uploadFileToCloudinary(file, 'image');
+    // Recadrage carré centré sur le vrai visage détecté par Cloudinary (g_face) — corrige
+    // les avatars mal cadrés dans les cercles. Avant : la photo brute (n'importe quel format)
+    // était stockée telle quelle, jamais recadrée, d'où des centrages parfois absurdes.
+    const cloudUrl = rawCloudUrl.replace('/upload/', '/upload/c_fill,g_face,w_400,h_400,q_auto/');
     const res = await fetch(NUNI_API_BASE + '/api/artist/avatar', {
       method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
       body: JSON.stringify({ avatarUrl: cloudUrl })
@@ -9879,7 +9887,7 @@ async function openTalentModal(){
     <button class="cp-close" title="Fermer" onclick="closeTalentModal()"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     <div class="nre-wrap" style="max-width:760px;">
       <div class="nre-titlebar"><div class="nre-title serif">NUNI Talent</div><p class="nre-sub">Votez chaque semaine pour un artiste émergent et aidez-le à percer.</p></div>
-      <div id="talent-winner-card" class="talent-winner-card-full"></div>
+      <div id="talent-winner-card" class="talent-winner-card talent-winner-card-full"></div>
       <div id="talent-rank-list" class="talent-rank-list-full"></div>
     </div>`;
   requestAnimationFrame(()=> overlay.classList.add('show'));
