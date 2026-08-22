@@ -2566,12 +2566,36 @@ async function openRecentlyPlayedPage(){
       }
     }catch(e){ /* la page s'ouvre quand même, juste vide */ }
   }
-  openCategoryPage(
-    'Écoutés récemment',
-    "Votre vrai historique d'écoute sur NUNI, du plus récent au plus ancien.",
-    ()=> recentFull,
-    false,
-  );
+  ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:720px;">
+      <div class="nre-titlebar"><div class="nre-title serif">Écoutés récemment</div><p class="nre-sub">Votre vrai historique d'écoute sur NUNI, du plus récent au plus ancien.</p></div>
+      <div class="rank-list-simple" id="rp-full-list">${recentFull.length ? '' : `<p class="nre-empty">Aucun historique d'écoute pour le moment.</p>`}</div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  const list = document.getElementById('rp-full-list');
+  recentFull.forEach(tr=>{
+    const row = document.createElement('div');
+    row.className = 'mv-row';
+    row.innerHTML = `
+      <div class="mv-art" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}"></div>
+      <div class="chart-row-info"><div class="chart-row-title">${esc(tr.t)}</div><div class="chart-row-artist">${esc(tr.a)}</div></div>`;
+    row.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+    list.appendChild(row);
+  });
 }
 
 let isOpeningArtistPage = false; // garde-fou anti-boucle : openArtistPage appelle enterApp('artist'),
@@ -11356,12 +11380,38 @@ function openNewReleasesPage(){
   }
 }
 function openTopCongoPage(){
-  openCategoryPage(
-    'Top Congo',
-    'Le classement réel des morceaux les plus écoutés sur NUNI, par vrais streams.',
-    ()=> getTopStreamedTracks(100),
-    false,
-  );
+  ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement, jamais dupliqué
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay'; // même conteneur neutre que Nouveautés, réutilisé
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+
+  const top = getTopStreamedTracks(100); // vraie fonction déjà utilisée sur la home, jamais dupliquée
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:720px;">
+      <div class="nre-titlebar"><div class="nre-title serif">Top Congo</div><p class="nre-sub">Le classement réel des morceaux les plus écoutés sur NUNI, par vrais streams.</p></div>
+      <div class="chart-list" id="tc-full-list">${top.length ? '' : `<p class="nre-empty">Pas encore assez d'écoutes réelles pour établir un classement.</p>`}</div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  const list = document.getElementById('tc-full-list');
+  top.forEach((tr,i)=>{
+    const row = document.createElement('div');
+    row.className = 'chart-row';
+    row.innerHTML = `
+      <span class="chart-row-rank">${String(i+1).padStart(2,'0')}</span>
+      <div class="chart-row-cover" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}"></div>
+      <div class="chart-row-info"><div class="chart-row-title">${esc(tr.t)}</div><div class="chart-row-artist">${esc(tr.a)}</div></div>`;
+    row.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+    list.appendChild(row);
+  });
 }
 function openGenreCategoryPage(genreName){
   openCategoryPage(
