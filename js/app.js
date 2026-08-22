@@ -5326,10 +5326,82 @@ async function renderNuniSelection(){
         </div>
       </div>`;
     document.getElementById('nuni-selection-play-btn').onclick = ()=>{ playTrack(first); openFullPlayer(); };
-    document.getElementById('nuni-selection-seeall-btn').onclick = ()=>{
-      openCategoryPage('Votre sélection NUNI', `Basée sur ce que vous écoutez vraiment — ${genreLabel}.`, ()=> nuniSelectionTracks, false);
-    };
+    document.getElementById('nuni-selection-seeall-btn').onclick = ()=> openNuniSelectionPage(genreLabel);
   }catch(e){ hero.style.display = 'none'; }
+}
+// ---------- Votre sélection NUNI — vraie vue de recommandation éditoriale, jamais
+// openCategoryPage() (réservée à Genres, ne jamais y toucher). Réutilise NuniPalette (même
+// système que Nouveautés/Album), handleTrackCardClick/playTrack tels quels. ----------
+function openNuniSelectionPage(genreLabel){
+  ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+
+  const list = nuniSelectionTracks || [];
+  if(!list.length){
+    overlay.innerHTML = `<button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><p class="nre-empty">Pas encore assez d'écoutes réelles pour établir une sélection.</p>`;
+    overlay.querySelector('.cp-close').onclick = closeOverlay;
+    requestAnimationFrame(()=> overlay.classList.add('show'));
+    return;
+  }
+  const first = list[0];
+  const rest = list.slice(1);
+
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap">
+      <div class="nre-titlebar"><div class="nre-title serif">Votre sélection NUNI</div><p class="nre-sub">Basée sur ce que vous écoutez vraiment${genreLabel ? ' — ' + esc(genreLabel) : ''}.</p></div>
+      <div class="nre-top">
+        <div class="nre-featured" id="nsel-featured"></div>
+        <div class="nre-singles">
+          <div class="nre-singles-label">Aussi pour vous</div>
+          <div class="nre-singles-list" id="nsel-list">${rest.length ? '' : `<p class="nre-empty-inline">C'est tout pour l'instant — continuez d'écouter pour affiner votre sélection.</p>`}</div>
+        </div>
+      </div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  // Mise en avant — même composition que Nouveautés (pochette 3:4 + halo NuniPalette),
+  // jamais un deuxième système inventé pour dire la même chose visuellement.
+  const featBox = document.getElementById('nsel-featured');
+  featBox.innerHTML = `
+    <div class="nre-featured-halo"></div>
+    <div class="nre-featured-cover" style="${first.cover ? `background-image:url(${first.cover});` : 'background:var(--grad-envol);'}"></div>
+    <div class="nre-featured-info">
+      <span class="nre-featured-label">Pour vous</span>
+      <div class="nre-featured-title serif">${esc(first.t)}</div>
+      <div class="nre-featured-artist">${esc(first.a)}</div>
+    </div>`;
+  featBox.querySelector('.nre-featured-cover').onclick = ()=>{ closeOverlay(); handleTrackCardClick(first); };
+  if(first.cover){
+    NuniPalette.extract(first.cover).then(p=>{
+      const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+      featBox.querySelector('.nre-featured-halo').style.background =
+        `radial-gradient(circle at 35% 35%, color-mix(in srgb, ${p.dominant} ${theme==='light'?20:42}%, transparent) 0%, transparent 70%)`;
+    });
+  }
+
+  // Reste de la sélection — même liste compacte que Nouveautés, réutilisée telle quelle.
+  const listBox = document.getElementById('nsel-list');
+  rest.forEach((tr,i)=>{
+    const row = document.createElement('div');
+    row.className = 'nre-single-row';
+    row.innerHTML = `
+      <div class="nre-single-cover" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}"></div>
+      <div class="nre-single-info"><div class="nre-single-title">${esc(tr.t)}</div><div class="nre-single-artist">${esc(tr.a)}</div></div>
+      <button class="nre-single-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M8 5v14l11-7z"/></svg></button>`;
+    row.querySelector('.nre-single-play').onclick = (e)=>{ e.stopPropagation(); playTrack(tr); };
+    row.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+    listBox.appendChild(row);
+  });
 }
 // ---------- "Découvertes pour vous" — vraie personnalisation, basée sur les artistes que
 // la personne suit réellement (table follows), jamais un algorithme inventé. Le bloc entier
