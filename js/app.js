@@ -11026,19 +11026,34 @@ function ensureTop100Styles(){
     #top100-overlay.show{opacity:1;}
     .t100-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .t100-close:hover{background:rgba(255,255,255,0.16);}
-    .t100-wrap{max-width:720px; margin:0 auto; padding:60px 24px 80px;}
-    .t100-title{color:#fff; font-size:26px; font-weight:800; margin-bottom:6px;}
-    .t100-sub{color:#8a8a94; font-size:13px; margin-bottom:28px;}
-    .t100-row{display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.04); margin-bottom:8px;}
-    .t100-rank{width:32px; text-align:center; font-weight:700; color:#8a8a94; font-family:var(--font-data, monospace); flex-shrink:0;}
-    .t100-av{width:64px; height:64px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:20px; flex-shrink:0; background-size:cover; background-position:center; cursor:pointer;}
+    .t100-wrap{max-width:960px; margin:0 auto; padding:60px 32px 80px;}
+    .t100-title{color:#fff; font-size:28px; font-weight:800; margin-bottom:6px;}
+    .t100-sub{color:#8a8a94; font-size:13px; margin-bottom:32px;}
+    /* ---- Séparateurs fins plutôt qu'une carte par artiste — l'artiste (portrait + nom)
+       reste le héros de la ligne, pas un panneau administratif. ---- */
+    .t100-row{display:flex; align-items:center; gap:20px; padding:16px 6px; border-bottom:1px solid rgba(255,255,255,0.08); transition:background .2s ease;}
+    .t100-row:hover{background:rgba(255,255,255,0.03);}
+    .t100-row:last-child{border-bottom:none;}
+    .t100-rank{width:44px; text-align:center; font-family:var(--font-display); font-style:italic; font-weight:700; font-size:19px; color:#8a8a94; flex-shrink:0;}
+    .t100-tied-tag{display:block; font-family:var(--font-sans, inherit); font-style:normal; font-weight:600; font-size:8.5px; letter-spacing:.4px; text-transform:uppercase; color:#5a5a64; margin-top:2px;}
+    .t100-av-wrap{position:relative; width:68px; height:68px; flex-shrink:0;}
+    .t100-av-halo{position:absolute; inset:-16px; border-radius:50%; filter:blur(20px); opacity:.6; pointer-events:none;}
+    .t100-av{position:relative; width:68px; height:68px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:21px; background-size:cover; background-position:center; cursor:pointer;}
     .t100-info{flex:1; min-width:0; cursor:pointer;}
-    .t100-name{color:#fff; font-weight:700; font-size:14px;}
-    .t100-meta{color:#8a8a94; font-size:12px;}
-    .t100-followers{color:var(--accent,#D4AF6A); font-weight:700; font-size:13px; white-space:nowrap;}
-    .t100-follow-btn{background:var(--grad-envol); border:none; color:#241708; font-weight:700; font-size:12px; padding:7px 14px; border-radius:999px; cursor:pointer; white-space:nowrap;}
-    .t100-follow-btn.is-following{background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.25);}
+    .t100-name{color:#fff; font-weight:700; font-size:16px;}
+    .t100-meta{color:#8a8a94; font-size:12.5px; margin-top:2px;}
+    /* ---- Bouton discret par défaut — l'œil doit aller au portrait/nom en premier, jamais
+       au bouton. Il devient visible seulement au survol de la ligne ou une fois suivi. ---- */
+    .t100-follow-btn{background:none; border:1px solid rgba(255,255,255,0.18); color:#8a8a94; font-weight:600; font-size:12px; padding:7px 16px; border-radius:999px; cursor:pointer; white-space:nowrap; opacity:.55; transition:opacity .2s ease, border-color .2s ease, color .2s ease;}
+    .t100-row:hover .t100-follow-btn{opacity:1;}
+    .t100-follow-btn.is-following{opacity:.85; border-color:var(--accent,#D4AF6A); color:var(--accent,#D4AF6A);}
     .t100-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0;}
+    @media(max-width:760px){
+      .t100-wrap{padding:50px 20px 60px;}
+      .t100-av-wrap, .t100-av{width:56px; height:56px;}
+      .t100-rank{width:32px; font-size:16px;}
+      .t100-row{gap:14px;}
+    }
   `;
   document.head.appendChild(style);
 }
@@ -11074,24 +11089,33 @@ async function openTop100ArtistsPage(){
       return;
     }
     list.innerHTML = '';
-    artists.forEach(a=>{
+    artists.forEach((a,i)=>{
       const name = a.artist_name || a.first_name;
       const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
       const avatarStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
+      // Ex-aequo réel (même rang SQL RANK() que le voisin précédent/suivant) — rendu
+      // explicite visuellement plutôt que laissé à interprétation comme un bug d'affichage.
+      const isTiedWithPrev = i>0 && artists[i-1].rnk === a.rnk;
+      const isTiedWithNext = i<artists.length-1 && artists[i+1].rnk === a.rnk;
       const row = document.createElement('div');
-      row.className = 't100-row';
+      row.className = 't100-row' + (isTiedWithPrev || isTiedWithNext ? ' is-tied' : '');
       row.innerHTML = `
-        <div class="t100-rank">#${a.rnk}</div>
-        <div class="t100-av" style="${avatarStyle}">${a.avatar_url ? '' : initials}</div>
+        <div class="t100-rank">#${a.rnk}${(isTiedWithPrev||isTiedWithNext) ? '<span class="t100-tied-tag">ex æquo</span>' : ''}</div>
+        <div class="t100-av-wrap"><div class="t100-av-halo"></div><div class="t100-av" style="${avatarStyle}">${a.avatar_url ? '' : initials}</div></div>
         <div class="t100-info">
           <div class="t100-name">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
-          <div class="t100-meta">${a.top_genre || 'Artiste NUNI'}</div>
+          <div class="t100-meta">${a.top_genre || 'Artiste NUNI'} · ${(a.follower_count||0).toLocaleString('fr-FR')} abonné${a.follower_count>1?'s':''}</div>
         </div>
-        <div class="t100-followers">${(a.follower_count||0).toLocaleString('fr-FR')} abonnés</div>
         <button class="t100-follow-btn">Suivre</button>`;
       const goToArtist = ()=>{ closeOverlay(); openArtistPage(name, a.id); };
       row.querySelector('.t100-av').onclick = goToArtist;
       row.querySelector('.t100-info').onclick = goToArtist;
+      if(a.avatar_url){
+        NuniPalette.extract(a.avatar_url).then(p=>{
+          row.querySelector('.t100-av-halo').style.background =
+            `radial-gradient(circle, color-mix(in srgb, ${p.dominant} 35%, transparent) 0%, transparent 72%)`;
+        });
+      }
       const followBtn = row.querySelector('.t100-follow-btn');
       if(realAuthToken){
         fetch(NUNI_API_BASE + '/api/follow/' + a.id + '/status', { headers:{ 'Authorization':'Bearer ' + realAuthToken } })
