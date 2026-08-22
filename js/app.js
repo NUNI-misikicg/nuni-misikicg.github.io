@@ -6343,6 +6343,8 @@ function loadUpcomingReleases(){
 function fillReleaseRow(id, list){
   const row = document.getElementById(id);
   if(!row) return;
+  row.innerHTML = ''; // sans ça, le rafraîchissement automatique toutes les 60s (voir
+                       // setInterval plus bas) accumulait des doublons indéfiniment
   list.forEach(r=>{
     const card = document.createElement('div');
     card.className = 'release-card';
@@ -6437,11 +6439,12 @@ function loadEmergingArtists(){
         // sans ce contrôle, l'utilisateur voyait un cercle gris/blanc vide au lieu des
         // initiales, cassant l'immersion sans qu'aucune vraie erreur ne soit visible.
         if(a.avatar_url){
+          const croppedUrl = cloudinaryFaceCrop(a.avatar_url);
           const photoEl = card.querySelector('.emerging-photo');
           const probe = new Image();
-          probe.onload = ()=>{ photoEl.style.backgroundImage = `url(${a.avatar_url})`; photoEl.querySelector('span').style.display = 'none'; };
+          probe.onload = ()=>{ photoEl.style.backgroundImage = `url(${croppedUrl})`; photoEl.querySelector('span').style.display = 'none'; };
           probe.onerror = ()=>{}; // reste sur les initiales déjà affichées, jamais un cercle vide
-          probe.src = a.avatar_url;
+          probe.src = croppedUrl;
         }
       }catch(e){ console.error('[loadEmergingArtists] carte ignorée après erreur :', e); }
     });
@@ -6532,10 +6535,41 @@ loadAmbiances();
 // générique que Top Congo, les pages de genre, etc. (openCategoryPage, qui exige une
 // fonction getList() synchrone — on récupère donc les vraies données d'abord).
 function openMoodPage(key, label){
+  ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
   fetch(NUNI_API_BASE + '/api/moods').then(r=>r.json()).then(data=>{
     const mood = (data.moods||[]).find(m=>m.key===key);
     const list = mood ? mood.tracks.map(mt=> tracks.find(t=> t.isReal && String(t.realId)===String(mt.id))).filter(Boolean) : [];
-    openCategoryPage(label, `Sélection éditoriale NUNI — ambiance "${label}".`, ()=> list, false);
+
+    let overlay = document.getElementById('categorypage-overlay');
+    if(overlay) overlay.remove();
+    overlay = document.createElement('div');
+    overlay.id = 'categorypage-overlay';
+    overlay.className = 'nre-overlay';
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+
+    overlay.innerHTML = `
+      <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      <div class="nre-wrap">
+        <div class="nre-titlebar"><div class="nre-title serif">${esc(label)}</div><p class="nre-sub">Sélection éditoriale NUNI — ambiance "${esc(label)}".</p></div>
+        <div class="nre-others-row" id="mood-tracks-row" style="flex-wrap:wrap; overflow-x:visible;">${list.length ? '' : `<p class="nre-empty">Aucun morceau dans cette ambiance pour le moment.</p>`}</div>
+      </div>`;
+    overlay.querySelector('.cp-close').onclick = closeOverlay;
+    requestAnimationFrame(()=> overlay.classList.add('show'));
+    attachSwipeDownToClose(overlay, closeOverlay);
+
+    const row = document.getElementById('mood-tracks-row');
+    list.forEach(tr=>{
+      const card = document.createElement('div');
+      card.className = 'nre-other-card';
+      card.innerHTML = `
+        <div class="nre-other-cover" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}"></div>
+        <div class="nre-other-title">${esc(tr.t)}</div>
+        <div class="nre-other-artist">${esc(tr.a)}</div>`;
+      card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+      row.appendChild(card);
+    });
   }).catch(()=> toast('Impossible de charger cette ambiance pour le moment.'));
 }
 // Le calendrier de la page artiste ('artist-release-row') se remplit désormais dynamiquement
@@ -6676,6 +6710,15 @@ const palGradients = {
    - Les niveaux de luminosité de la couleur "sombre" sont bornés
      pour rester lisibles avec du texte clair par-dessus (accessibilité).
 ============================================================ */
+// Recadrage centré sur le visage appliqué à l'AFFICHAGE (pas seulement à l'envoi) — corrige
+// rétroactivement les avatars déjà mal cadrés en base, sans attendre que l'artiste renvoie
+// une nouvelle photo. Repli silencieux sur l'URL d'origine si ce n'est pas une URL Cloudinary
+// (ex. ancien lien externe) ou si le motif attendu n'est pas trouvé.
+function cloudinaryFaceCrop(url){
+  if(!url || !url.includes('/upload/')) return url;
+  if(url.includes('c_fill,g_face')) return url; // déjà recadrée (nouveaux uploads)
+  return url.replace('/upload/', '/upload/c_fill,g_face,w_400,h_400,q_auto/');
+}
 const NuniPalette = (function(){
   const cache = new Map();
   const FALLBACK = {
