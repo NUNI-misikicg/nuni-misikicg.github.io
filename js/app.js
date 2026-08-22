@@ -11958,11 +11958,17 @@ function ensurePlaylistsPageStyles(){
     #allplaylists-overlay.show{opacity:1;}
     .apl-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .apl-close:hover{background:rgba(255,255,255,0.16);}
-    .apl-wrap{max-width:1080px; margin:0 auto; padding:60px 24px 80px;}
-    .apl-title{color:#fff; font-size:26px; font-weight:800; margin-bottom:6px;}
-    .apl-sub{color:#8a8a94; font-size:13px; margin-bottom:28px;}
-    .apl-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:22px; justify-items:center;}
+    .apl-wrap{max-width:1400px; margin:0 auto; padding:60px 40px 80px;}
+    .apl-title{color:#fff; font-size:30px; font-weight:800; margin-bottom:6px;}
+    .apl-sub{color:#8a8a94; font-size:13.5px; margin-bottom:36px;}
+    .apl-featured-label{color:#8a8a94; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:14px;}
+    .apl-featured-wrap{margin-bottom:44px;}
+    .apl-grid-label{color:#8a8a94; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:16px;}
+    /* ---- auto-fit (pas auto-fill) : les colonnes vides ne se créent jamais quand il y a
+       peu de playlists — c'était la vraie cause du "tout compacté à gauche". ---- */
+    .apl-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:28px;}
     .apl-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0; grid-column:1/-1;}
+    @media(max-width:760px){ .apl-wrap{padding:50px 20px 60px;} .apl-title{font-size:24px;} }
   `;
   document.head.appendChild(style);
 }
@@ -11980,6 +11986,8 @@ async function openAllPlaylistsPage(){
     <div class="apl-wrap">
       <div class="apl-title">Playlists NUNI</div>
       <div class="apl-sub">Nos sélections, curées à la main pour partager nos goûts avec vous.</div>
+      <div id="apl-featured-wrap"></div>
+      <div class="apl-grid-label" id="apl-grid-label" style="display:none;">Toutes les playlists</div>
       <div class="apl-grid" id="apl-grid">Chargement…</div>
     </div>`;
   overlay.querySelector('.apl-close').onclick = closeOverlay;
@@ -11996,7 +12004,18 @@ async function openAllPlaylistsPage(){
       grid.innerHTML = `<div class="apl-empty">Aucune playlist NUNI publiée pour le moment.</div>`;
       return;
     }
-    list.forEach(p=> grid.appendChild(playlistCard(p)));
+    // Première playlist mise en avant séparément — réutilise playlistCard() tel quel,
+    // jamais un composant dupliqué, juste un emplacement distinct dans la mise en page.
+    if(list.length > 1){
+      const featWrap = document.getElementById('apl-featured-wrap');
+      featWrap.className = 'apl-featured-wrap';
+      featWrap.innerHTML = '<div class="apl-featured-label">À la une</div>';
+      featWrap.appendChild(playlistCard(list[0]));
+      document.getElementById('apl-grid-label').style.display = '';
+      list.slice(1).forEach(p=> grid.appendChild(playlistCard(p)));
+    } else {
+      list.forEach(p=> grid.appendChild(playlistCard(p)));
+    }
   }catch(e){
     const grid = document.getElementById('apl-grid');
     if(grid) grid.innerHTML = `<div class="apl-empty">Playlists momentanément indisponibles.</div>`;
