@@ -11031,7 +11031,7 @@ function ensureTop100Styles(){
     .t100-sub{color:#8a8a94; font-size:13px; margin-bottom:28px;}
     .t100-row{display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:12px; background:rgba(255,255,255,0.04); margin-bottom:8px;}
     .t100-rank{width:32px; text-align:center; font-weight:700; color:#8a8a94; font-family:var(--font-data, monospace); flex-shrink:0;}
-    .t100-av{width:42px; height:42px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:14px; flex-shrink:0; background-size:cover; background-position:center; cursor:pointer;}
+    .t100-av{width:64px; height:64px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:20px; flex-shrink:0; background-size:cover; background-position:center; cursor:pointer;}
     .t100-info{flex:1; min-width:0; cursor:pointer;}
     .t100-name{color:#fff; font-weight:700; font-size:14px;}
     .t100-meta{color:#8a8a94; font-size:12px;}
