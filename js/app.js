@@ -11180,33 +11180,48 @@ function ensureTop100Styles(){
     #top100-overlay.show{opacity:1;}
     .t100-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .t100-close:hover{background:rgba(255,255,255,0.16);}
-    .t100-wrap{max-width:960px; margin:0 auto; padding:60px 32px 80px;}
+    .t100-wrap{max-width:1080px; margin:0 auto; padding:60px 32px 80px;}
     .t100-title{color:#fff; font-size:28px; font-weight:800; margin-bottom:6px;}
-    .t100-sub{color:#8a8a94; font-size:13px; margin-bottom:32px;}
-    /* ---- Séparateurs fins plutôt qu'une carte par artiste — l'artiste (portrait + nom)
-       reste le héros de la ligne, pas un panneau administratif. ---- */
-    .t100-row{display:flex; align-items:center; gap:20px; padding:16px 6px; border-bottom:1px solid rgba(255,255,255,0.08); transition:background .2s ease;}
-    .t100-row:hover{background:rgba(255,255,255,0.03);}
-    .t100-row:last-child{border-bottom:none;}
-    .t100-rank{width:44px; text-align:center; font-family:var(--font-display); font-style:italic; font-weight:700; font-size:19px; color:#8a8a94; flex-shrink:0;}
-    .t100-tied-tag{display:block; font-family:var(--font-sans, inherit); font-style:normal; font-weight:600; font-size:8.5px; letter-spacing:.4px; text-transform:uppercase; color:#5a5a64; margin-top:2px;}
-    .t100-av-wrap{position:relative; width:68px; height:68px; flex-shrink:0;}
-    .t100-av-halo{position:absolute; inset:-16px; border-radius:50%; filter:blur(20px); opacity:.6; pointer-events:none;}
-    .t100-av{position:relative; width:68px; height:68px; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:21px; background-size:cover; background-position:center; cursor:pointer;}
-    .t100-info{flex:1; min-width:0; cursor:pointer;}
-    .t100-name{color:#fff; font-weight:700; font-size:16px;}
-    .t100-meta{color:#8a8a94; font-size:12.5px; margin-top:2px;}
-    /* ---- Bouton discret par défaut — l'œil doit aller au portrait/nom en premier, jamais
-       au bouton. Il devient visible seulement au survol de la ligne ou une fois suivi. ---- */
-    .t100-follow-btn{background:none; border:1px solid rgba(255,255,255,0.18); color:#8a8a94; font-weight:600; font-size:12px; padding:7px 16px; border-radius:999px; cursor:pointer; white-space:nowrap; opacity:.55; transition:opacity .2s ease, border-color .2s ease, color .2s ease;}
-    .t100-row:hover .t100-follow-btn{opacity:1;}
-    .t100-follow-btn.is-following{opacity:.85; border-color:var(--accent,#D4AF6A); color:var(--accent,#D4AF6A);}
+    .t100-sub{color:#8a8a94; font-size:13px; margin-bottom:40px;}
     .t100-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0;}
+
+    /* ---- PODIUM — Top 3 avec une vraie présence visuelle, #1 nettement dominant.
+       Ordre visuel #2, #1, #3, comme un vrai podium. ---- */
+    .t100-podium{display:flex; align-items:flex-end; justify-content:center; gap:28px; margin-bottom:56px; flex-wrap:wrap;}
+    .t100-podium-card{display:flex; flex-direction:column; align-items:center; text-align:center; width:150px; cursor:default;}
+    .t100-podium-card .t100-av-wrap, .t100-podium-card .t100-av{width:110px; height:110px;}
+    .t100-podium-card.t100-podium-1{ width:190px; }
+    .t100-podium-card.t100-podium-1 .t100-av-wrap, .t100-podium-card.t100-podium-1 .t100-av{ width:150px; height:150px; }
+    .t100-podium-rank{ font-family:var(--font-display); font-style:italic; font-weight:700; font-size:15px; color:#D4AF6A; margin-bottom:8px; }
+    .t100-podium-card.t100-podium-1 .t100-podium-rank{ font-size:19px; }
+
+    /* ---- GRILLE — le reste du classement traité comme une vraie découverte, jamais
+       un tableau : cartes flottantes, portrait comme héros, pas de bordure lourde. ---- */
+    .t100-grid-label{color:#8a8a94; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:20px;}
+    #t100-list{display:flex; flex-wrap:wrap; gap:28px 20px; justify-content:flex-start;}
+    .t100-grid-card{display:flex; flex-direction:column; align-items:center; text-align:center; width:120px; cursor:default;}
+    .t100-grid-card .t100-av-wrap, .t100-grid-card .t100-av{width:96px; height:96px;}
+    .t100-grid-card .t100-podium-rank{display:none;}
+
+    /* ---- Partagé entre podium et grille ---- */
+    .t100-av-wrap{position:relative; flex-shrink:0; margin-bottom:10px;}
+    .t100-av-halo{position:absolute; inset:-18px; border-radius:50%; filter:blur(22px); opacity:.6; pointer-events:none;}
+    .t100-av{position:relative; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:1.6em; background-size:cover; background-position:center; cursor:pointer;}
+    .t100-name{color:#fff; font-weight:700; font-size:13.5px; cursor:pointer;}
+    .t100-meta{color:#8a8a94; font-size:11px; margin-top:3px;}
+    .t100-follow-btn{background:none; border:1px solid rgba(255,255,255,0.18); color:#8a8a94; font-weight:600; font-size:11px; padding:6px 14px; border-radius:999px; cursor:pointer; white-space:nowrap; margin-top:10px; transition:opacity .2s ease, border-color .2s ease, color .2s ease;}
+    .t100-follow-btn.is-following{border-color:var(--accent,#D4AF6A); color:var(--accent,#D4AF6A);}
+
     @media(max-width:760px){
       .t100-wrap{padding:50px 20px 60px;}
-      .t100-av-wrap, .t100-av{width:56px; height:56px;}
-      .t100-rank{width:32px; font-size:16px;}
-      .t100-row{gap:14px;}
+      .t100-podium{gap:14px;}
+      .t100-podium-card{width:104px;}
+      .t100-podium-card .t100-av-wrap, .t100-podium-card .t100-av{width:80px; height:80px;}
+      .t100-podium-card.t100-podium-1{width:130px;}
+      .t100-podium-card.t100-podium-1 .t100-av-wrap, .t100-podium-card.t100-podium-1 .t100-av{width:104px; height:104px;}
+      #t100-list{gap:20px 14px;}
+      .t100-grid-card{width:96px;}
+      .t100-grid-card .t100-av-wrap, .t100-grid-card .t100-av{width:80px; height:80px;}
     }
   `;
   document.head.appendChild(style);
@@ -11224,13 +11239,62 @@ async function openTop100ArtistsPage(){
   overlay.innerHTML = `
     <button class="t100-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     <div class="t100-wrap">
-      <div class="t100-title">Top 100 artistes NUNI</div>
+      <div class="t100-title">Artistes à suivre</div>
       <div class="t100-sub">Classement réel par nombre d'abonnés — uniquement les comptes avec un Pass Artiste actif.</div>
+      <div id="t100-podium"></div>
+      <div id="t100-grid-label" style="display:none;">Découvrir plus d'artistes</div>
       <div id="t100-list">Chargement…</div>
     </div>`;
   overlay.querySelector('.t100-close').onclick = closeOverlay;
   requestAnimationFrame(()=> overlay.classList.add('show'));
   attachSwipeDownToClose(overlay, closeOverlay);
+
+  // Carte artiste réutilisable — factorise toute la logique de suivi (statut + toggle),
+  // partagée entre le Top 3 et la grille pour ne jamais la dupliquer.
+  function buildArtistCard(a, variant){
+    const name = a.artist_name || a.first_name;
+    const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const avatarStyle = a.avatar_url ? `background-image:url(${cloudinaryFaceCrop(a.avatar_url)});` : '';
+    const card = document.createElement('div');
+    card.className = variant === 'podium' ? 't100-podium-card t100-podium-' + a.rnk : 't100-grid-card';
+    card.innerHTML = `
+      <div class="t100-podium-rank">${variant === 'podium' ? '#'+a.rnk : ''}</div>
+      <div class="t100-av-wrap"><div class="t100-av-halo"></div><div class="t100-av" style="${avatarStyle}">${a.avatar_url ? '' : initials}</div></div>
+      <div class="t100-name">${esc(name)}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
+      <div class="t100-meta">${esc(a.top_genre || 'Artiste NUNI')} · ${(a.follower_count||0).toLocaleString('fr-FR')} abonné${a.follower_count>1?'s':''}</div>
+      <button class="t100-follow-btn">Suivre</button>`;
+    const goToArtist = ()=>{ closeOverlay(); openArtistPage(name, a.id); };
+    card.querySelector('.t100-av').onclick = goToArtist;
+    card.querySelector('.t100-name').onclick = goToArtist;
+    if(a.avatar_url){
+      NuniPalette.extract(a.avatar_url).then(p=>{
+        card.querySelector('.t100-av-halo').style.background =
+          `radial-gradient(circle, color-mix(in srgb, ${p.dominant} 38%, transparent) 0%, transparent 72%)`;
+      });
+    }
+    const followBtn = card.querySelector('.t100-follow-btn');
+    if(realAuthToken){
+      fetch(NUNI_API_BASE + '/api/follow/' + a.id + '/status', { headers:{ 'Authorization':'Bearer ' + realAuthToken } })
+        .then(r=>r.json()).then(d=>{ followBtn.textContent = d.following ? 'Suivi' : 'Suivre'; followBtn.classList.toggle('is-following', d.following); })
+        .catch(()=>{});
+    }
+    followBtn.onclick = async ()=>{
+      if(!realAuthToken){ toast('Connectez-vous pour suivre un artiste.'); return; }
+      followBtn.disabled = true;
+      try{
+        const res2 = await fetch(NUNI_API_BASE + '/api/follow', {
+          method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+          body: JSON.stringify({ artistId: a.id })
+        });
+        const data2 = await res2.json();
+        followBtn.disabled = false;
+        if(!res2.ok){ toast(data2.error || 'Erreur.'); return; }
+        followBtn.textContent = data2.following ? 'Suivi' : 'Suivre';
+        followBtn.classList.toggle('is-following', data2.following);
+      }catch(e){ followBtn.disabled = false; toast('Impossible de contacter le serveur NUNI.'); }
+    };
+    return card;
+  }
 
   try{
     const res = await fetch(NUNI_API_BASE + '/api/artists/top100');
@@ -11243,56 +11307,23 @@ async function openTop100ArtistsPage(){
       return;
     }
     list.innerHTML = '';
-    artists.forEach((a,i)=>{
-      const name = a.artist_name || a.first_name;
-      const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-      const avatarStyle = a.avatar_url ? `background-image:url(${a.avatar_url});` : '';
-      // Ex-aequo réel (même rang SQL RANK() que le voisin précédent/suivant) — rendu
-      // explicite visuellement plutôt que laissé à interprétation comme un bug d'affichage.
-      const isTiedWithPrev = i>0 && artists[i-1].rnk === a.rnk;
-      const isTiedWithNext = i<artists.length-1 && artists[i+1].rnk === a.rnk;
-      const row = document.createElement('div');
-      row.className = 't100-row' + (isTiedWithPrev || isTiedWithNext ? ' is-tied' : '');
-      row.innerHTML = `
-        <div class="t100-rank">#${a.rnk}${(isTiedWithPrev||isTiedWithNext) ? '<span class="t100-tied-tag">ex æquo</span>' : ''}</div>
-        <div class="t100-av-wrap"><div class="t100-av-halo"></div><div class="t100-av" style="${avatarStyle}">${a.avatar_url ? '' : initials}</div></div>
-        <div class="t100-info">
-          <div class="t100-name">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
-          <div class="t100-meta">${a.top_genre || 'Artiste NUNI'} · ${(a.follower_count||0).toLocaleString('fr-FR')} abonné${a.follower_count>1?'s':''}</div>
-        </div>
-        <button class="t100-follow-btn">Suivre</button>`;
-      const goToArtist = ()=>{ closeOverlay(); openArtistPage(name, a.id); };
-      row.querySelector('.t100-av').onclick = goToArtist;
-      row.querySelector('.t100-info').onclick = goToArtist;
-      if(a.avatar_url){
-        NuniPalette.extract(a.avatar_url).then(p=>{
-          row.querySelector('.t100-av-halo').style.background =
-            `radial-gradient(circle, color-mix(in srgb, ${p.dominant} 35%, transparent) 0%, transparent 72%)`;
-        });
-      }
-      const followBtn = row.querySelector('.t100-follow-btn');
-      if(realAuthToken){
-        fetch(NUNI_API_BASE + '/api/follow/' + a.id + '/status', { headers:{ 'Authorization':'Bearer ' + realAuthToken } })
- .then(r=>r.json()).then(d=>{ followBtn.textContent = d.following ? 'Suivi ' : 'Suivre'; followBtn.classList.toggle('is-following', d.following); })
-          .catch(()=>{});
-      }
-      followBtn.onclick = async ()=>{
-        if(!realAuthToken){ toast('Connectez-vous pour suivre un artiste.'); return; }
-        followBtn.disabled = true;
-        try{
-          const res2 = await fetch(NUNI_API_BASE + '/api/follow', {
-            method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
-            body: JSON.stringify({ artistId: a.id })
-          });
-          const data2 = await res2.json();
-          followBtn.disabled = false;
- if(!res2.ok){ toast(' ' + (data2.error || 'Erreur.')); return; }
- followBtn.textContent = data2.following ? 'Suivi ' : 'Suivre';
-          followBtn.classList.toggle('is-following', data2.following);
- }catch(e){ followBtn.disabled = false; toast(' Impossible de contacter le serveur NUNI.'); }
-      };
-      list.appendChild(row);
-    });
+
+    // Top 3 — vraie présence visuelle, portraits plus grands, #1 dominant. S'il y a moins
+    // de 3 artistes réels, le podium s'adapte simplement au nombre disponible.
+    const top3 = artists.slice(0, 3);
+    const rest = artists.slice(3);
+    if(top3.length){
+      const podium = document.getElementById('t100-podium');
+      podium.className = 't100-podium';
+      // Ordre visuel #2, #1, #3 (podium classique) — seulement si les 3 places existent réellement.
+      const order = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3;
+      order.forEach(a=> podium.appendChild(buildArtistCard(a, 'podium')));
+    }
+
+    if(rest.length){
+      document.getElementById('t100-grid-label').style.display = '';
+      rest.forEach(a=> list.appendChild(buildArtistCard(a, 'grid')));
+    }
   }catch(e){
     const list = document.getElementById('t100-list');
     if(list) list.innerHTML = `<div class="t100-empty">Classement momentanément indisponible.</div>`;
