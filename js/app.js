@@ -6629,63 +6629,57 @@ function openMoodPage(key, label){
       return;
     }
     const lead = list[0];
-    const rest = list.slice(1);
 
-    // ---- Hero d'ambiance — pas d'image dédiée en base, donc la vraie pochette du morceau
-    // principal DE CETTE ambiance devient la source de couleur (fond flouté + halo), même
-    // technique que la page Album. Deux ambiances différentes = deux atmosphères réellement
-    // différentes, jamais une image inventée. ----
+    // ---- Introduction compacte — la pochette DOMINE visuellement le texte "AMBIANCE",
+    // musique avant décor. Pas de hero plein écran flouté : la pochette et les infos sont
+    // côte à côte dans une composition dense. Pas d'image dédiée en base, donc la vraie
+    // pochette du premier morceau sert d'illustration — jamais une image inventée. ----
     overlay.innerHTML = `
       <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-      <div class="mood-hero">
-        <div class="mood-hero-bg" style="${lead.cover ? `background-image:url(${lead.cover});` : ''}"></div>
-        <div class="mood-hero-fade"></div>
-        <div class="mood-hero-content">
-          <span class="mood-hero-eyebrow">Ambiance</span>
-          <h1 class="mood-hero-title serif">${esc(label)}</h1>
-        </div>
-      </div>
-      <div class="nre-wrap mood-body">
-        <div class="nre-top">
-          <div class="nre-featured" id="mood-lead"></div>
-          <div class="nre-singles">
-            <div class="nre-singles-label">Aussi dans "${esc(label)}"</div>
-            <div class="nre-singles-list" id="mood-rest-list">${rest.length ? '' : `<p class="nre-empty-inline">C'est tout pour cette ambiance pour l'instant.</p>`}</div>
+      <div class="nre-wrap mood-wrap">
+        <div class="mood-intro">
+          <div class="mood-intro-halo"></div>
+          <div class="mood-intro-cover" style="${lead.cover ? `background-image:url(${lead.cover});` : 'background:var(--grad-envol);'}"></div>
+          <div class="mood-intro-info">
+            <span class="mood-eyebrow">Ambiance</span>
+            <h1 class="mood-title serif">${esc(label)}</h1>
+            <p class="mood-meta">${list.length} titre${list.length>1?'s':''} — une sélection musicale réelle de cette ambiance</p>
+            <button class="mood-play-btn"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg> Écouter</button>
           </div>
         </div>
+        <div class="mood-section-label">Dans cette ambiance</div>
+        <div class="mood-grid" id="mood-grid"></div>
       </div>`;
     overlay.querySelector('.cp-close').onclick = closeOverlay;
+    overlay.querySelector('.mood-intro-cover').onclick = ()=>{ closeOverlay(); handleTrackCardClick(lead); };
+    overlay.querySelector('.mood-play-btn').onclick = ()=>{ playTrack(lead); openFullPlayer(); };
     requestAnimationFrame(()=> overlay.classList.add('show'));
     attachSwipeDownToClose(overlay, closeOverlay);
 
-    const leadBox = document.getElementById('mood-lead');
-    leadBox.innerHTML = `
-      <div class="nre-featured-halo"></div>
-      <div class="nre-featured-cover" style="${lead.cover ? `background-image:url(${lead.cover});` : 'background:var(--grad-envol);'}"></div>
-      <div class="nre-featured-info">
-        <span class="nre-featured-label">Titre principal</span>
-        <div class="nre-featured-title serif">${esc(lead.t)}</div>
-        <div class="nre-featured-artist">${esc(lead.a)}</div>
-      </div>`;
-    leadBox.querySelector('.nre-featured-cover').onclick = ()=>{ closeOverlay(); handleTrackCardClick(lead); };
     if(lead.cover){
       NuniPalette.extract(lead.cover).then(p=>{
-        leadBox.querySelector('.nre-featured-halo').style.background =
-          `radial-gradient(circle at 35% 35%, color-mix(in srgb, ${p.dominant} 42%, transparent) 0%, transparent 70%)`;
+        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const halo = overlay.querySelector('.mood-intro-halo');
+        if(halo) halo.style.background =
+          `radial-gradient(circle at 30% 40%, color-mix(in srgb, ${p.dominant} ${theme==='light'?22:38}%, transparent) 0%, transparent 72%)`;
       });
     }
 
-    const restBox = document.getElementById('mood-rest-list');
-    rest.forEach(tr=>{
-      const row = document.createElement('div');
-      row.className = 'nre-single-row';
-      row.innerHTML = `
-        <div class="nre-single-cover" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}"></div>
-        <div class="nre-single-info"><div class="nre-single-title">${esc(tr.t)}</div><div class="nre-single-artist">${esc(tr.a)}</div></div>
-        <button class="nre-single-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M8 5v14l11-7z"/></svg></button>`;
-      row.querySelector('.nre-single-play').onclick = (e)=>{ e.stopPropagation(); playTrack(tr); };
-      row.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
-      restBox.appendChild(row);
+    // ---- Grille — tous les vrais morceaux traités uniformément, jamais un morceau
+    // "principal" séparé cette fois : la composition d'introduction joue déjà ce rôle. ----
+    const grid = document.getElementById('mood-grid');
+    list.forEach(tr=>{
+      const card = document.createElement('div');
+      card.className = 'mood-card';
+      card.innerHTML = `
+        <div class="mood-card-cover" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}">
+          <button class="mood-card-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg></button>
+        </div>
+        <div class="mood-card-title">${esc(tr.t)}</div>
+        <div class="mood-card-artist">${esc(tr.a)}</div>`;
+      card.querySelector('.mood-card-play').onclick = (e)=>{ e.stopPropagation(); playTrack(tr); };
+      card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+      grid.appendChild(card);
     });
   }).catch(()=> toast('Impossible de charger cette ambiance pour le moment.'));
 }
@@ -6694,14 +6688,35 @@ function ensureMoodPageStyles(){
   const style = document.createElement('style');
   style.id = 'mood-page-styles';
   style.textContent = `
-    .mood-hero{position:relative; height:clamp(200px, 32vw, 340px); overflow:hidden; display:flex; align-items:flex-end;}
-    .mood-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(50px) saturate(1.5) brightness(0.6); transform:scale(1.25);}
-    .mood-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.15) 0%, var(--bg) 92%);}
-    .mood-hero-content{position:relative; z-index:1; padding:32px clamp(20px, 5vw, 48px);}
-    .mood-hero-eyebrow{color:rgba(255,255,255,.8); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; font-weight:700;}
-    .mood-hero-title{color:#fff; font-size:clamp(30px, 6vw, 52px); margin-top:8px; line-height:1.05;}
-    .mood-body{padding-top:32px !important;}
-    @media(max-width:760px){ .mood-hero-content{padding:24px 20px;} }
+    .mood-wrap{padding-top:32px !important;}
+    /* ---- Introduction compacte — pochette et infos côte à côte, jamais un hero plein
+       écran. La pochette domine visuellement le mot "AMBIANCE". ---- */
+    .mood-intro{position:relative; display:flex; align-items:center; gap:28px; margin-bottom:40px;}
+    .mood-intro-halo{position:absolute; inset:-30px; filter:blur(50px); opacity:.55; pointer-events:none; z-index:0;}
+    .mood-intro-cover{position:relative; z-index:1; width:clamp(120px, 16vw, 190px); height:clamp(120px, 16vw, 190px); flex-shrink:0; border-radius:14px; background-size:cover; background-position:center; box-shadow:0 20px 44px -16px rgba(0,0,0,.4); cursor:pointer;}
+    .mood-intro-info{position:relative; z-index:1;}
+    .mood-eyebrow{font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-faint); font-weight:700;}
+    .mood-title{font-size:clamp(28px, 4.5vw, 42px); color:var(--text); margin-top:4px; line-height:1;}
+    .mood-meta{font-size:12.5px; color:var(--text-dim); margin-top:8px; max-width:360px;}
+    .mood-play-btn{display:inline-flex; align-items:center; gap:7px; margin-top:14px; background:var(--text); color:var(--bg); border:none; border-radius:999px; padding:9px 20px; font-size:13px; font-weight:700; cursor:pointer; transition:transform .2s ease;}
+    .mood-play-btn:hover{transform:scale(1.04);}
+
+    .mood-section-label{font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-faint); font-weight:700; margin-bottom:16px;}
+    .mood-grid{display:flex; flex-wrap:wrap; gap:22px;}
+    .mood-card{width:150px; cursor:pointer;}
+    .mood-card-cover{position:relative; width:150px; height:150px; border-radius:10px; background-size:cover; background-position:center; margin-bottom:8px; overflow:hidden;}
+    .mood-card-play{position:absolute; right:8px; bottom:8px; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.25); color:#fff; display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(4px); transition:opacity .2s ease, transform .2s ease;}
+    .mood-card:hover .mood-card-play{opacity:1; transform:translateY(0);}
+    .mood-card-title{font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .mood-card-artist{font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+    @media(max-width:760px){
+      .mood-wrap{padding-top:calc(56px + env(safe-area-inset-top,0)) !important; padding-left:18px; padding-right:18px;}
+      .mood-intro{gap:16px; margin-bottom:32px;}
+      .mood-title{font-size:24px;}
+      .mood-meta{display:none;}
+      .mood-card, .mood-card-cover{width:130px; height:130px;}
+    }
   `;
   document.head.appendChild(style);
 }
