@@ -6608,6 +6608,7 @@ loadAmbiances();
 // fonction getList() synchrone — on récupère donc les vraies données d'abord).
 function openMoodPage(key, label){
   ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
+  ensureMoodPageStyles();
   fetch(NUNI_API_BASE + '/api/moods').then(r=>r.json()).then(data=>{
     const mood = (data.moods||[]).find(m=>m.key===key);
     const list = mood ? mood.tracks.map(mt=> tracks.find(t=> t.isReal && String(t.realId)===String(mt.id))).filter(Boolean) : [];
@@ -6616,33 +6617,93 @@ function openMoodPage(key, label){
     if(overlay) overlay.remove();
     overlay = document.createElement('div');
     overlay.id = 'categorypage-overlay';
-    overlay.className = 'nre-overlay';
+    overlay.className = 'nre-overlay mood-overlay';
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
     const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
 
+    if(!list.length){
+      overlay.innerHTML = `<button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><p class="nre-empty">Aucun morceau dans cette ambiance pour le moment.</p>`;
+      overlay.querySelector('.cp-close').onclick = closeOverlay;
+      requestAnimationFrame(()=> overlay.classList.add('show'));
+      return;
+    }
+    const lead = list[0];
+    const rest = list.slice(1);
+
+    // ---- Hero d'ambiance — pas d'image dédiée en base, donc la vraie pochette du morceau
+    // principal DE CETTE ambiance devient la source de couleur (fond flouté + halo), même
+    // technique que la page Album. Deux ambiances différentes = deux atmosphères réellement
+    // différentes, jamais une image inventée. ----
     overlay.innerHTML = `
       <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-      <div class="nre-wrap">
-        <div class="nre-titlebar"><div class="nre-title serif">${esc(label)}</div><p class="nre-sub">Sélection éditoriale NUNI — ambiance "${esc(label)}".</p></div>
-        <div class="nre-others-row" id="mood-tracks-row" style="flex-wrap:wrap; overflow-x:visible;">${list.length ? '' : `<p class="nre-empty">Aucun morceau dans cette ambiance pour le moment.</p>`}</div>
+      <div class="mood-hero">
+        <div class="mood-hero-bg" style="${lead.cover ? `background-image:url(${lead.cover});` : ''}"></div>
+        <div class="mood-hero-fade"></div>
+        <div class="mood-hero-content">
+          <span class="mood-hero-eyebrow">Ambiance</span>
+          <h1 class="mood-hero-title serif">${esc(label)}</h1>
+        </div>
+      </div>
+      <div class="nre-wrap mood-body">
+        <div class="nre-top">
+          <div class="nre-featured" id="mood-lead"></div>
+          <div class="nre-singles">
+            <div class="nre-singles-label">Aussi dans "${esc(label)}"</div>
+            <div class="nre-singles-list" id="mood-rest-list">${rest.length ? '' : `<p class="nre-empty-inline">C'est tout pour cette ambiance pour l'instant.</p>`}</div>
+          </div>
+        </div>
       </div>`;
     overlay.querySelector('.cp-close').onclick = closeOverlay;
     requestAnimationFrame(()=> overlay.classList.add('show'));
     attachSwipeDownToClose(overlay, closeOverlay);
 
-    const row = document.getElementById('mood-tracks-row');
-    list.forEach(tr=>{
-      const card = document.createElement('div');
-      card.className = 'nre-other-card';
-      card.innerHTML = `
-        <div class="nre-other-cover" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}"></div>
-        <div class="nre-other-title">${esc(tr.t)}</div>
-        <div class="nre-other-artist">${esc(tr.a)}</div>`;
-      card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
-      row.appendChild(card);
+    const leadBox = document.getElementById('mood-lead');
+    leadBox.innerHTML = `
+      <div class="nre-featured-halo"></div>
+      <div class="nre-featured-cover" style="${lead.cover ? `background-image:url(${lead.cover});` : 'background:var(--grad-envol);'}"></div>
+      <div class="nre-featured-info">
+        <span class="nre-featured-label">Titre principal</span>
+        <div class="nre-featured-title serif">${esc(lead.t)}</div>
+        <div class="nre-featured-artist">${esc(lead.a)}</div>
+      </div>`;
+    leadBox.querySelector('.nre-featured-cover').onclick = ()=>{ closeOverlay(); handleTrackCardClick(lead); };
+    if(lead.cover){
+      NuniPalette.extract(lead.cover).then(p=>{
+        leadBox.querySelector('.nre-featured-halo').style.background =
+          `radial-gradient(circle at 35% 35%, color-mix(in srgb, ${p.dominant} 42%, transparent) 0%, transparent 70%)`;
+      });
+    }
+
+    const restBox = document.getElementById('mood-rest-list');
+    rest.forEach(tr=>{
+      const row = document.createElement('div');
+      row.className = 'nre-single-row';
+      row.innerHTML = `
+        <div class="nre-single-cover" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}"></div>
+        <div class="nre-single-info"><div class="nre-single-title">${esc(tr.t)}</div><div class="nre-single-artist">${esc(tr.a)}</div></div>
+        <button class="nre-single-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M8 5v14l11-7z"/></svg></button>`;
+      row.querySelector('.nre-single-play').onclick = (e)=>{ e.stopPropagation(); playTrack(tr); };
+      row.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+      restBox.appendChild(row);
     });
   }).catch(()=> toast('Impossible de charger cette ambiance pour le moment.'));
+}
+function ensureMoodPageStyles(){
+  if(document.getElementById('mood-page-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'mood-page-styles';
+  style.textContent = `
+    .mood-hero{position:relative; height:clamp(200px, 32vw, 340px); overflow:hidden; display:flex; align-items:flex-end;}
+    .mood-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(50px) saturate(1.5) brightness(0.6); transform:scale(1.25);}
+    .mood-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.15) 0%, var(--bg) 92%);}
+    .mood-hero-content{position:relative; z-index:1; padding:32px clamp(20px, 5vw, 48px);}
+    .mood-hero-eyebrow{color:rgba(255,255,255,.8); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; font-weight:700;}
+    .mood-hero-title{color:#fff; font-size:clamp(30px, 6vw, 52px); margin-top:8px; line-height:1.05;}
+    .mood-body{padding-top:32px;}
+    @media(max-width:760px){ .mood-hero-content{padding:24px 20px;} }
+  `;
+  document.head.appendChild(style);
 }
 // Le calendrier de la page artiste ('artist-release-row') se remplit désormais dynamiquement
 // avec les vraies sorties programmées, dans openArtistPage() — plus de données factices ici.
