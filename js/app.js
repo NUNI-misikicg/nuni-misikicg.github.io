@@ -6643,7 +6643,9 @@ function openMoodPage(key, label){
           <div class="mood-intro-info">
             <span class="mood-eyebrow">Ambiance</span>
             <h1 class="mood-title serif">${esc(label)}</h1>
-            <p class="mood-meta">${list.length} titre${list.length>1?'s':''} — une sélection musicale réelle de cette ambiance</p>
+            <p class="mood-meta">${list.length} titre${list.length>1?'s':''}</p>
+            <div class="mood-lead-title">${esc(lead.t)}</div>
+            <div class="mood-lead-artist">${esc(lead.a)}</div>
             <button class="mood-play-btn"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg> Écouter</button>
           </div>
         </div>
@@ -6688,34 +6690,47 @@ function ensureMoodPageStyles(){
   const style = document.createElement('style');
   style.id = 'mood-page-styles';
   style.textContent = `
-    .mood-wrap{padding-top:32px !important;}
-    /* ---- Introduction compacte — pochette et infos côte à côte, jamais un hero plein
-       écran. La pochette domine visuellement le mot "AMBIANCE". ---- */
-    .mood-intro{position:relative; display:flex; align-items:center; gap:28px; margin-bottom:40px;}
-    .mood-intro-halo{position:absolute; inset:-30px; filter:blur(50px); opacity:.55; pointer-events:none; z-index:0;}
-    .mood-intro-cover{position:relative; z-index:1; width:clamp(120px, 16vw, 190px); height:clamp(120px, 16vw, 190px); flex-shrink:0; border-radius:14px; background-size:cover; background-position:center; box-shadow:0 20px 44px -16px rgba(0,0,0,.4); cursor:pointer;}
+    .mood-wrap{padding-top:28px !important;}
+    /* ---- Introduction — pochette dominante (220-300px desktop), infos à droite,
+       jamais un hero plein écran. Aucune hauteur artificielle : la composition tient
+       à la hauteur réelle de son contenu. ---- */
+    .mood-intro{position:relative; display:flex; align-items:center; gap:32px; margin-bottom:36px;}
+    .mood-intro-halo{position:absolute; inset:-30px; filter:blur(50px); opacity:.5; pointer-events:none; z-index:0;}
+    .mood-intro-cover{position:relative; z-index:1; width:clamp(170px, 18vw, 300px); height:clamp(170px, 18vw, 300px); flex-shrink:0; border-radius:16px; background-size:cover; background-position:center; box-shadow:0 22px 48px -16px rgba(0,0,0,.4); cursor:pointer;}
     .mood-intro-info{position:relative; z-index:1;}
     .mood-eyebrow{font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-faint); font-weight:700;}
-    .mood-title{font-size:clamp(28px, 4.5vw, 42px); color:var(--text); margin-top:4px; line-height:1;}
-    .mood-meta{font-size:12.5px; color:var(--text-dim); margin-top:8px; max-width:360px;}
-    .mood-play-btn{display:inline-flex; align-items:center; gap:7px; margin-top:14px; background:var(--text); color:var(--bg); border:none; border-radius:999px; padding:9px 20px; font-size:13px; font-weight:700; cursor:pointer; transition:transform .2s ease;}
+    .mood-title{font-size:clamp(30px, 4.5vw, 46px); color:var(--text); margin-top:4px; line-height:1;}
+    .mood-lead-title{font-size:15px; font-weight:700; color:var(--text); margin-top:14px;}
+    .mood-lead-artist{font-size:13px; color:var(--text-dim); margin-top:2px;}
+    .mood-meta{font-size:12.5px; color:var(--text-faint); margin-top:6px;}
+    .mood-play-btn{display:inline-flex; align-items:center; gap:7px; margin-top:16px; background:var(--text); color:var(--bg); border:none; border-radius:999px; padding:10px 22px; font-size:13px; font-weight:700; cursor:pointer; transition:transform .2s ease;}
     .mood-play-btn:hover{transform:scale(1.04);}
 
     .mood-section-label{font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-faint); font-weight:700; margin-bottom:16px;}
-    .mood-grid{display:flex; flex-wrap:wrap; gap:22px;}
-    .mood-card{width:150px; cursor:pointer;}
-    .mood-card-cover{position:relative; width:150px; height:150px; border-radius:10px; background-size:cover; background-position:center; margin-bottom:8px; overflow:hidden;}
-    .mood-card-play{position:absolute; right:8px; bottom:8px; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.25); color:#fff; display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(4px); transition:opacity .2s ease, transform .2s ease;}
+    /* ---- Vraie grille CSS Grid — colonnes explicitement contrôlées par largeur réelle,
+       jamais un flex-wrap approximatif. Tous les morceaux traités à l'identique, aucune
+       séparation "principal"/"autres". ---- */
+    .mood-grid{display:grid; grid-template-columns:repeat(6, 1fr); gap:24px;}
+    .mood-card{cursor:pointer; min-width:0;}
+    .mood-card-cover{position:relative; width:100%; aspect-ratio:1; border-radius:10px; background-size:cover; background-position:center; margin-bottom:9px; overflow:hidden;}
+    .mood-card-play{position:absolute; right:8px; bottom:8px; width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.25); color:#fff; display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(4px); transition:opacity .2s ease, transform .2s ease;}
     .mood-card:hover .mood-card-play{opacity:1; transform:translateY(0);}
     .mood-card-title{font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     .mood-card-artist{font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
-    @media(max-width:760px){
-      .mood-wrap{padding-top:calc(56px + env(safe-area-inset-top,0)) !important; padding-left:18px; padding-right:18px;}
-      .mood-intro{gap:16px; margin-bottom:32px;}
-      .mood-title{font-size:24px;}
-      .mood-meta{display:none;}
-      .mood-card, .mood-card-cover{width:130px; height:130px;}
+    @media(max-width:1280px){ .mood-grid{grid-template-columns:repeat(5, 1fr);} }
+    @media(max-width:1024px){ .mood-grid{grid-template-columns:repeat(4, 1fr);} }
+    @media(max-width:768px){
+      .mood-grid{grid-template-columns:repeat(3, 1fr); gap:16px;}
+    }
+    @media(max-width:600px){
+      .mood-wrap{padding-top:calc(52px + env(safe-area-inset-top,0)) !important; padding-left:18px; padding-right:18px;}
+      .mood-intro{flex-direction:column; align-items:flex-start; gap:18px; margin-bottom:28px;}
+      .mood-intro-cover{width:min(60vw, 220px); height:min(60vw, 220px);}
+      .mood-title{font-size:26px;}
+      .mood-grid{grid-template-columns:repeat(2, 1fr); gap:14px;}
+      /* Sur mobile, la pochette tactile porte toujours le bouton play, jamais besoin de hover */
+      .mood-card-play{opacity:1; transform:none; width:28px; height:28px;}
     }
   `;
   document.head.appendChild(style);
