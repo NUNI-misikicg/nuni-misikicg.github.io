@@ -6700,7 +6700,7 @@ function ensureMoodPageStyles(){
     .mood-hero-content{position:relative; z-index:1; padding:32px clamp(20px, 5vw, 48px);}
     .mood-hero-eyebrow{color:rgba(255,255,255,.8); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; font-weight:700;}
     .mood-hero-title{color:#fff; font-size:clamp(30px, 6vw, 52px); margin-top:8px; line-height:1.05;}
-    .mood-body{padding-top:32px;}
+    .mood-body{padding-top:32px !important;}
     @media(max-width:760px){ .mood-hero-content{padding:24px 20px;} }
   `;
   document.head.appendChild(style);
