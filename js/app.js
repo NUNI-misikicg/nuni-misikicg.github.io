@@ -11176,28 +11176,33 @@ function ensureTop100Styles(){
   const style = document.createElement('style');
   style.id = 'top100-styles';
   style.textContent = `
-    #top100-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #top100-overlay{position:fixed; inset:0; z-index:9999; background:var(--bg); overflow-y:auto; opacity:0; transition:opacity .25s ease;}
     #top100-overlay.show{opacity:1;}
-    .t100-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
-    .t100-close:hover{background:rgba(255,255,255,0.16);}
+    .t100-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:var(--bg-card); border:1px solid var(--border); color:var(--text); font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .t100-close:hover{opacity:.8;}
     .t100-wrap{max-width:1080px; margin:0 auto; padding:60px 32px 80px;}
-    .t100-title{color:#fff; font-size:28px; font-weight:800; margin-bottom:6px;}
-    .t100-sub{color:#8a8a94; font-size:13px; margin-bottom:40px;}
-    .t100-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0;}
+    .t100-title{color:var(--text); font-size:28px; font-weight:800; margin-bottom:6px;}
+    .t100-sub{color:var(--text-faint); font-size:13px; margin-bottom:40px;}
+    .t100-empty{color:var(--text-faint); font-size:13px; text-align:center; padding:40px 0;}
 
-    /* ---- PODIUM — Top 3 avec une vraie présence visuelle, #1 nettement dominant.
-       Ordre visuel #2, #1, #3, comme un vrai podium. ---- */
-    .t100-podium{display:flex; align-items:flex-end; justify-content:center; gap:28px; margin-bottom:56px; flex-wrap:wrap;}
-    .t100-podium-card{display:flex; flex-direction:column; align-items:center; text-align:center; width:150px; cursor:default;}
-    .t100-podium-card .t100-av-wrap, .t100-podium-card .t100-av{width:110px; height:110px;}
-    .t100-podium-card.t100-podium-1{ width:190px; }
-    .t100-podium-card.t100-podium-1 .t100-av-wrap, .t100-podium-card.t100-podium-1 .t100-av{ width:150px; height:150px; }
-    .t100-podium-rank{ font-family:var(--font-display); font-style:italic; font-weight:700; font-size:15px; color:#D4AF6A; margin-bottom:8px; }
+    /* ---- PODIUM — tailles en clamp() calculées pour ne jamais déborder entre 320px et
+       760px (vérifié : 269px de contenu à 320px, 279px à 375px, toujours sous l'espace
+       disponible), puis tailles fixes desktop au-delà. #2/#3, #3, #2 restent groupés sur
+       une seule ligne à toutes les largeurs testées. ---- */
+    .t100-podium{display:flex; align-items:flex-end; justify-content:center; gap:clamp(8px, 4.5vw - 6px, 28px); margin-bottom:56px; flex-wrap:nowrap;}
+    .t100-podium-card{display:flex; flex-direction:column; align-items:center; text-align:center; width:clamp(84px, 9vw + 50px, 150px); cursor:default; flex-shrink:0;}
+    .t100-podium-card .t100-av-wrap, .t100-podium-card .t100-av{width:clamp(76px, 8vw + 46px, 110px); height:clamp(76px, 8vw + 46px, 110px);}
+    .t100-podium-card.t100-podium-1{ width:clamp(112px, 12vw + 70px, 190px); }
+    .t100-podium-card.t100-podium-1 .t100-av-wrap, .t100-podium-card.t100-podium-1 .t100-av{ width:clamp(100px, 11vw + 64px, 150px); height:clamp(100px, 11vw + 64px, 150px); }
+    .t100-podium-rank{ font-family:var(--font-display); font-style:italic; font-weight:700; font-size:15px; color:var(--accent,#D4AF6A); margin-bottom:8px; }
     .t100-podium-card.t100-podium-1 .t100-podium-rank{ font-size:19px; }
+    /* Nom du #1 légèrement renforcé — l'écart avec un portrait de 150px était trop grand.
+       #2/#3 et la grille gardent leur taille d'origine, volontairement plus discrets. */
+    .t100-podium-card.t100-podium-1 .t100-name{ font-size:16px; }
 
     /* ---- GRILLE — le reste du classement traité comme une vraie découverte, jamais
        un tableau : cartes flottantes, portrait comme héros, pas de bordure lourde. ---- */
-    .t100-grid-label{color:#8a8a94; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:20px;}
+    .t100-grid-label{color:var(--text-faint); font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:20px;}
     #t100-list{display:flex; flex-wrap:wrap; gap:28px 20px; justify-content:flex-start;}
     .t100-grid-card{display:flex; flex-direction:column; align-items:center; text-align:center; width:120px; cursor:default;}
     .t100-grid-card .t100-av-wrap, .t100-grid-card .t100-av{width:96px; height:96px;}
@@ -11207,18 +11212,13 @@ function ensureTop100Styles(){
     .t100-av-wrap{position:relative; flex-shrink:0; margin-bottom:10px;}
     .t100-av-halo{position:absolute; inset:-18px; border-radius:50%; filter:blur(22px); opacity:.6; pointer-events:none;}
     .t100-av{position:relative; border-radius:50%; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; color:#0A0A10; font-weight:700; font-size:1.6em; background-size:cover; background-position:center; cursor:pointer;}
-    .t100-name{color:#fff; font-weight:700; font-size:13.5px; cursor:pointer;}
-    .t100-meta{color:#8a8a94; font-size:11px; margin-top:3px;}
-    .t100-follow-btn{background:none; border:1px solid rgba(255,255,255,0.18); color:#8a8a94; font-weight:600; font-size:11px; padding:6px 14px; border-radius:999px; cursor:pointer; white-space:nowrap; margin-top:10px; transition:opacity .2s ease, border-color .2s ease, color .2s ease;}
+    .t100-name{color:var(--text); font-weight:700; font-size:13.5px; cursor:pointer;}
+    .t100-meta{color:var(--text-faint); font-size:11px; margin-top:3px;}
+    .t100-follow-btn{background:none; border:1px solid var(--border); color:var(--text-faint); font-weight:600; font-size:11px; padding:6px 14px; border-radius:999px; cursor:pointer; white-space:nowrap; margin-top:10px; transition:opacity .2s ease, border-color .2s ease, color .2s ease;}
     .t100-follow-btn.is-following{border-color:var(--accent,#D4AF6A); color:var(--accent,#D4AF6A);}
 
     @media(max-width:760px){
       .t100-wrap{padding:50px 20px 60px;}
-      .t100-podium{gap:14px;}
-      .t100-podium-card{width:104px;}
-      .t100-podium-card .t100-av-wrap, .t100-podium-card .t100-av{width:80px; height:80px;}
-      .t100-podium-card.t100-podium-1{width:130px;}
-      .t100-podium-card.t100-podium-1 .t100-av-wrap, .t100-podium-card.t100-podium-1 .t100-av{width:104px; height:104px;}
       #t100-list{gap:20px 14px;}
       .t100-grid-card{width:96px;}
       .t100-grid-card .t100-av-wrap, .t100-grid-card .t100-av{width:80px; height:80px;}
