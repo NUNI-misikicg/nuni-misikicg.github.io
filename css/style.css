@@ -1543,6 +1543,12 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 .chart-row{ display:flex; align-items:center; gap:14px; padding:10px 4px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .2s ease, padding-left .2s ease; }
 .chart-row:last-child{ border-bottom:none; }
 .chart-row:hover{ padding-left:8px; background:var(--bg-card); }
+.chart-row-play{
+  width:34px; height:34px; border-radius:50%; flex-shrink:0; border:1px solid var(--border); background:none;
+  color:var(--text-dim); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .2s ease, border-color .2s ease, color .2s ease;
+}
+.chart-row:hover .chart-row-play{ opacity:1; border-color:var(--accent); color:var(--accent); }
 .chart-row-rank{ font-family:var(--font-display); font-style:italic; font-weight:700; font-size:22px; color:var(--text-faint); width:34px; flex-shrink:0; text-align:center; transition:color .2s ease; }
 .chart-row:nth-child(1) .chart-row-rank, .chart-row:nth-child(2) .chart-row-rank, .chart-row:nth-child(3) .chart-row-rank{ color:var(--accent); }
 .chart-row:hover .chart-row-rank{ color:var(--accent); }

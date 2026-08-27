@@ -5013,9 +5013,11 @@ function renderTopCongo(){
       el.innerHTML = `
         <span class="chart-row-rank">${String(i+1).padStart(2,'0')}</span>
         <div class="chart-row-cover"></div>
-        <div class="chart-row-info"><div class="chart-row-title"></div><div class="chart-row-artist"></div></div>`;
+        <div class="chart-row-info"><div class="chart-row-title"></div><div class="chart-row-artist"></div></div>
+        <button class="chart-row-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
       el.querySelector('.chart-row-title').textContent = tr.t;
       el.querySelector('.chart-row-artist').textContent = tr.a;
+      el.querySelector('.chart-row-play').onclick = (e)=>{ e.stopPropagation(); playTrack(tr); };
       setCover(el.querySelector('.chart-row-cover'), tr);
       el.addEventListener('click', ()=> handleTrackCardClick(tr));
       row.appendChild(el);
