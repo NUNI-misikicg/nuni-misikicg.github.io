@@ -875,16 +875,14 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
    progression + bouton lecture, comme un mini-lecteur au repos. ---- */
 .resume-row{ display:flex; gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
 .resume-card{
-  display:flex; align-items:center; gap:12px; flex-shrink:0; width:280px; padding:12px;
-  background:var(--bg-card); border:1px solid var(--border); border-radius:16px; cursor:pointer;
-  transition:transform .25s var(--ease), border-color .25s ease;
+  display:flex; align-items:center; gap:14px; flex-shrink:0; width:280px; cursor:pointer;
 }
-.resume-card:hover{ transform:translateY(-2px); border-color:var(--border-strong); }
-.resume-cover{ width:52px; height:52px; border-radius:10px; flex-shrink:0; background:var(--grad-envol); background-size:cover; background-position:center; }
+.resume-cover{ width:68px; height:68px; border-radius:12px; flex-shrink:0; background:var(--grad-envol); background-size:cover; background-position:center; box-shadow:0 10px 22px -10px rgba(0,0,0,.4); transition:transform .25s var(--ease); }
+.resume-card:hover .resume-cover{ transform:translateY(-3px); }
 .resume-info{ flex:1; min-width:0; }
-.resume-info .t{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.resume-info .a{ font-size:12px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
-.resume-progress-track{ height:3px; background:var(--border); border-radius:3px; margin-top:8px; overflow:hidden; }
+.resume-info .t{ font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.resume-info .a{ font-size:12.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.resume-progress-track{ height:3px; background:var(--border); border-radius:3px; margin-top:9px; overflow:hidden; }
 .resume-progress-fill{ height:100%; width:0%; background:var(--grad-envol); border-radius:3px; transition:width .3s ease; }
 .resume-play-btn{ width:34px; height:34px; border-radius:50%; background:var(--grad-envol); color:#0A0A10; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .resume-play-btn svg{ width:16px; height:16px; }
