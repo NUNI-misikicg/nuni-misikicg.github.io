@@ -10148,6 +10148,8 @@ async function loadHomeTalentRowInner(){
       const votedBadge = (data.my_vote_artist_id === a.id)
         ? `<div class="htal-voted" title="Vous avez voté"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></div>` : '';
       const crown = a.rank === 1 ? '<div class="htal-crown"><svg class="nuni-ic nuni-ic-gold filled" viewBox="0 0 24 24" style="width:100%;height:100%;"><path d="M4 18h16l1-9-5 3-4-6-4 6-5-3 1 9z"/></svg></div>' : '';
+      const alreadyVoted = data.my_vote_artist_id === a.id;
+      const votedElsewhere = data.my_vote_artist_id && data.my_vote_artist_id !== a.id;
       card.innerHTML = `
         ${crown}
         <div class="htal-scrim"></div>
@@ -10156,8 +10158,11 @@ async function loadHomeTalentRowInner(){
         <div class="htal-info">
           <div class="htal-name">${name}${a.is_verified ? ' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>' : ''}</div>
           <div class="htal-votes">${(a.votes_this_week||0)} vote${a.votes_this_week>1?'s':''} cette semaine</div>
+          ${!alreadyVoted ? `<button class="htal-vote-btn" ${votedElsewhere ? 'disabled' : ''}>Voter</button>` : ''}
         </div>`;
       card.onclick = ()=> openArtistPage(name, a.id);
+      const voteBtn = card.querySelector('.htal-vote-btn');
+      if(voteBtn) voteBtn.onclick = (e)=>{ e.stopPropagation(); voteForArtist(a.id, voteBtn); };
       row.appendChild(card);
     });
   }catch(e){ /* pas grave si le serveur est momentanément indisponible */ }
@@ -10606,7 +10611,10 @@ async function voteForArtist(artistId, btn){
       spawnVoteBubble(rect.left + rect.width/2, rect.top + rect.height/2);
     }
     toast(data.message || 'Vote enregistré !');
-    openTalentModal(); // recharge le vrai classement à jour
+    // Rafraîchit le vrai contexte d'où le vote a été lancé — jamais un plein écran surprise
+    // si on votait juste depuis une carte de la home.
+    if(document.getElementById('talent-modal-overlay')){ openTalentModal(); }
+    else { loadHomeTalentRowInner(); }
  }catch(e){ if(btn) btn.disabled = false; toast(' Impossible de contacter le serveur NUNI.'); }
 }
 function spawnVoteBubble(x, y){
