@@ -6020,6 +6020,7 @@ function renderHomeHero(){
   heroRotatePool = [...top5].sort(()=> Math.random()-0.5);
   heroRotateIndex = 0;
   applyHeroTrack(heroRotatePool[0], hero, titleEl, subEl, playBtn, coverEl, liveCountEl, shareBtn);
+  renderHeroSecondaryCovers();
   clearInterval(heroRotateTimer);
   if(heroRotatePool.length > 1){
     heroRotateTimer = setInterval(()=>{
@@ -6027,11 +6028,53 @@ function renderHomeHero(){
       hero.classList.add('hero-fading');
       setTimeout(()=>{
         applyHeroTrack(heroRotatePool[heroRotateIndex], hero, titleEl, subEl, playBtn, coverEl, liveCountEl, shareBtn);
+        renderHeroSecondaryCovers();
         hero.classList.remove('hero-fading');
       }, 420);
     }, 8000);
   }
 }
+// ---------- Pochettes secondaires flottantes du Hero — les 2-3 prochains vrais morceaux
+// du même pool de rotation (jamais une pochette inventée), pour donner une impression de
+// profondeur/éventail sans reconstruire toute la géométrie du Hero. ----------
+function renderHeroSecondaryCovers(){
+  const box = document.getElementById('ph-secondary-covers');
+  if(!box || !heroRotatePool || heroRotatePool.length < 2) { if(box) box.innerHTML=''; return; }
+  const upcoming = [];
+  for(let i=1; i<heroRotatePool.length && upcoming.length<3; i++){
+    const tr = heroRotatePool[(heroRotateIndex + i) % heroRotatePool.length];
+    if(tr && tr.cover) upcoming.push(tr);
+  }
+  box.innerHTML = upcoming.map(tr=>
+    `<div class="ph-sec-cover" style="background-image:url(${tr.cover})" title="${esc(tr.t)}"></div>`
+  ).join('');
+}
+// ---------- Micro-parallax souris sur le Hero — amplitude très faible, désactivé si
+// prefers-reduced-motion, throttlé via requestAnimationFrame (jamais de recalcul par pixel). ----------
+(function initHeroParallax(){
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const wrap = document.getElementById('ph-cover-wrap');
+  if(!wrap) return;
+  let ticking = false, targetX = 0, targetY = 0;
+  document.addEventListener('mousemove', (e)=>{
+    const hero = document.getElementById('premium-hero-accueil');
+    if(!hero) return;
+    const rect = hero.getBoundingClientRect();
+    if(e.clientY < rect.top || e.clientY > rect.bottom) return; // souris hors du Hero, on ne bouge rien
+    targetX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+    targetY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    if(!ticking){
+      requestAnimationFrame(()=>{
+        const cover = document.getElementById('premium-hero-cover');
+        const secBox = document.getElementById('ph-secondary-covers');
+        if(cover) cover.style.transform = `translate(${targetX*4}px, ${targetY*3}px)`;
+        if(secBox) secBox.style.transform = `translate(${targetX*10}px, ${targetY*7}px)`;
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive:true });
+})();
 /* ---- Scène du Hero — quelques particules très discrètes qui dérivent lentement vers le
    haut, façon poussière de lumière. Génération peu fréquente et peu nombreuse : jamais plus
    de 4-5 en même temps, pas de coût de performance notable. ---- */
@@ -6629,21 +6672,30 @@ function openMoodPage(key, label){
       return;
     }
     const lead = list[0];
+    // Vrais artistes uniques de cette ambiance — jamais une donnée inventée, dérivée
+    // directement des morceaux réels déjà chargés.
+    const uniqueArtists = [];
+    const seenArtistKeys = new Set();
+    list.forEach(tr=>{
+      const key = tr.artistId || tr.a;
+      if(!seenArtistKeys.has(key)){ seenArtistKeys.add(key); uniqueArtists.push(tr); }
+    });
 
-    // ---- Introduction compacte — la pochette DOMINE visuellement le texte "AMBIANCE",
-    // musique avant décor. Pas de hero plein écran flouté : la pochette et les infos sont
-    // côte à côte dans une composition dense. Pas d'image dédiée en base, donc la vraie
-    // pochette du premier morceau sert d'illustration — jamais une image inventée. ----
+    // ---- Introduction — la pochette DOMINE visuellement le texte "AMBIANCE", musique
+    // avant décor. Pas d'image dédiée en base, donc la vraie pochette du premier morceau
+    // sert d'illustration — jamais une image inventée. ----
     overlay.innerHTML = `
       <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       <div class="nre-wrap mood-wrap">
         <div class="mood-intro">
-          <div class="mood-intro-halo"></div>
-          <div class="mood-intro-cover" style="${lead.cover ? `background-image:url(${lead.cover});` : 'background:var(--grad-envol);'}"></div>
+          <div class="mood-intro-cover-wrap">
+            <div class="mood-intro-halo"></div>
+            <div class="mood-intro-cover" style="${lead.cover ? `background-image:url(${lead.cover});` : 'background:var(--grad-envol);'}"></div>
+          </div>
           <div class="mood-intro-info">
             <span class="mood-eyebrow">Ambiance</span>
             <h1 class="mood-title serif">${esc(label)}</h1>
-            <p class="mood-meta">${list.length} titre${list.length>1?'s':''}</p>
+            <p class="mood-meta">${list.length} titre${list.length>1?'s':''} — Sélection éditoriale NUNI</p>
             <div class="mood-lead-title">${esc(lead.t)}</div>
             <div class="mood-lead-artist">${esc(lead.a)}</div>
             <button class="mood-play-btn"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg> Écouter</button>
@@ -6651,6 +6703,9 @@ function openMoodPage(key, label){
         </div>
         <div class="mood-section-label">Dans cette ambiance</div>
         <div class="mood-grid" id="mood-grid"></div>
+        ${uniqueArtists.length > 1 ? `
+        <div class="mood-section-label mood-artists-label">Artistes à découvrir</div>
+        <div class="mood-artists-row" id="mood-artists-row"></div>` : ''}
       </div>`;
     overlay.querySelector('.cp-close').onclick = closeOverlay;
     overlay.querySelector('.mood-intro-cover').onclick = ()=>{ closeOverlay(); handleTrackCardClick(lead); };
@@ -6663,12 +6718,11 @@ function openMoodPage(key, label){
         const theme = document.documentElement.getAttribute('data-theme') || 'dark';
         const halo = overlay.querySelector('.mood-intro-halo');
         if(halo) halo.style.background =
-          `radial-gradient(circle at 30% 40%, color-mix(in srgb, ${p.dominant} ${theme==='light'?22:38}%, transparent) 0%, transparent 72%)`;
+          `radial-gradient(circle, color-mix(in srgb, ${p.dominant} ${theme==='light'?18:32}%, transparent) 0%, transparent 70%)`;
       });
     }
 
-    // ---- Grille — tous les vrais morceaux traités uniformément, jamais un morceau
-    // "principal" séparé cette fois : la composition d'introduction joue déjà ce rôle. ----
+    // ---- Grille — tous les vrais morceaux traités uniformément. ----
     const grid = document.getElementById('mood-grid');
     list.forEach(tr=>{
       const card = document.createElement('div');
@@ -6683,6 +6737,22 @@ function openMoodPage(key, label){
       card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
       grid.appendChild(card);
     });
+
+    // ---- Artistes à découvrir — uniquement si plusieurs artistes réels distincts
+    // apparaissent dans cette ambiance (sinon la section n'a pas de sens). ----
+    if(uniqueArtists.length > 1){
+      const artistsRow = document.getElementById('mood-artists-row');
+      uniqueArtists.forEach(tr=>{
+        const initials = tr.a.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        const item = document.createElement('div');
+        item.className = 'mood-artist-item';
+        item.innerHTML = `
+          <div class="mood-artist-av" style="${tr.artistAvatarUrl ? `background-image:url(${cloudinaryFaceCrop(tr.artistAvatarUrl)});` : ''}">${tr.artistAvatarUrl ? '' : initials}</div>
+          <div class="mood-artist-name">${esc(tr.a)}</div>`;
+        item.onclick = ()=>{ closeOverlay(); openArtistPage(tr.a, tr.artistId); };
+        artistsRow.appendChild(item);
+      });
+    }
   }).catch(()=> toast('Impossible de charger cette ambiance pour le moment.'));
 }
 function ensureMoodPageStyles(){
@@ -6690,47 +6760,48 @@ function ensureMoodPageStyles(){
   const style = document.createElement('style');
   style.id = 'mood-page-styles';
   style.textContent = `
-    .mood-wrap{padding-top:28px !important;}
-    /* ---- Introduction — pochette dominante (220-300px desktop), infos à droite,
-       jamais un hero plein écran. Aucune hauteur artificielle : la composition tient
-       à la hauteur réelle de son contenu. ---- */
-    .mood-intro{position:relative; display:flex; align-items:center; gap:32px; margin-bottom:36px;}
-    .mood-intro-halo{position:absolute; inset:-30px; filter:blur(50px); opacity:.5; pointer-events:none; z-index:0;}
-    .mood-intro-cover{position:relative; z-index:1; width:clamp(170px, 18vw, 300px); height:clamp(170px, 18vw, 300px); flex-shrink:0; border-radius:16px; background-size:cover; background-position:center; box-shadow:0 22px 48px -16px rgba(0,0,0,.4); cursor:pointer;}
+    .mood-wrap{padding-top:28px !important; max-width:1400px !important;}
+    /* ---- Introduction — grande pochette qui semble éclairer la page (halo scopé
+       strictement sur elle, jamais sur toute la composition). ---- */
+    .mood-intro{position:relative; display:flex; align-items:center; gap:40px; margin-bottom:44px;}
+    .mood-intro-cover-wrap{position:relative; flex-shrink:0;}
+    .mood-intro-halo{position:absolute; inset:-60px; filter:blur(120px); opacity:.25; pointer-events:none; z-index:0;}
+    .mood-intro-cover{position:relative; z-index:1; width:clamp(220px, 24vw, 420px); height:clamp(220px, 24vw, 420px); border-radius:18px; background-size:cover; background-position:center; box-shadow:0 28px 60px -18px rgba(0,0,0,.45); cursor:pointer;}
     .mood-intro-info{position:relative; z-index:1;}
-    .mood-eyebrow{font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-faint); font-weight:700;}
-    .mood-title{font-size:clamp(30px, 4.5vw, 46px); color:var(--text); margin-top:4px; line-height:1;}
-    .mood-lead-title{font-size:15px; font-weight:700; color:var(--text); margin-top:14px;}
-    .mood-lead-artist{font-size:13px; color:var(--text-dim); margin-top:2px;}
-    .mood-meta{font-size:12.5px; color:var(--text-faint); margin-top:6px;}
-    .mood-play-btn{display:inline-flex; align-items:center; gap:7px; margin-top:16px; background:var(--text); color:var(--bg); border:none; border-radius:999px; padding:10px 22px; font-size:13px; font-weight:700; cursor:pointer; transition:transform .2s ease;}
+    .mood-eyebrow{font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--text-faint); font-weight:700;}
+    .mood-title{font-size:clamp(40px, 6vw, 76px); color:var(--text); margin-top:6px; line-height:1;}
+    .mood-lead-title{font-size:17px; font-weight:700; color:var(--text); margin-top:18px;}
+    .mood-lead-artist{font-size:14px; color:var(--text-dim); margin-top:3px;}
+    .mood-meta{font-size:13px; color:var(--text-faint); margin-top:8px;}
+    .mood-play-btn{display:inline-flex; align-items:center; gap:8px; margin-top:20px; background:var(--text); color:var(--bg); border:none; border-radius:999px; padding:12px 26px; font-size:14px; font-weight:700; cursor:pointer; transition:transform .2s ease;}
     .mood-play-btn:hover{transform:scale(1.04);}
 
     .mood-section-label{font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-faint); font-weight:700; margin-bottom:16px;}
-    /* ---- Vraie grille CSS Grid — colonnes explicitement contrôlées par largeur réelle,
-       jamais un flex-wrap approximatif. Tous les morceaux traités à l'identique, aucune
-       séparation "principal"/"autres". ---- */
-    .mood-grid{display:grid; grid-template-columns:repeat(6, 1fr); gap:24px;}
+    .mood-artists-label{margin-top:44px;}
+    /* ---- Grille musicale — minmax(180px) comme demandé, colonnes réelles selon largeur. ---- */
+    .mood-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:26px;}
     .mood-card{cursor:pointer; min-width:0;}
-    .mood-card-cover{position:relative; width:100%; aspect-ratio:1; border-radius:10px; background-size:cover; background-position:center; margin-bottom:9px; overflow:hidden;}
-    .mood-card-play{position:absolute; right:8px; bottom:8px; width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.25); color:#fff; display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(4px); transition:opacity .2s ease, transform .2s ease;}
+    .mood-card-cover{position:relative; width:100%; aspect-ratio:1; border-radius:10px; background-size:cover; background-position:center; margin-bottom:10px; overflow:hidden; transition:transform .25s ease, box-shadow .25s ease;}
+    .mood-card:hover .mood-card-cover{transform:translateY(-5px); box-shadow:0 18px 34px -14px rgba(0,0,0,.4);}
+    .mood-card-play{position:absolute; right:9px; bottom:9px; width:36px; height:36px; border-radius:50%; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.25); color:#fff; display:flex; align-items:center; justify-content:center; opacity:0; transform:translateY(4px); transition:opacity .2s ease, transform .2s ease;}
     .mood-card:hover .mood-card-play{opacity:1; transform:translateY(0);}
-    .mood-card-title{font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-    .mood-card-artist{font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .mood-card-title{font-size:13.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .mood-card-artist{font-size:12px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
-    @media(max-width:1280px){ .mood-grid{grid-template-columns:repeat(5, 1fr);} }
-    @media(max-width:1024px){ .mood-grid{grid-template-columns:repeat(4, 1fr);} }
-    @media(max-width:768px){
-      .mood-grid{grid-template-columns:repeat(3, 1fr); gap:16px;}
-    }
+    /* ---- Artistes à découvrir — vrais artistes uniques de cette ambiance. ---- */
+    .mood-artists-row{display:flex; gap:24px; overflow-x:auto; padding-bottom:8px;}
+    .mood-artist-item{display:flex; flex-direction:column; align-items:center; text-align:center; width:96px; flex-shrink:0; cursor:pointer;}
+    .mood-artist-av{width:84px; height:84px; border-radius:50%; background:var(--grad-envol); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:22px; margin-bottom:8px;}
+    .mood-artist-name{font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:96px;}
+
     @media(max-width:600px){
       .mood-wrap{padding-top:calc(52px + env(safe-area-inset-top,0)) !important; padding-left:18px; padding-right:18px;}
-      .mood-intro{flex-direction:column; align-items:flex-start; gap:18px; margin-bottom:28px;}
-      .mood-intro-cover{width:min(60vw, 220px); height:min(60vw, 220px);}
-      .mood-title{font-size:26px;}
+      .mood-intro{flex-direction:column; align-items:flex-start; gap:20px; margin-bottom:32px;}
+      .mood-intro-cover{width:min(65vw, 260px); height:min(65vw, 260px);}
+      .mood-title{font-size:34px;}
       .mood-grid{grid-template-columns:repeat(2, 1fr); gap:14px;}
       /* Sur mobile, la pochette tactile porte toujours le bouton play, jamais besoin de hover */
-      .mood-card-play{opacity:1; transform:none; width:28px; height:28px;}
+      .mood-card-play{opacity:1; transform:none; width:30px; height:30px;}
     }
   `;
   document.head.appendChild(style);
