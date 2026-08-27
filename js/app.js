@@ -4840,7 +4840,7 @@ function fillNouveautesAsymmetric(id, list){
       el.className = 'rls-card' + (i===0 ? ' is-lead' : '');
       const coverInner = tr.cover ? '' : `<div class="cover-glyph pal-pattern"></div>`;
       el.innerHTML = `
-        <div class="rls-art ${tr.cover ? '' : (tr.p||'pal-1')}">${coverInner}</div>
+        <div class="rls-art ${tr.cover ? '' : (tr.p||'pal-1')}">${coverInner}<button class="rls-art-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button></div>
         <div class="rls-info">
           <span class="rls-tag"></span>
           <h3 class="rls-title"></h3>
@@ -4849,6 +4849,7 @@ function fillNouveautesAsymmetric(id, list){
       el.querySelector('.rls-tag').textContent = tr.releaseType || 'Single';
       el.querySelector('.rls-title').textContent = tr.t;
       el.querySelector('.rls-artist').textContent = tr.a;
+      el.querySelector('.rls-art-play').onclick = (e)=>{ e.stopPropagation(); playTrack(tr); };
       if(tr.cover){
         const artEl = el.querySelector('.rls-art');
         const probe = new Image();

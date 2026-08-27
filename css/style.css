@@ -1446,6 +1446,13 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 .rls-card.is-lead{ grid-row:1/3; min-height:320px; }
 .rls-art{ position:absolute; inset:0; background-size:cover; background-position:center; transition:transform .5s var(--ease); }
 .rls-card:hover .rls-art{ transform:scale(1.04); }
+.rls-art-play{
+  position:absolute; top:14px; right:14px; z-index:2; width:38px; height:38px; border-radius:50%;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.25); color:#fff;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  opacity:0; transform:translateY(-4px); transition:opacity .25s ease, transform .25s ease;
+}
+.rls-card:hover .rls-art-play{ opacity:1; transform:translateY(0); }
 .rls-card:after{ content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(0,0,0,.78)); }
 .rls-info{ position:absolute; z-index:1; left:18px; right:18px; bottom:16px; color:#fff; }
 .rls-tag{ font-family:var(--font-data); font-size:9.5px; text-transform:uppercase; letter-spacing:.18em; opacity:.75; }
