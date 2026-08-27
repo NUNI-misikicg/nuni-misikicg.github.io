@@ -4285,7 +4285,18 @@ async function loadArtistFollowedArtists(artistId){
   }catch(e){ /* pas grave — la section reste simplement masquée */ }
 }
 function openAlbumView(tr){
-  const albumTracks = tracks.filter(t => t.album === tr.album && t.a === tr.a);
+  const rawAlbumTracks = tracks.filter(t => t.album === tr.album && t.a === tr.a);
+  // Filet de sécurité réel — dédoublonne par identifiant réel (realId) si disponible,
+  // sinon par la combinaison titre+durée. Corrige le cas où le même morceau apparaissait
+  // deux fois dans la liste d'un album (ex. après un rafraîchissement se chevauchant avec
+  // un autre, malgré la protection déjà en place dans loadRealTracks).
+  const seenKeys = new Set();
+  const albumTracks = rawAlbumTracks.filter(t=>{
+    const key = t.realId != null ? ('id:'+t.realId) : ('t:'+t.t);
+    if(seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    return true;
+  });
   if(albumTracks.length <= 1){ playTrack(tr); return; } // un seul morceau trouvé : on joue direct par sécurité
   ensureAlbumViewStyles();
   ensurePlaylistViewStyles(); // réutilise les styles de la carte "Le P" et du rail similaire, déjà écrits pour la page Playlist
@@ -4298,7 +4309,7 @@ function openAlbumView(tr){
 
   const coverStyle = tr.cover ? `background-image:url(${tr.cover});` : `background:var(--grad-envol);`;
   const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
-  const artistAvatarStyle = tr.artistAvatar ? `background-image:url(${tr.artistAvatar});` : '';
+  const artistAvatarStyle = tr.artistAvatarUrl ? `background-image:url(${tr.artistAvatarUrl});` : '';
   const artistInitial = (tr.a || '?').charAt(0).toUpperCase();
   const releaseYear = tr.release ? String(tr.release).slice(-4) : '';
 
@@ -11662,6 +11673,35 @@ function ensureNewReleasesEditorialStyles(){
     .nre-other-title{font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
     .nre-other-artist{font-size:11.5px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
+    /* ---- Nouveautés — 3 cartes éditoriales (au lieu d'une seule + liste) ---- */
+    .nre-top3{display:grid; grid-template-columns:repeat(3, 1fr); gap:28px; margin-bottom:44px;}
+    .nre-t3-card{cursor:pointer;}
+    .nre-t3-eyebrow{font-size:10.5px; letter-spacing:1px; text-transform:uppercase; color:var(--text-faint); font-weight:700;}
+    .nre-t3-title{font-size:16px; font-weight:700; color:var(--text); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .nre-t3-artist{font-size:12.5px; color:var(--text-dim); margin-top:1px;}
+    .nre-t3-cover-wrap{position:relative; margin-top:12px;}
+    .nre-t3-halo{position:absolute; inset:-24px; filter:blur(40px); opacity:.45; pointer-events:none; z-index:0;}
+    .nre-t3-cover{position:relative; z-index:1; width:100%; aspect-ratio:1; border-radius:12px; background-size:cover; background-position:center; box-shadow:0 18px 36px -16px rgba(0,0,0,.4); transition:transform .3s ease;}
+    .nre-t3-card:hover .nre-t3-cover{transform:translateY(-3px);}
+    .nre-t3-avatar{position:absolute; z-index:2; right:-8px; bottom:-8px; width:52px; height:52px; border-radius:10px; background-size:cover; background-position:center; border:2px solid var(--bg); box-shadow:0 8px 18px -8px rgba(0,0,0,.4);}
+
+    /* ---- Titres du moment — grille dense multi-colonnes, menu "..." réutilisé ---- */
+    .nre-section-label{font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-faint); font-weight:700; margin-bottom:16px;}
+    .nre-grid-list{display:grid; grid-template-columns:repeat(4, 1fr); gap:4px 24px;}
+    .nre-grid-item{display:flex; align-items:center; gap:11px; padding:8px 4px; border-radius:8px; cursor:pointer; transition:background .2s ease;}
+    .nre-grid-item:hover{background:var(--bg-card);}
+    .nre-grid-cover{width:42px; height:42px; border-radius:7px; flex-shrink:0; background-size:cover; background-position:center;}
+    .nre-grid-info{flex:1; min-width:0;}
+    .nre-grid-title{font-size:12.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .nre-grid-artist{font-size:11px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .nre-grid-more{width:26px; height:26px; border-radius:50%; flex-shrink:0; border:none; background:none; color:var(--text-faint); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s ease;}
+    .nre-grid-item:hover .nre-grid-more{opacity:1;}
+
+    @media(max-width:900px){
+      .nre-top3{grid-template-columns:1fr; gap:24px;}
+      .nre-grid-list{grid-template-columns:repeat(2, 1fr);}
+    }
+
     @media(max-width:760px){
       .nre-wrap{padding:calc(60px + env(safe-area-inset-top,0)) 18px 60px;}
       .nre-top{flex-direction:column; gap:26px;}
@@ -11823,24 +11863,22 @@ function openNewReleasesPage(){
     requestAnimationFrame(()=> overlay.classList.add('show'));
     return;
   }
-  const featured = real[0]; // sortie la plus récente, toutes catégories confondues — vraie donnée
-  const singles = real.filter(t=>(!t.releaseType || t.releaseType==='Single') && t!==featured).slice(0,5);
-  const others = real.filter(t=> t!==featured && !singles.includes(t)).slice(0, 20);
-  const featuredTrackCount = real.filter(t=> t.album && t.album===featured.album && t.a===featured.a).length;
+  // Les 3 sorties les plus récentes (toutes catégories) mises en avant en cartes
+  // éditoriales, puis le reste en grille dense "Titres du moment", jamais de données
+  // inventées — l'ordre vient uniquement de la vraie date de sortie.
+  const topThree = real.slice(0, 3);
+  const rest = real.slice(3, 23);
+  const weekly = real.slice(0, 20); // vraies sorties récentes pour le rail du bas
 
   overlay.innerHTML = `
     <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     <div class="nre-wrap">
-      <div class="nre-titlebar"><div class="nre-title serif">Nouveautés</div><p class="nre-sub">Les dernières sorties de la scène NUNI.</p></div>
-      <div class="nre-top">
-        <div class="nre-featured" id="nre-featured"></div>
-        <div class="nre-singles">
-          <div class="nre-singles-label">Dernières sorties</div>
-          <div class="nre-singles-list" id="nre-singles-list"></div>
-        </div>
-      </div>
-      <div class="nre-others" id="nre-others-wrap" style="display:${others.length ? '' : 'none'};">
-        <div class="nre-others-label">Autres sorties</div>
+      <div class="nre-titlebar"><div class="nre-title serif">Nouveautés</div></div>
+      <div class="nre-top3" id="nre-top3"></div>
+      <div class="nre-section-label">Titres du moment</div>
+      <div class="nre-grid-list" id="nre-grid-list"></div>
+      <div class="nre-others" id="nre-others-wrap" style="display:${weekly.length ? '' : 'none'};">
+        <div class="nre-others-label">Nouveautés de la semaine</div>
         <div class="nre-others-row" id="nre-others-row"></div>
       </div>
     </div>`;
@@ -11848,52 +11886,62 @@ function openNewReleasesPage(){
   requestAnimationFrame(()=> overlay.classList.add('show'));
   attachSwipeDownToClose(overlay, closeOverlay);
 
-  // ---- Sortie principale — grande composition éditoriale, immersion couleur via
-  // NuniPalette (même système que Hero/Album/Sorties, jamais un 2e moteur de palette) ----
-  const featBox = document.getElementById('nre-featured');
-  featBox.innerHTML = `
-    <div class="nre-featured-halo"></div>
-    <div class="nre-featured-cover" style="${featured.cover ? `background-image:url(${featured.cover});` : 'background:var(--grad-envol);'}"></div>
-    <div class="nre-featured-info">
-      <span class="nre-featured-label">${esc(featured.releaseType || 'Album')}</span>
-      <div class="nre-featured-title serif">${esc(featured.album || featured.t)}</div>
-      <div class="nre-featured-artist">${esc(featured.a)}</div>
-      ${featuredTrackCount>1 ? `<div class="nre-featured-meta">${featuredTrackCount} titres</div>` : ''}
+  // ---- 3 cartes éditoriales — pochette dominante, petit avatar artiste en coin si
+  // réellement disponible (maintenant câblé correctement, voir correctif artistAvatarUrl),
+  // halo NuniPalette. ----
+  const top3Box = document.getElementById('nre-top3');
+  top3Box.innerHTML = topThree.map((f,i)=>{
+    const typeLabel = f.releaseType === 'Album' ? 'NOUVEL ALBUM' : f.releaseType === 'EP' ? 'NOUVEL EP' : f.releaseType === 'Mixtape' ? 'NOUVELLE MIXTAPE' : 'NOUVEAU SINGLE';
+    return `
+    <div class="nre-t3-card" data-i="${i}">
+      <span class="nre-t3-eyebrow">${typeLabel}</span>
+      <div class="nre-t3-title">${esc(f.album || f.t)}</div>
+      <div class="nre-t3-artist">${esc(f.a)}</div>
+      <div class="nre-t3-cover-wrap">
+        <div class="nre-t3-halo"></div>
+        <div class="nre-t3-cover" style="${f.cover ? `background-image:url(${f.cover});` : 'background:var(--grad-envol);'}"></div>
+        ${f.artistAvatarUrl ? `<div class="nre-t3-avatar" style="background-image:url(${cloudinaryFaceCrop(f.artistAvatarUrl)})"></div>` : ''}
+      </div>
     </div>`;
-  featBox.querySelector('.nre-featured-cover').onclick = ()=>{ closeOverlay(); handleTrackCardClick(featured); };
-  if(featured.cover){
-    NuniPalette.extract(featured.cover).then(p=>{
-      const theme = document.documentElement.getAttribute('data-theme') || 'dark';
-      featBox.querySelector('.nre-featured-halo').style.background =
-        `radial-gradient(circle at 35% 35%, color-mix(in srgb, ${p.dominant} ${theme==='light'?20:42}%, transparent) 0%, transparent 70%)`;
-    });
-  }
-
-  // ---- Singles récents — max 5, réutilise playTrack/handleTrackCardClick tels quels ----
-  const singlesList = document.getElementById('nre-singles-list');
-  singlesList.innerHTML = singles.map((s,i)=>`
-    <div class="nre-single-row" data-i="${i}">
-      <div class="nre-single-cover" style="${s.cover ? `background-image:url(${s.cover});` : 'background:var(--grad-envol);'}"></div>
-      <div class="nre-single-info"><span class="nre-single-label">Single</span><div class="nre-single-title">${esc(s.t)}</div><div class="nre-single-artist">${esc(s.a)}</div></div>
-      <button class="nre-single-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M8 5v14l11-7z"/></svg></button>
-    </div>`).join('') || `<p class="nre-empty-inline">Aucun single récent pour le moment.</p>`;
-  singlesList.querySelectorAll('.nre-single-row').forEach(row=>{
-    const s = singles[Number(row.dataset.i)];
-    row.querySelector('.nre-single-play').onclick = (e)=>{ e.stopPropagation(); playTrack(s); };
-    row.onclick = ()=>{ closeOverlay(); handleTrackCardClick(s); };
+  }).join('');
+  top3Box.querySelectorAll('.nre-t3-card').forEach(card=>{
+    const f = topThree[Number(card.dataset.i)];
+    card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(f); };
+    if(f.cover){
+      NuniPalette.extract(f.cover).then(p=>{
+        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+        card.querySelector('.nre-t3-halo').style.background =
+          `radial-gradient(circle at 30% 30%, color-mix(in srgb, ${p.dominant} ${theme==='light'?16:36}%, transparent) 0%, transparent 70%)`;
+      });
+    }
   });
 
-  // ---- Autres sorties — rail horizontal, pochettes musicales (pas des vignettes 40px) ----
-  if(others.length){
+  // ---- Titres du moment — grille dense, plusieurs colonnes, menu "..." réutilisant le
+  // vrai tiroir d'options déjà existant (openTrackCardMenu), jamais un nouveau menu. ----
+  const gridBox = document.getElementById('nre-grid-list');
+  gridBox.innerHTML = rest.map((t,i)=>`
+    <div class="nre-grid-item" data-i="${i}">
+      <div class="nre-grid-cover" style="${t.cover ? `background-image:url(${t.cover});` : 'background:var(--grad-envol);'}"></div>
+      <div class="nre-grid-info"><div class="nre-grid-title">${esc(t.t)}</div><div class="nre-grid-artist">${esc(t.a)}</div></div>
+      <button class="nre-grid-more" aria-label="Options"><svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+    </div>`).join('') || `<p class="nre-empty-inline">Aucun autre titre pour le moment.</p>`;
+  gridBox.querySelectorAll('.nre-grid-item').forEach(row=>{
+    const t = rest[Number(row.dataset.i)];
+    row.querySelector('.nre-grid-more').onclick = (e)=>{ e.stopPropagation(); openTrackCardMenu(t, e.currentTarget); };
+    row.onclick = ()=>{ closeOverlay(); handleTrackCardClick(t); };
+  });
+
+  // ---- Nouveautés de la semaine — rail horizontal, pochettes musicales ----
+  if(weekly.length){
     const othersRow = document.getElementById('nre-others-row');
-    othersRow.innerHTML = others.map((o,i)=>`
+    othersRow.innerHTML = weekly.map((o,i)=>`
       <div class="nre-other-card" data-i="${i}">
         <div class="nre-other-cover" style="${o.cover ? `background-image:url(${o.cover});` : 'background:var(--grad-envol);'}"></div>
         <div class="nre-other-title">${esc(o.t)}</div>
         <div class="nre-other-artist">${esc(o.a)}</div>
       </div>`).join('');
     othersRow.querySelectorAll('.nre-other-card').forEach(card=>{
-      const o = others[Number(card.dataset.i)];
+      const o = weekly[Number(card.dataset.i)];
       card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(o); };
     });
   }
@@ -12069,7 +12117,15 @@ async function openPlaylistPage(id){
     });
     const data = await res.json();
  if(!res.ok){ toast(' ' + (data.error || 'Playlist introuvable.')); closeOverlay(); return; }
-    const mapped = (data.tracks || []).map(mapPlaylistTrack);
+    const rawMapped = (data.tracks || []).map(mapPlaylistTrack);
+    // Même filet de sécurité que openAlbumView — dédoublonne par identifiant réel.
+    const seenPlvKeys = new Set();
+    const mapped = rawMapped.filter(t=>{
+      const key = t.realId != null ? ('id:'+t.realId) : ('t:'+t.t);
+      if(seenPlvKeys.has(key)) return false;
+      seenPlvKeys.add(key);
+      return true;
+    });
     const cover = mapped.find(t=>t.cover) ? mapped.find(t=>t.cover).cover : null;
 
     const heroBg = overlay.querySelector('.plv-hero');
