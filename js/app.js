@@ -2635,7 +2635,7 @@ async function openUpcomingReleasesPage(){
         d: String(d.getDate()).padStart(2,'0'), m: d.toLocaleDateString('fr-FR', {month:'short'}).replace('.',''),
         t: r.title, a: r.artist_name || r.first_name || 'Artiste NUNI',
         c: days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `Dans ${days} jours`,
-        id: r.id, notifyRequested: !!r.notify_requested,
+        id: r.id, notifyRequested: !!r.notify_requested, cover: r.cover_url || null, type: r.release_type || null,
       };
     });
     fillReleaseRow('upcoming-full-list', mapped);
@@ -6451,7 +6451,7 @@ function loadUpcomingReleases(){
         m: d.toLocaleDateString('fr-FR', {month:'short'}).replace('.',''),
         t: r.title, a: r.artist_name || r.first_name || 'Artiste NUNI',
         c: days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `Dans ${days} jours`,
-        id: r.id, notifyRequested: !!r.notify_requested,
+        id: r.id, notifyRequested: !!r.notify_requested, cover: r.cover_url || null, type: r.release_type || null,
       };
     });
     fillReleaseRow('release-row', mapped);
@@ -6467,10 +6467,17 @@ function fillReleaseRow(id, list){
   list.forEach(r=>{
     const card = document.createElement('div');
     card.className = 'release-card';
-    const notifyBtnHtml = r.id ? `<button class="release-notify-btn ${r.notifyRequested?'is-active':''}" data-track-id="${r.id}">${r.notifyRequested ? '✓ Prévenu·e' : 'Me prévenir'}</button>` : '';
+    const notifyBtnHtml = r.id ? `<button class="release-notify-btn ${r.notifyRequested?'is-active':''}" data-track-id="${r.id}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>${r.notifyRequested ? 'Prévenu·e' : 'Me prévenir'}</button>` : '';
+    const coverHtml = r.cover
+      ? `<div class="release-cover" style="background-image:url(${r.cover})"></div>`
+      : `<div class="release-cover release-cover-empty"></div>`;
     card.innerHTML = `
+      ${coverHtml}
       <div class="release-date"><div class="d data">${r.d}</div><div class="m">${r.m}</div></div>
-      <div class="release-info"><div class="t">${r.t}</div><div class="a">${r.a}</div><div class="c">${r.c}</div></div>
+      <div class="release-info">
+        ${r.type ? `<span class="release-type-tag">${esc(r.type)}</span>` : ''}
+        <div class="t">${r.t}</div><div class="a">${r.a}</div><div class="c">${r.c}</div>
+      </div>
       ${notifyBtnHtml}`;
     const notifyBtn = card.querySelector('.release-notify-btn');
     if(notifyBtn) notifyBtn.onclick = ()=> toggleReleaseNotify(notifyBtn, r.id);
@@ -10129,15 +10136,43 @@ async function loadHomeTalentRowInner(){
     wrap.style.display = '';
     row.innerHTML = '';
 
-    // Mosaïque du bandeau éditorial — vraies photos des artistes en tête de classement,
-    // jamais un fond générique. Repli sur le gradient déjà posé en CSS si personne n'a
-    // encore d'avatar (cas réaliste en tout début de vie de la plateforme).
+    // Composition éditoriale à 3 images distinctes — le vrai #1 (par score réel : streams +
+    // votes, voir /api/talent/top100) reste toujours dominant et fixe. Les 2 images
+    // secondaires sont tirées parmi les vraies positions 2 à 10 avec une graine hebdomadaire
+    // déterministe (numéro de semaine ISO) : identique pour tout le monde pendant 7 jours,
+    // change naturellement la semaine suivante — jamais un tirage aléatoire différent à
+    // chaque rechargement, jamais une donnée inventée.
     const photosWrap = document.getElementById('talent-banner-photos');
     if(photosWrap){
-      const withPhoto = list.filter(a=>a.avatar_url).slice(0, 3);
-      photosWrap.innerHTML = withPhoto.map(a=>
-        `<div class="tbp-photo" style="background-image:url('${a.avatar_url}')"></div>`
-      ).join('');
+      const withPhoto = list.filter(a=>a.avatar_url);
+      if(withPhoto.length){
+        const lead = withPhoto[0]; // vrai #1 réel, jamais déplacé
+        const pool = withPhoto.slice(1, 10); // vrai top 2-10 réel
+        const now = new Date();
+        const janFirst = new Date(now.getFullYear(), 0, 1);
+        const isoWeek = Math.ceil((((now - janFirst) / 86400000) + janFirst.getDay() + 1) / 7);
+        let seed = isoWeek + now.getFullYear() * 100;
+        const seededRandom = ()=>{ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+        const shuffled = pool.map(a=>({a, r:seededRandom()})).sort((x,y)=> x.r - y.r).map(x=>x.a);
+        const secondary = shuffled.slice(0, 2);
+        const captions = [
+          { icon:'<path d="M4 18h16l1-9-5 3-4-6-4 6-5-3 1 9z"/>', label:'NOUVEAUX TALENTS', sub:'La relève est là' },
+          { icon:'<path d="M12 20V10M18 20V4M6 20v-6"/>', label:'VOTEZ', sub:'Soutenez vos artistes' },
+          { icon:'<path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.1L12 16.3 5.7 20.7 8 13.6l-6-4.4h7.6z"/>', label:'ÉMERGENCE', sub:'Une nouvelle vision' },
+        ];
+        const artists = [lead, ...secondary];
+        photosWrap.innerHTML = artists.map((a,i)=>{
+          const name = a.artist_name || a.first_name;
+          const cap = captions[i] || captions[captions.length-1];
+          return `<div class="tbp-photo${i===0?' tbp-lead':''}" style="background-image:url('${a.avatar_url}')" data-artist="${a.id}" data-name="${esc(name)}">
+            <div class="tbp-scrim"></div>
+            <div class="tbp-caption"><span class="tbp-caption-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${cap.icon}</svg></span><div><div class="tbp-caption-label">${cap.label}</div><div class="tbp-caption-sub">${cap.sub}</div></div></div>
+          </div>`;
+        }).join('');
+        photosWrap.querySelectorAll('.tbp-photo').forEach(el=>{
+          el.onclick = ()=> openArtistPage(el.dataset.name, Number(el.dataset.artist));
+        });
+      }
     }
 
     list.forEach(a=>{
