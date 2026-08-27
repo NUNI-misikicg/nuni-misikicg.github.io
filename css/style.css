@@ -1416,10 +1416,25 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 .ambiances-grid{ display:flex; gap:16px; flex-wrap:wrap; }
 .ambiance-tile{ position:relative; border-radius:var(--radius-m); overflow:hidden; cursor:pointer; width:180px; height:180px; flex-shrink:0; }
 .ambiance-tile.is-lead{ width:380px; height:280px; }
-@media(max-width:760px){ .ambiance-tile.is-lead{ width:100%; height:220px; } }
+@media(max-width:760px){
+  .ambiance-tile.is-lead{ width:100%; height:220px; }
+  .ambiance-tile:not(.is-lead){ width:150px; height:150px; }
+}
 .ambiance-art{ position:absolute; inset:0; background:var(--grad-nuit); background-size:cover; background-position:center; transition:transform .5s var(--ease); }
-.ambiance-tile:hover .ambiance-art{ transform:scale(1.05); }
-.ambiance-overlay{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.75) 100%); display:flex; flex-direction:column; justify-content:flex-end; padding:18px; }
+.ambiance-tile:hover .ambiance-art{ transform:translateY(-3px) scale(1.06); }
+/* ---- Halo dérivé de la vraie pochette (NuniPalette) — discret par défaut, ne se révèle
+   qu'au survol, jamais un dégradé permanent qui écrase l'image. ---- */
+.ambiance-halo{ position:absolute; inset:-20px; z-index:0; filter:blur(30px); opacity:0; pointer-events:none; transition:opacity .35s ease; }
+.ambiance-tile:hover .ambiance-halo{ opacity:.7; }
+.ambiance-play{
+  position:absolute; right:14px; bottom:14px; z-index:2; width:36px; height:36px; border-radius:50%;
+  background:rgba(0,0,0,.5); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.25); color:#fff;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  opacity:0; transform:translateY(6px); transition:opacity .25s ease, transform .25s ease;
+}
+.ambiance-tile:hover .ambiance-play{ opacity:1; transform:translateY(0); }
+.ambiance-overlay{ position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.75) 100%); display:flex; flex-direction:column; justify-content:flex-end; padding:18px; }
+@media(prefers-reduced-motion: reduce){ .ambiance-tile:hover .ambiance-art{ transform:none; } }
 .ambiance-label{ font-family:var(--font-display); font-style:italic; font-weight:600; color:#fff; }
 .ambiance-tile.is-lead .ambiance-label{ font-size:32px; }
 .ambiance-tile:not(.is-lead) .ambiance-label{ font-size:18px; }

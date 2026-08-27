@@ -6632,14 +6632,21 @@ function loadAmbiances(){
         const leadTrack = mood.tracks[0]; // le plus récent — déjà trié côté serveur
         const el = document.createElement('div');
         el.className = 'ambiance-tile' + (i===0 ? ' is-lead' : '');
-        el.innerHTML = `<div class="ambiance-art"></div><div class="ambiance-overlay"><span class="ambiance-label"></span><span class="ambiance-count"></span></div>`;
+        el.innerHTML = `<div class="ambiance-art"></div><div class="ambiance-halo"></div><button class="ambiance-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><div class="ambiance-overlay"><span class="ambiance-label"></span><span class="ambiance-count"></span></div>`;
         el.querySelector('.ambiance-label').textContent = mood.label;
         el.querySelector('.ambiance-count').textContent = `${mood.tracks.length} titre${mood.tracks.length>1?'s':''}`;
+        el.querySelector('.ambiance-play').onclick = (e)=>{ e.stopPropagation(); openMoodPage(mood.key, mood.label); };
         const artEl = el.querySelector('.ambiance-art');
         if(leadTrack && leadTrack.cover_url){
           const probe = new Image();
           probe.onload = ()=>{ artEl.style.backgroundImage = `url("${leadTrack.cover_url}")`; artEl.style.backgroundSize='cover'; artEl.style.backgroundPosition='center'; };
           probe.src = leadTrack.cover_url;
+          if(typeof NuniPalette !== 'undefined'){
+            NuniPalette.extract(leadTrack.cover_url).then(p=>{
+              el.querySelector('.ambiance-halo').style.background =
+                `radial-gradient(circle at 30% 80%, color-mix(in srgb, ${p.dominant} 45%, transparent) 0%, transparent 65%)`;
+            });
+          }
         }
         el.onclick = ()=> openMoodPage(mood.key, mood.label);
         grid.appendChild(el);
