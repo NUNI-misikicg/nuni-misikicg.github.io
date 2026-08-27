@@ -3048,7 +3048,15 @@ function openArtistPage(name, artistId){
 
   // Vrais morceaux de CET artiste précisément — par identifiant si on le connaît, par nom
   // seulement en dernier recours (morceaux de démo sans compte réel rattaché).
-  const artistTracks = artistId ? tracks.filter(t=>t.artistId===artistId) : tracks.filter(t=>t.a===name);
+  const rawArtistTracks = artistId ? tracks.filter(t=>t.artistId===artistId) : tracks.filter(t=>t.a===name);
+  // Même filet de sécurité qu'Album/Playlist — dédoublonne par identifiant réel.
+  const seenArtistTrackKeys = new Set();
+  const artistTracks = rawArtistTracks.filter(t=>{
+    const key = t.realId != null ? ('id:'+t.realId) : ('t:'+t.t);
+    if(seenArtistTrackKeys.has(key)) return false;
+    seenArtistTrackKeys.add(key);
+    return true;
+  });
 
   // Statistiques réelles de l'en-tête artiste (avant : "2,4M" / "186K" / "9 480" codés en dur).
   const statStreamsEl = document.getElementById('artist-stat-streams');
@@ -8587,9 +8595,16 @@ async function publishRelease(){
     // chargé avant cette publication. Même logique de filtre que celle qui a servi à les
     // peupler la première fois (artistId si connu, sinon nom affiché), rien de nouveau.
     if(currentUser){
-      const freshArtistTracks = currentArtistPageRealId
+      const rawFreshTracks = currentArtistPageRealId
         ? tracks.filter(t=>t.artistId===currentArtistPageRealId)
         : tracks.filter(t=>t.a===artistDisplayName);
+      const seenFreshKeys = new Set();
+      const freshArtistTracks = rawFreshTracks.filter(t=>{
+        const key = t.realId != null ? ('id:'+t.realId) : ('t:'+t.t);
+        if(seenFreshKeys.has(key)) return false;
+        seenFreshKeys.add(key);
+        return true;
+      });
       if(freshArtistTracks.length){
         renderArtistTopTracksList(freshArtistTracks);
         const albumsRow = document.getElementById('shelf-artist-albums');
