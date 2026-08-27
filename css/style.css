@@ -1581,8 +1581,15 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 
 .feature-week{ display:flex; gap:40px; align-items:flex-end; }
 .fw-main{ flex:0 0 auto; width:300px; cursor:pointer; }
-.fw-main-art{ position:relative; width:300px; height:300px; border-radius:18px; background-size:cover; background-position:center; box-shadow:0 26px 54px -18px rgba(0,0,0,.4); transition:transform .35s var(--ease); }
-.fw-main:hover .fw-main-art{ transform:translateY(-5px); }
+.fw-main-art{ position:relative; width:300px; height:300px; border-radius:18px; background-size:cover; background-position:center; box-shadow:0 26px 54px -18px rgba(0,0,0,.4); transition:transform .35s var(--ease), box-shadow .35s var(--ease), filter .35s ease; }
+.fw-main:hover .fw-main-art{ transform:translateY(-5px); box-shadow:0 34px 68px -18px rgba(0,0,0,.5); filter:brightness(1.06); }
+.fw-main-art-play{
+  position:absolute; right:14px; bottom:14px; width:48px; height:48px; border-radius:50%;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.25); color:#fff;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  opacity:0; transform:translateY(6px); transition:opacity .25s ease, transform .25s ease;
+}
+.fw-main:hover .fw-main-art-play{ opacity:1; transform:translateY(0); }
 .fw-main-title{ font-family:var(--font-display); font-style:italic; font-size:21px; font-weight:600; margin-top:14px; color:var(--text); }
 .fw-main-artist{ font-size:13px; color:var(--text-faint); margin-top:3px; }
 .fw-main-play{ width:44px; height:44px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:14px; border:none; cursor:pointer; box-shadow:0 6px 16px -4px color-mix(in srgb, var(--accent) 60%, transparent); transition:transform .2s ease; }
@@ -1604,6 +1611,7 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
   .fw-main-artist{ font-size:12px; }
   .fw-main-info{ flex:1; min-width:0; display:flex; flex-direction:column; }
   .fw-main-play{ width:38px; height:38px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:10px; box-shadow:0 6px 16px -4px color-mix(in srgb, var(--accent) 60%, transparent); }
+  .fw-main-art-play{ display:none; }
   .fw-others{ gap:10px; }
 }
 
