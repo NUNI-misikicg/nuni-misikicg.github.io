@@ -1039,7 +1039,7 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
   transition:transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s cubic-bezier(.2,.8,.2,1);
 }
 @media(max-width:760px){ .asc-photo{ width:90px; height:90px; margin-bottom:8px; } .artist-suggest-card{ width:104px; } }
-.artist-suggest-card:hover .asc-photo{ transform:translateY(-4px); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), 0 14px 30px -10px rgba(0,0,0,.6); }
+.artist-suggest-card:hover .asc-photo{ transform:translateY(-4px) rotate(2deg) scale(1.035); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent), 0 14px 30px -10px rgba(0,0,0,.6); }
 .asc-initials{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-data); font-weight:700; font-size:30px; color:rgba(10,10,16,.5); }
 .asc-info{ display:flex; flex-direction:column; align-items:center; gap:2px; }
 .asc-info .n{ font-size:13.5px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
@@ -1070,7 +1070,8 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .emerging-photo{ position:relative; width:130px; height:130px; border-radius:50%; margin:0 auto 14px; background-size:cover; background-position:center; background:var(--grad-envol); display:flex; align-items:center; justify-content:center; border:1px solid var(--border); transition:transform .25s ease, box-shadow .25s ease; }
 @media(max-width:760px){ .emerging-photo{ width:90px; height:90px; margin-bottom:8px; } .emerging-card{ width:100px !important; } }
 .emerging-photo span{ font-family:var(--font-data); font-weight:700; font-size:30px; color:rgba(255,255,255,.85); }
-.emerging-card:hover .emerging-photo{ transform:translateY(-4px); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); }
+.emerging-card:hover .emerging-photo{ transform:translateY(-4px) rotate(-2deg) scale(1.035); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); }
+@media(prefers-reduced-motion: reduce){ .emerging-card:hover .emerging-photo{ transform:none; } .artist-suggest-card:hover .asc-photo{ transform:none; } }
 .emerging-name{ font-family:var(--font-display); font-style:italic; font-weight:600; font-size:15.5px; color:var(--text); display:flex; align-items:center; justify-content:center; gap:5px; }
 .emerging-name svg{ width:13px; height:13px; flex-shrink:0; }
 .emerging-meta{ font-size:11.5px; color:var(--text-faint); margin-top:3px; }
