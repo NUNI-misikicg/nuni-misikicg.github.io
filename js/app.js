@@ -4226,7 +4226,6 @@ function ensureBadgeStyles(){
   const style = document.createElement('style');
   style.id = 'nuni-badge-styles';
   style.textContent = `
-    .nuni-type-badge{position:absolute; top:8px; left:8px; z-index:2; display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; background:linear-gradient(135deg,#E8C77E,#B98A3D); color:#241708; font-family:Georgia,'Times New Roman',serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:1.4px; box-shadow:0 3px 10px rgba(212,175,106,0.4); border:1px solid rgba(255,255,255,0.25);}
     .av-icon-btn{width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); color:#EDEDED; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s ease, color .15s ease, transform .15s ease;}
     .av-icon-btn:hover{background:rgba(212,175,106,0.18); color:#D4AF6A; transform:translateY(-1px);}
     .av-icon-btn.is-active{background:#D4AF6A; color:#0A0A10; border-color:#D4AF6A;}
@@ -4571,11 +4570,9 @@ function trackCard(tr){
   // vide, son image est assignée juste après via la propriété DOM .style.backgroundImage,
   // qui gère nativement n'importe quel caractère dans l'URL sans échappement manuel.
   const coverInner = `<div class="cover ${tr.cover ? '' : tr.p}">${tr.cover ? '' : '<div class="cover-glyph pal-pattern"></div>'}`;
-  const isMultiTrack = tr.releaseType && tr.releaseType !== 'Single';
   card.innerHTML = `
     ${coverInner}
       ${(tr.artistId && currentUser && currentUser.id === tr.artistId) ? '<span class="imported-badge" title="Votre import">Vous</span>' : ''}
-      ${isMultiTrack ? `<span class="nuni-type-badge" title="${tr.releaseType}"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/></svg> ${tr.releaseType}</span>` : ''}
       <button class="track-card-menu-btn" aria-label="Options">⋮</button>
       <div class="play-fab">
         <svg viewBox="0 0 24 24" class="play-fab-icon"><path d="M8 5v14l11-7z"/></svg>
