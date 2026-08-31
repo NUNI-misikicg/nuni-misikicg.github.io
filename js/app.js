@@ -11963,18 +11963,31 @@ function openNewReleasesPage(){
 }
 function openTopCongoPage(){
   ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement, jamais dupliqué
+  ensureTopCongoHeroStyles();
   let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
   overlay.id = 'categorypage-overlay';
-  overlay.className = 'nre-overlay'; // même conteneur neutre que Nouveautés, réutilisé
+  overlay.className = 'nre-overlay tc-overlay'; // même conteneur neutre que Nouveautés, réutilisé
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
   const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
 
   const top = getTopStreamedTracks(100); // vraie fonction déjà utilisée sur la home, jamais dupliquée
+  const leader = top[0]; // vrai #1 réel — sa pochette domine l'interface, même mécanisme qu'Album/Playlist
+
   overlay.innerHTML = `
     <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    ${leader ? `
+    <div class="tc-hero">
+      <div class="tc-hero-bg" style="background-image:url(${leader.cover || ''})"></div>
+      <div class="tc-hero-fade"></div>
+      <div class="tc-hero-content">
+        <span class="tc-hero-badge">#1 · Top Congo</span>
+        <div class="tc-hero-title serif">${esc(leader.t)}</div>
+        <div class="tc-hero-artist">${esc(leader.a)}</div>
+      </div>
+    </div>` : ''}
     <div class="nre-wrap" style="max-width:720px;">
       <div class="nre-titlebar"><div class="nre-title serif">Top Congo</div><p class="nre-sub">Le classement réel des morceaux les plus écoutés sur NUNI, par vrais streams.</p></div>
       <div class="chart-list" id="tc-full-list">${top.length ? '' : `<p class="nre-empty">Pas encore assez d'écoutes réelles pour établir un classement.</p>`}</div>
@@ -11982,6 +11995,17 @@ function openTopCongoPage(){
   overlay.querySelector('.cp-close').onclick = closeOverlay;
   requestAnimationFrame(()=> overlay.classList.add('show'));
   attachSwipeDownToClose(overlay, closeOverlay);
+  if(leader) overlay.querySelector('.tc-hero').onclick = ()=>{ closeOverlay(); handleTrackCardClick(leader); };
+
+  if(leader && leader.cover){
+    NuniPalette.extract(leader.cover).then(p=>{
+      const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+      const bg = theme === 'light' ? p.pale : p.dark;
+      overlay.style.setProperty('--tc-bg', bg);
+      overlay.querySelector('.tc-hero-fade').style.background =
+        `linear-gradient(180deg, rgba(0,0,0,0.15) 0%, ${bg} 92%)`;
+    });
+  }
 
   const list = document.getElementById('tc-full-list');
   top.forEach((tr,i)=>{
@@ -11994,6 +12018,22 @@ function openTopCongoPage(){
     row.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
     list.appendChild(row);
   });
+}
+function ensureTopCongoHeroStyles(){
+  if(document.getElementById('tc-hero-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'tc-hero-styles';
+  style.textContent = `
+    .tc-overlay{background:var(--tc-bg, var(--bg)) !important; transition:background-color .5s ease;}
+    .tc-hero{position:relative; height:clamp(220px, 34vw, 360px); overflow:hidden; display:flex; align-items:flex-end; cursor:pointer;}
+    .tc-hero-bg{position:absolute; inset:0; background-size:cover; background-position:center; filter:blur(55px) saturate(1.4) brightness(0.55); transform:scale(1.25);}
+    .tc-hero-fade{position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.15) 0%, var(--bg) 92%);}
+    .tc-hero-content{position:relative; z-index:1; padding:28px clamp(20px, 5vw, 48px);}
+    .tc-hero-badge{color:rgba(255,255,255,.8); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; font-weight:700;}
+    .tc-hero-title{color:#fff; font-size:clamp(26px, 5vw, 42px); margin-top:6px; line-height:1.1;}
+    .tc-hero-artist{color:rgba(255,255,255,.75); font-size:13px; margin-top:4px;}
+  `;
+  document.head.appendChild(style);
 }
 function openGenreCategoryPage(genreName){
   openCategoryPage(
@@ -12061,7 +12101,7 @@ function ensurePlaylistViewStyles(){
   const style = document.createElement('style');
   style.id = 'plv-styles';
   style.textContent = `
-    #plv-overlay{position:fixed; inset:0; z-index:9999; background:var(--bg); overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #plv-overlay{position:fixed; inset:0; z-index:9999; background:var(--plv-bg, var(--bg)); overflow-y:auto; opacity:0; transition:opacity .25s ease, background-color .5s ease;}
     #plv-overlay.show{opacity:1;}
     .plv-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:var(--bg-card); border:1px solid var(--border); color:var(--text); font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
     .plv-close:hover{opacity:.8;}
@@ -12149,21 +12189,19 @@ async function openPlaylistPage(id){
     overlay.querySelector('.plv-title').textContent = data.playlist.title;
     const updatedDate = data.playlist.updated_at ? new Date(data.playlist.updated_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'}) : null;
     overlay.querySelector('.plv-meta').innerHTML = `${esc(data.playlist.description) || 'Sélection curée par l\'équipe NUNI'} · ${mapped.length} titre${mapped.length>1?'s':''}<br><span style="font-size:12px; opacity:.8;"><svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg> Créateur : NUNI${updatedDate ? ` · <svg class="nuni-ic nuni-ic-gold" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg> Mis à jour le ${updatedDate}` : ''}</span>`;
-    // Teinte de fond biaisée selon le vrai genre dominant réellement présent dans la
-    // playlist (Rumba → or/ivoire, Amapiano → bleu/violet, sinon la couleur réelle de la
-    // pochette prend le dessus) — jamais un genre inventé, toujours calculé depuis les
-    // vrais morceaux qui composent CETTE playlist précise.
-    const genreCounts = mapped.reduce((acc,t)=>{ acc[t.genre]=(acc[t.genre]||0)+1; return acc; },{});
-    const dominantGenre = Object.entries(genreCounts).sort((a,b)=>b[1]-a[1])[0];
-    const genreTintMap = {
-      'Rumba': 'rgba(212,175,106,.28)', 'Amapiano': 'rgba(94,84,196,.28)',
-      'Gospel': 'rgba(232,199,126,.24)', 'Afro': 'rgba(30,132,73,.26)',
-      'Rap': 'rgba(200,60,60,.22)', 'Hip-Hop': 'rgba(200,60,60,.22)',
-    };
-    if(dominantGenre && genreTintMap[dominantGenre[0]]){
-      overlay.querySelector('.plv-hero-fade').style.background = `
-        radial-gradient(70% 80% at 30% 10%, ${genreTintMap[dominantGenre[0]]}, transparent 65%),
-        linear-gradient(180deg, rgba(10,10,16,0.2) 0%, #0A0A10 92%)`;
+    // ---- Immersion couleur — même mécanisme qu'Album, jamais un deuxième système :
+    // NuniPalette extrait la vraie couleur de la vraie pochette de cette playlist précise.
+    // L'ancienne table de teintes par genre (Rumba→or, Amapiano→violet…) devinait une
+    // couleur au lieu de la lire réellement sur la pochette — remplacée. ----
+    if(cover){
+      NuniPalette.extract(cover).then(p=>{
+        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+        const bg = theme === 'light' ? p.pale : p.dark;
+        overlay.style.setProperty('--plv-bg', bg);
+        overlay.querySelector('.plv-hero-fade').style.background =
+          `radial-gradient(70% 80% at 30% 10%, color-mix(in srgb, ${p.dominant} ${theme==='light'?18:32}%, transparent), transparent 65%),
+           linear-gradient(180deg, rgba(0,0,0,0.1) 0%, ${bg} 92%)`;
+      });
     }
 
     const list = overlay.querySelector('.plv-list');
