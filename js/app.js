@@ -2560,6 +2560,153 @@ async function renderContinueListening(){
 // ---------- "Rap congolais" — vraie catégorie éditoriale par genre. Filtre les vrais
 // morceaux par genre réel ('Rap', déjà la valeur exacte utilisée partout ailleurs dans
 // NUNI), triés par vrais streams. Aucune nouvelle donnée, aucun nouvel endpoint. ----------
+// ---------- "Les Papa de la Rumba" — vraie collection créée par l'admin via le système
+// de playlists déjà existant (aucune nouvelle table nécessaire). Cherchée par titre exact ;
+// si elle n'existe pas encore réellement en base, la section reste entièrement masquée —
+// jamais une collection ou des morceaux inventés à sa place. ----------
+// ---------- "Vos coups de cœur" — 5 héros éditoriaux, chacun avec une vraie source de
+// données distincte. Aucun héros n'est affiché s'il n'a pas de vrai contenu réel derrière. ----------
+async function renderCoupsDeCoeur(){
+  const wrap = document.getElementById('shelf-coups-coeur-wrap');
+  const row = document.getElementById('coups-coeur-row');
+  if(!wrap || !row) return;
+  const heroes = [];
+
+  // 1. VOYAGE — même vraie personnalisation que "Écouter comme toi" (artistes suivis réels +
+  // genres réellement écoutés récemment), jamais un deuxième moteur de recommandation.
+  if(realAuthToken){
+    try{
+      const [followRes, recentRes] = await Promise.all([
+        fetch(NUNI_API_BASE + '/api/me/following', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
+        fetch(NUNI_API_BASE + '/api/me/recently-played?limit=15', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
+      ]);
+      const followData = followRes.ok ? await followRes.json() : { following: [] };
+      const recentData = recentRes.ok ? await recentRes.json() : { tracks: [] };
+      const followedIds = new Set((followData.following||[]).map(a=>a.id));
+      const recentIds = new Set((recentData.tracks||[]).map(r=>r.id));
+      const recentGenres = new Set(tracks.filter(t=>t.isReal && recentIds.has(t.realId)).map(t=>t.genre).filter(Boolean));
+      const voyagePicks = tracks.filter(t=> t.isReal && (followedIds.has(t.artistId) || recentGenres.has(t.genre)));
+      if(voyagePicks.length){
+        heroes.push({ key:'voyage', label:'Pour vous', title:'Voyage', desc:'Les morceaux que vous aimez écouter encore et encore.', cover: voyagePicks[0].cover, onClick: ()=> openCoeurCollectionPage('Voyage', voyagePicks) });
+      }
+    }catch(e){}
+  }
+
+  // 2. CHOIX DU PEUPLE — vrai DISTINCT ON artiste (1 artiste = 1 morceau, son plus streamé),
+  // calculé côté client depuis les vraies données déjà chargées, jamais une donnée inventée.
+  const byArtist = new Map();
+  tracks.filter(t=>t.isReal && t.artistId).forEach(t=>{
+    const cur = byArtist.get(t.artistId);
+    if(!cur || Number(t.streams||0) > Number(cur.streams||0)) byArtist.set(t.artistId, t);
+  });
+  const choixPeuple = [...byArtist.values()].sort((a,b)=> Number(b.streams||0)-Number(a.streams||0)).slice(0,15);
+  if(choixPeuple.length){
+    heroes.push({ key:'choix', label:`${choixPeuple.length} artistes · ${choixPeuple.length} titres`, title:'Choix du peuple', desc:'Une voix, un artiste, un morceau à découvrir.', cover: choixPeuple[0].cover, onClick: ()=> openCoeurCollectionPage('Choix du peuple', choixPeuple) });
+  }
+
+  // 3. BINA — même principe que Choix du peuple, filtré au vrai genre Rumba.
+  const byArtistRumba = new Map();
+  tracks.filter(t=>t.isReal && t.artistId && t.genre==='Rumba').forEach(t=>{
+    const cur = byArtistRumba.get(t.artistId);
+    if(!cur || Number(t.streams||0) > Number(cur.streams||0)) byArtistRumba.set(t.artistId, t);
+  });
+  const binaList = [...byArtistRumba.values()].sort((a,b)=> Number(b.streams||0)-Number(a.streams||0)).slice(0,15);
+  if(binaList.length){
+    heroes.push({ key:'bina', label:'Rumba', title:'Bina', desc:'Plusieurs artistes, plusieurs morceaux, une autre façon de découvrir.', cover: binaList[0].cover, onClick: ()=> openCoeurCollectionPage('Bina', binaList) });
+  }
+
+  // 4. TOP CONGO — réutilise la vraie page déjà existante, jamais un deuxième classement.
+  const topReal = getTopStreamedTracks(1)[0];
+  if(topReal){
+    heroes.push({ key:'topcongo', label:'Classement en direct', title:'Top Congo', desc:'Les titres les plus écoutés, tous styles confondus.', cover: topReal.cover, onClick: ()=> openTopCongoPage() });
+  }
+
+  // 5. NUNI YIMBA — même motif que "Les Papa de la Rumba" : vraie playlist admin recherchée
+  // par titre exact, masqué si elle n'existe pas encore.
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/playlists');
+    const data = await res.json();
+    const playlist = (data.playlists || []).find(p => p.title === 'NUNI Yimba');
+    if(playlist){
+      heroes.push({ key:'yimba', label:'Sélection NUNI', title:'NUNI Yimba', desc:'Une playlist créée et sélectionnée par NUNI.', cover: playlist.cover_url, onClick: ()=> openPlaylistPage(playlist.id) });
+    }
+  }catch(e){}
+
+  if(!heroes.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  row.innerHTML = '';
+  heroes.forEach((h,i)=>{
+    const card = document.createElement('article');
+    card.className = 'coeur-card';
+    card.innerHTML = `
+      <div class="coeur-visual" style="${h.cover ? `background-image:url(${h.cover});` : 'background:var(--grad-envol);'}"></div>
+      <div class="coeur-content">
+        <div class="coeur-label">${esc(h.label)}</div>
+        <h3 class="serif">${esc(h.title)}</h3>
+        <p>${esc(h.desc)}</p>
+      </div>`;
+    card.onclick = h.onClick;
+    row.appendChild(card);
+  });
+}
+
+// ---------- Vue "Tout voir" pour un héros de Vos coups de cœur — réutilise .lwn-2col et
+// trackCard(), jamais un système dupliqué. ----------
+function openCoeurCollectionPage(title, list){
+  ensureCategoryPageStyles();
+  ensureListeningNowStyles();
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:720px;">
+      <div class="nre-titlebar"><div class="nre-title serif">${esc(title)}</div></div>
+      <div class="lwn-2col" id="coeur-2col"></div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+  const grid = document.getElementById('coeur-2col');
+  list.forEach(tr=>{
+    const card = trackCard(tr);
+    card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+    grid.appendChild(card);
+  });
+}
+
+async function renderPapaRumba(){
+  const wrap = document.getElementById('shelf-papa-rumba-wrap');
+  const area = document.getElementById('papa-rumba-area');
+  if(!wrap || !area) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/playlists');
+    const data = await res.json();
+    const playlist = (data.playlists || []).find(p => p.title === 'Les Papa de la Rumba');
+    if(!playlist){ wrap.style.display = 'none'; return; }
+
+    const tRes = await fetch(NUNI_API_BASE + '/api/playlists/' + playlist.id);
+    const tData = await tRes.json();
+    const plTracks = (tData.tracks || []).map(r => tracks.find(t => t.isReal && t.realId === r.id)).filter(Boolean);
+    if(!plTracks.length){ wrap.style.display = 'none'; return; }
+
+    wrap.style.display = '';
+    area.innerHTML = `
+      <div class="papa-rumba-intro" style="${playlist.cover_url ? `background-image:url(${playlist.cover_url});` : ''}" onclick="openPlaylistPage(${playlist.id})">
+        <h3 class="serif">${esc(playlist.title)}</h3>
+        ${playlist.description ? `<p>${esc(playlist.description)}</p>` : ''}
+      </div>
+      <div class="shelf-row" id="papa-rumba-row"></div>`;
+    const row = document.getElementById('papa-rumba-row');
+    plTracks.forEach(tr => row.appendChild(trackCard(tr)));
+  }catch(e){ wrap.style.display = 'none'; }
+}
+
 function renderRapCongo(){
   const wrap = document.getElementById('shelf-rap-congo-wrap');
   const row = document.getElementById('shelf-rap-congo');
@@ -5353,6 +5500,8 @@ function refreshMainShelves(){
   try{ renderResumeListening(); }catch(e){ console.error('[refreshMainShelves] renderResumeListening:', e); }
   try{ renderListeningNow(); }catch(e){ console.error('[refreshMainShelves] renderListeningNow:', e); }
   try{ renderRapCongo(); }catch(e){ console.error('[refreshMainShelves] renderRapCongo:', e); }
+  try{ renderPapaRumba(); }catch(e){ console.error('[refreshMainShelves] renderPapaRumba:', e); }
+  try{ renderCoupsDeCoeur(); }catch(e){ console.error('[refreshMainShelves] renderCoupsDeCoeur:', e); }
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
   try{ renderFeatureWeek(); }catch(e){ console.error('[refreshMainShelves] renderFeatureWeek:', e); }
   try{ renderMovingList(); }catch(e){ console.error('[refreshMainShelves] renderMovingList:', e); }
