@@ -2553,6 +2553,87 @@ async function renderContinueListening(){
 // ---------- "Tout voir" de l'historique d'écoute — réutilise openCategoryPage (même
 // vitrine que Nouveautés/Top Congo), avec la vraie liste complète du serveur pré-chargée
 // avant l'ouverture puisque cette page attend une fonction synchrone.
+// ---------- "Écoutés maintenant" — contexte récent de l'accueil, disparaît après 48h sans
+// écoute réelle. Distincte de "Reprendre l'écoute" (reprise d'un morceau précis) et
+// d'"Écoutés récemment" (historique permanent, jamais filtré par le temps) — même vraie
+// source de données (/api/me/recently-played), jamais un deuxième endpoint inventé. ----------
+async function renderListeningNow(){
+  const wrap = document.getElementById('shelf-listening-now-wrap');
+  const row = document.getElementById('shelf-listening-now');
+  if(!wrap || !row || !realAuthToken) { if(wrap) wrap.style.display = 'none'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/recently-played?limit=15', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    if(!res.ok){ wrap.style.display = 'none'; return; }
+    const data = await res.json();
+    const FORTY_EIGHT_H = 48 * 60 * 60 * 1000;
+    const now = Date.now();
+    const recent = (data.tracks || [])
+      .filter(r => r.last_played_at && (now - new Date(r.last_played_at).getTime()) < FORTY_EIGHT_H)
+      .map(r => tracks.find(t => t.isReal && t.realId === r.id))
+      .filter(Boolean);
+    if(!recent.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    row.innerHTML = '';
+    recent.forEach(tr => row.appendChild(trackCard(tr)));
+  }catch(e){ wrap.style.display = 'none'; }
+}
+
+// ---------- "Tout voir" d'Écoutés maintenant — vraie vue dédiée, deux colonnes verticales
+// comme demandé, réutilise le même trackCard() que la home, jamais un composant dupliqué. ----------
+async function openListeningNowPage(){
+  ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
+  ensureListeningNowStyles();
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:720px;">
+      <div class="nre-titlebar"><div class="nre-title serif">Écoutés maintenant</div></div>
+      <div class="lwn-2col" id="lwn-2col">Chargement…</div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  if(!realAuthToken){
+    document.getElementById('lwn-2col').innerHTML = `<p class="nre-empty">Connectez-vous pour voir vos écoutes récentes.</p>`;
+    return;
+  }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/recently-played?limit=60', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+    const data = await res.json();
+    const FORTY_EIGHT_H = 48 * 60 * 60 * 1000;
+    const now = Date.now();
+    const recent = (data.tracks || [])
+      .filter(r => r.last_played_at && (now - new Date(r.last_played_at).getTime()) < FORTY_EIGHT_H)
+      .map(r => tracks.find(t => t.isReal && t.realId === r.id))
+      .filter(Boolean);
+    const grid = document.getElementById('lwn-2col');
+    if(!recent.length){ grid.innerHTML = `<p class="nre-empty">Aucune écoute dans les dernières 48h.</p>`; return; }
+    grid.innerHTML = '';
+    recent.forEach(tr=>{
+      const card = trackCard(tr);
+      card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+      grid.appendChild(card);
+    });
+  }catch(e){
+    document.getElementById('lwn-2col').innerHTML = `<p class="nre-empty">Impossible de charger vos écoutes récentes.</p>`;
+  }
+}
+function ensureListeningNowStyles(){
+  if(document.getElementById('lwn-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'lwn-styles';
+  style.textContent = `.lwn-2col{display:grid; grid-template-columns:1fr 1fr; gap:20px 16px;} @media(max-width:480px){ .lwn-2col{grid-template-columns:1fr;} }`;
+  document.head.appendChild(style);
+}
+
 async function openRecentlyPlayedPage(){
   let recentFull = [];
   if(realAuthToken){
@@ -5220,6 +5301,7 @@ function refreshMainShelves(){
   try{ renderForYouShelf(); }catch(e){ console.error('[refreshMainShelves] renderForYouShelf:', e); }
   try{ renderContinueListening(); }catch(e){ console.error('[refreshMainShelves] renderContinueListening:', e); }
   try{ renderResumeListening(); }catch(e){ console.error('[refreshMainShelves] renderResumeListening:', e); }
+  try{ renderListeningNow(); }catch(e){ console.error('[refreshMainShelves] renderListeningNow:', e); }
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
   try{ renderFeatureWeek(); }catch(e){ console.error('[refreshMainShelves] renderFeatureWeek:', e); }
   try{ renderMovingList(); }catch(e){ console.error('[refreshMainShelves] renderMovingList:', e); }
@@ -7274,6 +7356,9 @@ function playTrack(tr){
           }
         });
       }
+      // Le serveur vient de confirmer l'écoute réelle — c'est le bon moment pour rafraîchir
+      // "Écoutés maintenant" (jamais avant, sinon last_played_at ne serait pas encore à jour).
+      if(typeof renderListeningNow === 'function') renderListeningNow();
     }).catch(()=>{});
   }
 
