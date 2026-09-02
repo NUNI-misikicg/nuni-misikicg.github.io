@@ -8621,7 +8621,12 @@ async function publishRelease(){
       let lastError = '';
       let cloudCoverUrl = null;
       try{
-        cloudCoverUrl = await uploadFileToCloudinary(coverFile, 'image');
+        const rawCloudCoverUrl = await uploadFileToCloudinary(coverFile, 'image');
+        // Recadrage carré intelligent à l'envoi — Cloudinary repère le sujet principal de la
+        // pochette (g_auto : pas g_face, une pochette n'est pas forcément un visage) et
+        // recadre proprement en 1000×1000, plutôt que de compter uniquement sur le CSS pour
+        // rogner après coup un fichier de n'importe quel format envoyé par l'artiste.
+        cloudCoverUrl = rawCloudCoverUrl.replace('/upload/', '/upload/c_fill,g_auto,w_1000,h_1000,q_auto/');
       }catch(e){
  toast(` Envoi de la pochette impossible : ${e.message}. ${isScheduledForFuture ? 'La programmation a échoué.' : 'Les morceaux restent visibles uniquement dans votre navigateur.'}`);
         currentUser.track_count = (currentUser.track_count || 0);
