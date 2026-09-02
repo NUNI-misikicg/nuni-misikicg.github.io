@@ -1525,14 +1525,14 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
    inventée : juste un cadrage différent de la même vraie image. ---- */
 #shelf-new{ gap:22px; }
 #shelf-new .track-card{ width:230px; }
-#shelf-new .track-card .cover{ width:230px; height:300px; border-radius:20px; padding:18px; }
-#shelf-new .track-card::before{ height:300px; }
+#shelf-new .track-card .cover{ width:230px; height:230px; border-radius:20px; padding:14px; }
+#shelf-new .track-card::before{ height:230px; }
 #shelf-new .track-card .ttl{ font-size:15.5px; font-weight:700; margin-top:14px; }
 #shelf-new .track-card .art{ font-size:13px; }
 @media(max-width:680px){
   #shelf-new .track-card{ width:168px; }
-  #shelf-new .track-card .cover{ width:168px; height:220px; border-radius:16px; padding:12px; }
-  #shelf-new .track-card::before{ height:220px; }
+  #shelf-new .track-card .cover{ width:168px; height:168px; border-radius:16px; padding:12px; }
+  #shelf-new .track-card::before{ height:168px; }
 }
 
 /* ---- "Écoutés récemment" : même gabarit de carte que le reste du catalogue, mais un vrai
