@@ -2566,6 +2566,25 @@ async function renderContinueListening(){
 // jamais une collection ou des morceaux inventés à sa place. ----------
 // ---------- "Vos coups de cœur" — 5 héros éditoriaux, chacun avec une vraie source de
 // données distincte. Aucun héros n'est affiché s'il n'a pas de vrai contenu réel derrière. ----------
+// ---------- "Morceaux rares" — vraie sélection aléatoire parmi tous les vrais morceaux,
+// pas forcément les plus populaires ni les plus récents. Graine basée sur le jour (identique
+// pour tout le monde pendant 24h, change naturellement le lendemain) — jamais un tirage
+// différent à chaque rechargement, jamais une donnée inventée. ----------
+function renderRareTracks(){
+  const wrap = document.getElementById('shelf-rare-tracks-wrap');
+  const row = document.getElementById('shelf-rare-tracks');
+  if(!wrap || !row) return;
+  const real = tracks.filter(t=>t.isReal);
+  if(!real.length){ wrap.style.display = 'none'; return; }
+  const today = new Date();
+  let seed = today.getFullYear()*372 + today.getMonth()*31 + today.getDate();
+  const seededRandom = ()=>{ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  const list = real.map(t=>({t, r:seededRandom()})).sort((a,b)=> a.r-b.r).map(x=>x.t).slice(0, 15);
+  wrap.style.display = '';
+  row.innerHTML = '';
+  list.forEach(tr=> row.appendChild(trackCard(tr)));
+}
+
 async function renderCoupsDeCoeur(){
   const wrap = document.getElementById('shelf-coups-coeur-wrap');
   const row = document.getElementById('coups-coeur-row');
@@ -5502,6 +5521,7 @@ function refreshMainShelves(){
   try{ renderRapCongo(); }catch(e){ console.error('[refreshMainShelves] renderRapCongo:', e); }
   try{ renderPapaRumba(); }catch(e){ console.error('[refreshMainShelves] renderPapaRumba:', e); }
   try{ renderCoupsDeCoeur(); }catch(e){ console.error('[refreshMainShelves] renderCoupsDeCoeur:', e); }
+  try{ renderRareTracks(); }catch(e){ console.error('[refreshMainShelves] renderRareTracks:', e); }
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
   try{ renderFeatureWeek(); }catch(e){ console.error('[refreshMainShelves] renderFeatureWeek:', e); }
   try{ renderMovingList(); }catch(e){ console.error('[refreshMainShelves] renderMovingList:', e); }
