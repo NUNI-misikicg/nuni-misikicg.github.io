@@ -2570,6 +2570,55 @@ async function renderContinueListening(){
 // pas forcément les plus populaires ni les plus récents. Graine basée sur le jour (identique
 // pour tout le monde pendant 24h, change naturellement le lendemain) — jamais un tirage
 // différent à chaque rechargement, jamais une donnée inventée. ----------
+// ---------- "Kwiza kutala mbwala" — mélange réel de morceaux populaires et d'artistes
+// émergents (identifiés par leur vrai total de streams cumulés, jamais une fausse étiquette
+// inventée), renouvelé toutes les 30 minutes. Synchronisé pour tout le monde via une graine
+// basée sur la fenêtre de 30 minutes actuelle — aucune tâche serveur nécessaire, le calcul
+// donne le même résultat à tout le monde tant qu'on reste dans la même fenêtre réelle. ----------
+function renderKwizaKutala(){
+  const wrap = document.getElementById('shelf-kwiza-wrap');
+  const row = document.getElementById('shelf-kwiza');
+  if(!wrap || !row) return;
+  const real = tracks.filter(t=>t.isReal && t.artistId);
+  if(real.length < 4){ wrap.style.display = 'none'; return; }
+
+  // Vrai total de streams cumulés par artiste — sert à distinguer "déjà populaire" de
+  // "encore émergent", jamais une donnée déclarative inventée.
+  const totalsByArtist = new Map();
+  real.forEach(t=>{
+    totalsByArtist.set(t.artistId, (totalsByArtist.get(t.artistId)||0) + Number(t.streams||0));
+  });
+  const sortedArtistIds = [...totalsByArtist.entries()].sort((a,b)=> b[1]-a[1]).map(e=>e[0]);
+  const midpoint = Math.ceil(sortedArtistIds.length / 2);
+  const popularArtistIds = new Set(sortedArtistIds.slice(0, midpoint));
+  const emergingArtistIds = new Set(sortedArtistIds.slice(midpoint));
+
+  const popularTracks = real.filter(t=> popularArtistIds.has(t.artistId));
+  const emergingTracks = real.filter(t=> emergingArtistIds.has(t.artistId));
+
+  // Graine partagée par fenêtre de 30 minutes réelle — identique pour tout le monde dans la
+  // même fenêtre, change naturellement à la suivante.
+  const bucket = Math.floor(Date.now() / (30*60*1000));
+  let seed = bucket;
+  const seededRandom = ()=>{ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  const shuffle = (arr)=> arr.map(t=>({t, r:seededRandom()})).sort((a,b)=>a.r-b.r).map(x=>x.t);
+
+  const half = 7;
+  const list = [...shuffle(popularTracks).slice(0, half), ...shuffle(emergingTracks).slice(0, 15-half)];
+  const finalList = shuffle(list).slice(0, 15);
+  if(!finalList.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  row.innerHTML = '';
+  finalList.forEach(tr=> row.appendChild(trackCard(tr)));
+}
+// Rafraîchissement automatique réel — vérifie régulièrement si on est passé dans une
+// nouvelle fenêtre de 30 minutes, sans recharger toute la page ni les autres sections.
+let kwizaLastBucket = Math.floor(Date.now() / (30*60*1000));
+setInterval(()=>{
+  const bucket = Math.floor(Date.now() / (30*60*1000));
+  if(bucket !== kwizaLastBucket){ kwizaLastBucket = bucket; renderKwizaKutala(); }
+}, 5*60*1000);
+
 function renderRareTracks(){
   const wrap = document.getElementById('shelf-rare-tracks-wrap');
   const row = document.getElementById('shelf-rare-tracks');
@@ -5522,6 +5571,7 @@ function refreshMainShelves(){
   try{ renderPapaRumba(); }catch(e){ console.error('[refreshMainShelves] renderPapaRumba:', e); }
   try{ renderCoupsDeCoeur(); }catch(e){ console.error('[refreshMainShelves] renderCoupsDeCoeur:', e); }
   try{ renderRareTracks(); }catch(e){ console.error('[refreshMainShelves] renderRareTracks:', e); }
+  try{ renderKwizaKutala(); }catch(e){ console.error('[refreshMainShelves] renderKwizaKutala:', e); }
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
   try{ renderFeatureWeek(); }catch(e){ console.error('[refreshMainShelves] renderFeatureWeek:', e); }
   try{ renderMovingList(); }catch(e){ console.error('[refreshMainShelves] renderMovingList:', e); }
