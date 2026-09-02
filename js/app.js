@@ -2557,6 +2557,22 @@ async function renderContinueListening(){
 // écoute réelle. Distincte de "Reprendre l'écoute" (reprise d'un morceau précis) et
 // d'"Écoutés récemment" (historique permanent, jamais filtré par le temps) — même vraie
 // source de données (/api/me/recently-played), jamais un deuxième endpoint inventé. ----------
+// ---------- "Rap congolais" — vraie catégorie éditoriale par genre. Filtre les vrais
+// morceaux par genre réel ('Rap', déjà la valeur exacte utilisée partout ailleurs dans
+// NUNI), triés par vrais streams. Aucune nouvelle donnée, aucun nouvel endpoint. ----------
+function renderRapCongo(){
+  const wrap = document.getElementById('shelf-rap-congo-wrap');
+  const row = document.getElementById('shelf-rap-congo');
+  if(!wrap || !row) return;
+  const list = tracks.filter(t=>t.isReal && t.genre==='Rap')
+    .sort((a,b)=> Number(b.streams||0) - Number(a.streams||0))
+    .slice(0, 15);
+  if(!list.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  row.innerHTML = '';
+  list.forEach(tr=> row.appendChild(trackCard(tr)));
+}
+
 async function renderListeningNow(){
   const wrap = document.getElementById('shelf-listening-now-wrap');
   const row = document.getElementById('shelf-listening-now');
@@ -2632,6 +2648,40 @@ function ensureListeningNowStyles(){
   style.id = 'lwn-styles';
   style.textContent = `.lwn-2col{display:grid; grid-template-columns:1fr 1fr; gap:20px 16px;} @media(max-width:480px){ .lwn-2col{grid-template-columns:1fr;} }`;
   document.head.appendChild(style);
+}
+
+// ---------- "Sortie de la semaine" — vraie vue Tout voir, jusqu'à 12 vraies sorties
+// récentes, deux colonnes verticales. Réutilise .lwn-2col et trackCard(), jamais un
+// système dupliqué. ----------
+function openFeatureWeekPage(){
+  ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
+  ensureListeningNowStyles();
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+
+  const recent = tracks.filter(t=>t.isReal).slice().sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)).slice(0, 12);
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:720px;">
+      <div class="nre-titlebar"><div class="nre-title serif">Sortie de la semaine</div></div>
+      <div class="lwn-2col" id="fw-2col">${recent.length ? '' : `<p class="nre-empty">Aucune sortie réelle pour le moment.</p>`}</div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  const grid = document.getElementById('fw-2col');
+  recent.forEach(tr=>{
+    const card = trackCard(tr);
+    card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+    grid.appendChild(card);
+  });
 }
 
 async function openRecentlyPlayedPage(){
@@ -5143,7 +5193,7 @@ function renderFeatureWeek(){
     } else el.classList.add(tr.p||'pal-1');
   };
   try{
-    const [main, ...others] = recent.slice(0, 4);
+    const [main, ...others] = recent.slice(0, 5);
     const mainEl = document.createElement('div');
     mainEl.className = 'fw-main';
     mainEl.innerHTML = `<div class="fw-main-art"><button class="fw-main-art-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button></div><div class="fw-main-info"><div class="fw-main-title"></div><div class="fw-main-artist"></div></div><button class="fw-main-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
@@ -5302,6 +5352,7 @@ function refreshMainShelves(){
   try{ renderContinueListening(); }catch(e){ console.error('[refreshMainShelves] renderContinueListening:', e); }
   try{ renderResumeListening(); }catch(e){ console.error('[refreshMainShelves] renderResumeListening:', e); }
   try{ renderListeningNow(); }catch(e){ console.error('[refreshMainShelves] renderListeningNow:', e); }
+  try{ renderRapCongo(); }catch(e){ console.error('[refreshMainShelves] renderRapCongo:', e); }
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
   try{ renderFeatureWeek(); }catch(e){ console.error('[refreshMainShelves] renderFeatureWeek:', e); }
   try{ renderMovingList(); }catch(e){ console.error('[refreshMainShelves] renderMovingList:', e); }
@@ -6734,30 +6785,33 @@ function loadAmbiances(){
     if(!list.length){ wrap.style.display = 'none'; return; }
     wrap.style.display = 'block';
     grid.innerHTML = '';
-    list.forEach((mood, i)=>{
+    // Icône choisie selon un mot-clé réel présent dans le libellé de l'ambiance — jamais
+    // une donnée inventée, juste une correspondance visuelle raisonnable. Repli générique
+    // (note de musique) si aucun mot-clé ne correspond.
+    const ICONS = {
+      focus: '<path d="M12 1v6M12 17v6M4.2 4.2l4.2 4.2M15.5 15.5l4.2 4.2M1 12h6M17 12h6M4.2 19.8l4.2-4.2M15.5 8.5l4.2-4.2"/>',
+      motiv: '<path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/>',
+      relax: '<path d="M12 22c-4-3-7-6-7-10a7 7 0 0 1 14 0c0 4-3 7-7 10z"/>',
+      amour: '<path d="M12 21s-7-4.5-9.5-9C.5 8 2 4 6 4c2 0 4 1.5 6 4 2-2.5 4-4 6-4 4 0 5.5 4 3.5 8-2.5 4.5-9.5 9-9.5 9z"/>',
+      trist: '<path d="M4 15a8 8 0 0 1 16 0"/><path d="M12 15v6M9 21h6"/>',
+      energ: '<path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/>',
+      nostal: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+      party: '<path d="M5 3v4M3 5h4M19 17v4M17 19h4M12 2l1.5 3L17 6l-3 1.5L12 11l-1.5-3.5L7 6l3.5-1L12 2z"/>',
+    };
+    const genericIcon = '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
+    const pickIcon = (label)=>{
+      const low = label.toLowerCase();
+      for(const key in ICONS){ if(low.includes(key)) return ICONS[key]; }
+      return genericIcon;
+    };
+    list.forEach(mood=>{
       try{
-        const leadTrack = mood.tracks[0]; // le plus récent — déjà trié côté serveur
-        const el = document.createElement('div');
-        el.className = 'ambiance-tile' + (i===0 ? ' is-lead' : '');
-        el.innerHTML = `<div class="ambiance-art"></div><div class="ambiance-halo"></div><button class="ambiance-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button><div class="ambiance-overlay"><span class="ambiance-label"></span><span class="ambiance-count"></span></div>`;
-        el.querySelector('.ambiance-label').textContent = mood.label;
-        el.querySelector('.ambiance-count').textContent = `${mood.tracks.length} titre${mood.tracks.length>1?'s':''}`;
-        el.querySelector('.ambiance-play').onclick = (e)=>{ e.stopPropagation(); openMoodPage(mood.key, mood.label); };
-        const artEl = el.querySelector('.ambiance-art');
-        if(leadTrack && leadTrack.cover_url){
-          const probe = new Image();
-          probe.onload = ()=>{ artEl.style.backgroundImage = `url("${leadTrack.cover_url}")`; artEl.style.backgroundSize='cover'; artEl.style.backgroundPosition='center'; };
-          probe.src = leadTrack.cover_url;
-          if(typeof NuniPalette !== 'undefined'){
-            NuniPalette.extract(leadTrack.cover_url).then(p=>{
-              el.querySelector('.ambiance-halo').style.background =
-                `radial-gradient(circle at 30% 80%, color-mix(in srgb, ${p.dominant} 45%, transparent) 0%, transparent 65%)`;
-            });
-          }
-        }
+        const el = document.createElement('button');
+        el.className = 'mood-pill';
+        el.innerHTML = `<span class="mood-pill-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${pickIcon(mood.label)}</svg></span><span class="mood-pill-label">${esc(mood.label)}</span>`;
         el.onclick = ()=> openMoodPage(mood.key, mood.label);
         grid.appendChild(el);
-      }catch(e){ console.error('[loadAmbiances] tuile ignorée après erreur :', e); }
+      }catch(e){ console.error('[loadAmbiances] pastille ignorée après erreur :', e); }
     });
   }).catch(()=>{ wrap.style.display = 'none'; });
 }
