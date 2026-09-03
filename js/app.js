@@ -2656,7 +2656,7 @@ function renderKwizaKutala(){
   const shuffle = (arr)=> arr.map(t=>({t, r:seededRandom()})).sort((a,b)=>a.r-b.r).map(x=>x.t);
 
   const half = 7;
-  const list = [...shuffle(popularTracks).slice(0, half), ...shuffle(emergingTracks).slice(0, 15-half)];
+  const list = [...pickDiverseByArtist(shuffle(popularTracks), half), ...pickDiverseByArtist(shuffle(emergingTracks), 15-half)];
   const finalList = shuffle(list).slice(0, 15);
   if(!finalList.length){ wrap.style.display = 'none'; return; }
   wrap.style.display = '';
@@ -2680,7 +2680,11 @@ function renderRareTracks(){
   const today = new Date();
   let seed = today.getFullYear()*372 + today.getMonth()*31 + today.getDate();
   const seededRandom = ()=>{ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-  const list = real.map(t=>({t, r:seededRandom()})).sort((a,b)=> a.r-b.r).map(x=>x.t).slice(0, 15);
+  const shuffled = real.map(t=>({t, r:seededRandom()})).sort((a,b)=> a.r-b.r).map(x=>x.t);
+  // Point 26 — évite de toujours proposer les mêmes artistes, même après un tirage
+  // purement aléatoire. Réutilise le même plafond déjà en place pour Nouveautés/Sortie de
+  // la semaine, jamais un deuxième système de diversité inventé.
+  const list = pickDiverseByArtist(shuffled, 15);
   wrap.style.display = '';
   row.innerHTML = '';
   list.forEach(tr=> row.appendChild(trackCard(tr)));
