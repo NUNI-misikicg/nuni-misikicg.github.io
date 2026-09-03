@@ -5525,7 +5525,11 @@ function pickDiverseByArtist(sortedList, count){
 async function renderNouveautesSimple(){
   const row = document.getElementById('shelf-new');
   if(!row) return;
-  const sorted = tracks.filter(t=>t.isReal).sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
+  // Un album fait un tout avec ses morceaux — jamais chaque morceau d'un même album
+  // affiché séparément ici, une seule carte représentative par album (dedupeAlbums, déjà
+  // utilisée ailleurs pour la même raison, jamais un deuxième système inventé). Les vrais
+  // singles restent affichés individuellement, comme avant.
+  const sorted = dedupeAlbums(tracks.filter(t=>t.isReal).sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)));
 
   let list;
   if(realAuthToken){
@@ -5567,7 +5571,7 @@ function renderFeatureWeek(){
   const wrap = document.getElementById('feature-week-wrap');
   const box = document.getElementById('feature-week');
   if(!wrap || !box) return;
-  const sorted = tracks.filter(t=>t.isReal).slice().sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
+  const sorted = dedupeAlbums(tracks.filter(t=>t.isReal).slice().sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)));
   const list = pickDiverseByArtist(sorted, 12);
   if(!list.length){ wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
@@ -12471,7 +12475,7 @@ function openNewReleasesPage(){
     setTimeout(()=> overlay.remove(), 200);
   };
 
-  const real = tracks.filter(t=>t.isReal).sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
+  const real = dedupeAlbums(tracks.filter(t=>t.isReal).sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)));
   if(!real.length){
     overlay.innerHTML = `<button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button><p class="nre-empty">Aucune sortie réelle pour le moment.</p>`;
     overlay.querySelector('.cp-close').onclick = closeOverlay;
