@@ -12390,9 +12390,20 @@ function openNewReleasesPage(){
   // Les 3 sorties les plus récentes (toutes catégories) mises en avant en cartes
   // éditoriales, puis le reste en grille dense "Titres du moment", jamais de données
   // inventées — l'ordre vient uniquement de la vraie date de sortie.
-  const topThree = real.slice(0, 3);
-  const rest = real.slice(3, 23);
-  const weekly = real.slice(0, 20); // vraies sorties récentes pour le rail du bas
+  // Point 11 — la page complète doit charger TOUTES les nouveautés de la semaine, pas
+  // une liste plafonnée. Les 3 sorties les plus récentes restent mises en avant en cartes
+  // éditoriales, le reste de la semaine (7 derniers jours réels) en grille dense — jamais
+  // un plafond arbitraire coupant les sorties les plus anciennes de la semaine.
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const thisWeek = real.filter(t=> t.releaseTs && (now - t.releaseTs) < SEVEN_DAYS);
+  // Repli propre — si aucune sortie ne date de moins de 7 jours (plausible si les uploads
+  // ralentissent), retombe sur les sorties les plus récentes disponibles plutôt que
+  // d'afficher une page principale vide alors que du contenu réel existe.
+  const mainList = thisWeek.length ? thisWeek : real;
+  const topThree = mainList.slice(0, 3);
+  const rest = mainList.slice(3); // toutes les autres sorties, aucun plafond artificiel
+  const weekly = real.slice(0, 20); // rail du bas, volontairement plus large pour ne jamais être vide
 
   overlay.innerHTML = `
     <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
