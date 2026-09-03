@@ -2608,6 +2608,8 @@ async function renderRisingArtists(){
     if(!data.artists || !data.artists.length){ wrap.style.display = 'none'; return; }
     row.innerHTML = '';
     let shown = 0;
+    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
     data.artists.forEach(entry=>{
       const track = tracks.find(t=> t.isReal && t.artistId === entry.artistId);
       if(!track) return;
@@ -2615,11 +2617,15 @@ async function renderRisingArtists(){
       const name = track.a;
       const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
       const photoStyle = track.artistAvatarUrl ? `background-image:url(${cloudinaryFaceCrop(track.artistAvatarUrl)});` : '';
+      // Vrai signal supplémentaire — une sortie réelle de moins de 7 jours pour cet
+      // artiste, jamais un texte générique inventé. Le tri reste basé sur la vraie
+      // vélocité déjà calculée côté serveur, ceci n'affecte que le libellé affiché.
+      const hasRecentRelease = tracks.some(t=> t.isReal && t.artistId === entry.artistId && t.releaseTs && (now - t.releaseTs) < SEVEN_DAYS);
       const card = document.createElement('div');
       card.className = 'artist-suggest-card';
       card.innerHTML = `
         <div class="asc-photo" style="${photoStyle}">${track.artistAvatarUrl ? '' : `<div class="asc-initials">${initials}</div>`}</div>
-        <div class="asc-info"><div class="n">${esc(name)}</div><div class="g">En progression</div></div>`;
+        <div class="asc-info"><div class="n">${esc(name)}</div><div class="g">${hasRecentRelease ? 'Nouvelle sortie' : 'En progression'}</div></div>`;
       card.onclick = ()=> openArtistPage(name, entry.artistId);
       row.appendChild(card);
     });
