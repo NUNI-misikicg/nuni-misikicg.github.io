@@ -4997,7 +4997,13 @@ function trackCard(tr, lazy){
         // Alimente le moteur d'ambiance de l'accueil (voir initHomeAmbientEngine) avec la
         // vraie couleur dominante de cette vraie pochette — jamais une couleur inventée.
         if(typeof NuniPalette !== 'undefined'){
-          NuniPalette.extract(tr.cover).then(palette=>{ card.dataset.ambientColor = palette.dominant; });
+          NuniPalette.extract(tr.cover).then(palette=>{
+            card.dataset.ambientColor = palette.dominant;
+            // Même halo coloré dérivé de la vraie pochette que "Ajouts récents" en
+            // Bibliothèque — jamais un second calcul, réutilise la palette déjà extraite
+            // juste au-dessus pour le moteur d'ambiance.
+            coverEl.style.boxShadow = `0 10px 26px -12px rgba(0,0,0,.55), 0 0 26px -6px ${palette.accent || palette.dominant}`;
+          });
         }
       };
       probe.onerror = ()=>{ coverEl.classList.add(tr.p || 'pal-1'); coverEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>' + coverEl.innerHTML; };
