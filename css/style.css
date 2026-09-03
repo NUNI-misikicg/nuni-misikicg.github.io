@@ -1497,10 +1497,12 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
   .track-card{ width:150px !important; }
   .track-card .cover{ width:150px !important; height:150px !important; }
   .track-card .fp-cover-wrap{ aspect-ratio:1; }
+  .track-card::before{ height:150px; }
 }
 @media(max-width:380px){
   .track-card{ width:140px !important; }
   .track-card .cover{ width:140px !important; height:140px !important; }
+  .track-card::before{ height:140px; }
   .shelf-row{ gap:10px; padding-left:14px; padding-right:14px; }
 }
 
