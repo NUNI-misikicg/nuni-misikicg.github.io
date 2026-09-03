@@ -12324,10 +12324,19 @@ function ensureCategoryPageStyles(){
   const style = document.createElement('style');
   style.id = 'categorypage-styles';
   style.textContent = `
-    #categorypage-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #categorypage-overlay{position:fixed; inset:0; z-index:9999; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
     #categorypage-overlay.show{opacity:1;}
-    .cp-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
-    .cp-close:hover{background:rgba(255,255,255,0.16);}
+    /* ---- Genres uniquement (openCategoryPage) — seule vue qui doit rester toujours
+       immersive/sombre, comme le lecteur plein écran ou Stories. Jamais appliqué aux pages
+       Tout voir (.nre-overlay), qui restent theme-aware via var(--bg) déjà en place
+       ailleurs. Avant : une règle sur l'ID seul écrasait silencieusement le thème de TOUTES
+       les pages "Tout voir" de cette session (spécificité ID > classe), même si chacune
+       utilisait déjà correctement var(--bg) via .nre-overlay. ---- */
+    #categorypage-overlay.cp-genres-dark{background:#0A0A10;}
+    .cp-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:var(--bg-card); border:1px solid var(--border); color:var(--text); font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .cp-close:hover{opacity:.8;}
+    .cp-genres-dark .cp-close{background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.14); color:#fff;}
+    .cp-genres-dark .cp-close:hover{background:rgba(255,255,255,0.16);}
     /* Décor "âme de NUNI" — de vraies pochettes d'artistes dérivent lentement en fond,
        plutôt qu'un simple aplat noir. Halo or/émeraude par-dessus, comme le reste du site. */
     .cp-hero{position:relative; height:220px; overflow:hidden; margin-bottom:8px;}
@@ -12417,6 +12426,7 @@ function openCategoryPage(title, description, getList, shuffle){
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
   overlay.id = 'categorypage-overlay';
+  overlay.className = 'cp-genres-dark';
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
   const closeOverlay = ()=>{
@@ -13077,20 +13087,20 @@ function ensurePlaylistsPageStyles(){
   const style = document.createElement('style');
   style.id = 'allplaylists-styles';
   style.textContent = `
-    #allplaylists-overlay{position:fixed; inset:0; z-index:9999; background:#0A0A10; overflow-y:auto; opacity:0; transition:opacity .25s ease;}
+    #allplaylists-overlay{position:fixed; inset:0; z-index:9999; background:var(--bg); overflow-y:auto; opacity:0; transition:opacity .25s ease;}
     #allplaylists-overlay.show{opacity:1;}
-    .apl-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#fff; font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
-    .apl-close:hover{background:rgba(255,255,255,0.16);}
+    .apl-close{position:fixed; top:calc(18px + env(safe-area-inset-top,0)); right:22px; width:38px; height:38px; border-radius:50%; background:var(--bg-card); border:1px solid var(--border); color:var(--text); font-size:17px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center;}
+    .apl-close:hover{opacity:.8;}
     .apl-wrap{max-width:1400px; margin:0 auto; padding:60px 40px 80px;}
-    .apl-title{color:#fff; font-size:30px; font-weight:800; margin-bottom:6px;}
-    .apl-sub{color:#8a8a94; font-size:13.5px; margin-bottom:36px;}
-    .apl-featured-label{color:#8a8a94; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:14px;}
+    .apl-title{color:var(--text); font-size:30px; font-weight:800; margin-bottom:6px;}
+    .apl-sub{color:var(--text-faint); font-size:13.5px; margin-bottom:36px;}
+    .apl-featured-label{color:var(--text-faint); font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:14px;}
     .apl-featured-wrap{margin-bottom:44px;}
-    .apl-grid-label{color:#8a8a94; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:16px;}
+    .apl-grid-label{color:var(--text-faint); font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700; margin-bottom:16px;}
     /* ---- auto-fit (pas auto-fill) : les colonnes vides ne se créent jamais quand il y a
        peu de playlists — c'était la vraie cause du "tout compacté à gauche". ---- */
     .apl-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:28px;}
-    .apl-empty{color:var(--text-faint,#8a8a94); font-size:13px; text-align:center; padding:40px 0; grid-column:1/-1;}
+    .apl-empty{color:var(--text-faint); font-size:13px; text-align:center; padding:40px 0; grid-column:1/-1;}
     @media(max-width:760px){ .apl-wrap{padding:50px 20px 60px;} .apl-title{font-size:24px;} }
   `;
   document.head.appendChild(style);
