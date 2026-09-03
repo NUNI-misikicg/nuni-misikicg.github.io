@@ -2575,6 +2575,58 @@ async function renderContinueListening(){
 // inventée), renouvelé toutes les 30 minutes. Synchronisé pour tout le monde via une graine
 // basée sur la fenêtre de 30 minutes actuelle — aucune tâche serveur nécessaire, le calcul
 // donne le même résultat à tout le monde tant qu'on reste dans la même fenêtre réelle. ----------
+// ---------- "NUNI Tendance" — vraie vitesse de progression, calculée serveur depuis le
+// vrai historique de streams. Masquée automatiquement tant que l'historique est insuffisant
+// (moins de 2 jours de données réelles) — jamais un classement inventé en attendant. ----------
+async function renderTendance(){
+  const wrap = document.getElementById('shelf-tendance-wrap');
+  const row = document.getElementById('shelf-tendance');
+  if(!wrap || !row) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/tracks/trending');
+    const data = await res.json();
+    const velocityByTrackId = new Map((data.tracks||[]).map(r=>[r.id, r.velocity]));
+    const list = tracks.filter(t=>t.isReal && velocityByTrackId.has(t.realId))
+      .sort((a,b)=> velocityByTrackId.get(b.realId) - velocityByTrackId.get(a.realId));
+    if(!list.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    row.innerHTML = '';
+    list.forEach(tr=> row.appendChild(trackCard(tr)));
+  }catch(e){ wrap.style.display = 'none'; }
+}
+
+// ---------- "Artistes à surveiller" — même principe agrégé par artiste. Réutilise le vrai
+// motif de carte déjà établi pour "Artistes à suivre" (asc-photo/asc-info), jamais un
+// composant dupliqué. Masquée tant que l'historique est insuffisant. ----------
+async function renderRisingArtists(){
+  const wrap = document.getElementById('shelf-rising-artists-wrap');
+  const row = document.getElementById('rising-artists-row');
+  if(!wrap || !row) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/artists/rising');
+    const data = await res.json();
+    if(!data.artists || !data.artists.length){ wrap.style.display = 'none'; return; }
+    row.innerHTML = '';
+    let shown = 0;
+    data.artists.forEach(entry=>{
+      const track = tracks.find(t=> t.isReal && t.artistId === entry.artistId);
+      if(!track) return;
+      shown++;
+      const name = track.a;
+      const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      const photoStyle = track.artistAvatarUrl ? `background-image:url(${cloudinaryFaceCrop(track.artistAvatarUrl)});` : '';
+      const card = document.createElement('div');
+      card.className = 'artist-suggest-card';
+      card.innerHTML = `
+        <div class="asc-photo" style="${photoStyle}">${track.artistAvatarUrl ? '' : `<div class="asc-initials">${initials}</div>`}</div>
+        <div class="asc-info"><div class="n">${esc(name)}</div><div class="g">En progression</div></div>`;
+      card.onclick = ()=> openArtistPage(name, entry.artistId);
+      row.appendChild(card);
+    });
+    wrap.style.display = shown ? '' : 'none';
+  }catch(e){ wrap.style.display = 'none'; }
+}
+
 function renderKwizaKutala(){
   const wrap = document.getElementById('shelf-kwiza-wrap');
   const row = document.getElementById('shelf-kwiza');
@@ -5572,6 +5624,8 @@ function refreshMainShelves(){
   try{ renderCoupsDeCoeur(); }catch(e){ console.error('[refreshMainShelves] renderCoupsDeCoeur:', e); }
   try{ renderRareTracks(); }catch(e){ console.error('[refreshMainShelves] renderRareTracks:', e); }
   try{ renderKwizaKutala(); }catch(e){ console.error('[refreshMainShelves] renderKwizaKutala:', e); }
+  try{ renderTendance(); }catch(e){ console.error('[refreshMainShelves] renderTendance:', e); }
+  try{ renderRisingArtists(); }catch(e){ console.error('[refreshMainShelves] renderRisingArtists:', e); }
   try{ renderNuniSelection(); }catch(e){ console.error('[refreshMainShelves] renderNuniSelection:', e); }
   try{ renderFeatureWeek(); }catch(e){ console.error('[refreshMainShelves] renderFeatureWeek:', e); }
   try{ renderMovingList(); }catch(e){ console.error('[refreshMainShelves] renderMovingList:', e); }
