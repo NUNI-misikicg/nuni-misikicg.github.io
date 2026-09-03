@@ -2861,54 +2861,6 @@ async function renderListeningNow(){
   }catch(e){ wrap.style.display = 'none'; }
 }
 
-// ---------- "Tout voir" d'Écoutés maintenant — vraie vue dédiée, deux colonnes verticales
-// comme demandé, réutilise le même trackCard() que la home, jamais un composant dupliqué. ----------
-async function openListeningNowPage(){
-  ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
-  ensureListeningNowStyles();
-  let overlay = document.getElementById('categorypage-overlay');
-  if(overlay) overlay.remove();
-  overlay = document.createElement('div');
-  overlay.id = 'categorypage-overlay';
-  overlay.className = 'nre-overlay';
-  document.body.appendChild(overlay);
-  document.body.style.overflow = 'hidden';
-  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
-  overlay.innerHTML = `
-    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-    <div class="nre-wrap" style="max-width:720px;">
-      <div class="nre-titlebar"><div class="nre-title serif">Écoutés maintenant</div></div>
-      <div class="lwn-2col" id="lwn-2col">Chargement…</div>
-    </div>`;
-  overlay.querySelector('.cp-close').onclick = closeOverlay;
-  requestAnimationFrame(()=> overlay.classList.add('show'));
-  attachSwipeDownToClose(overlay, closeOverlay);
-
-  if(!realAuthToken){
-    document.getElementById('lwn-2col').innerHTML = `<p class="nre-empty">Connectez-vous pour voir vos écoutes récentes.</p>`;
-    return;
-  }
-  try{
-    const res = await fetch(NUNI_API_BASE + '/api/me/recently-played?limit=60', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
-    const data = await res.json();
-    const FORTY_EIGHT_H = 48 * 60 * 60 * 1000;
-    const now = Date.now();
-    const recent = (data.tracks || [])
-      .filter(r => r.last_played_at && (now - new Date(r.last_played_at).getTime()) < FORTY_EIGHT_H)
-      .map(r => tracks.find(t => t.isReal && t.realId === r.id))
-      .filter(Boolean);
-    const grid = document.getElementById('lwn-2col');
-    if(!recent.length){ grid.innerHTML = `<p class="nre-empty">Aucune écoute dans les dernières 48h.</p>`; return; }
-    grid.innerHTML = '';
-    recent.forEach(tr=>{
-      const card = trackCard(tr);
-      card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
-      grid.appendChild(card);
-    });
-  }catch(e){
-    document.getElementById('lwn-2col').innerHTML = `<p class="nre-empty">Impossible de charger vos écoutes récentes.</p>`;
-  }
-}
 function ensureListeningNowStyles(){
   if(document.getElementById('lwn-styles')) return;
   const style = document.createElement('style');
@@ -5425,20 +5377,23 @@ function renderTopCongo(){
 // ---------- "Nouveautés" — 15 vraies pochettes normales en rail, jamais de grosse carte
 // principale (remplace l'ancien fillNouveautesAsymmetric, devenu inutilisé ici). Réutilise
 // trackCard(), même motif que Rap congolais/Sortie de la semaine. ----------
-// ---------- Sélection diversifiée par artiste — privilégie un morceau par artiste
-// différent (le plus récent de chacun) avant de recomplèter avec d'autres morceaux du
-// même artiste si le nombre d'artistes distincts est insuffisant. Évite qu'un seul
+// ---------- Sélection avec plafond par artiste — garde l'ordre chronologique strict
+// (les sorties les plus récentes restent toujours en tête, jamais repoussées), mais
+// plafonne à 2 morceaux par artiste dans la sélection finale pour éviter qu'un seul
 // artiste prolifique remplisse toute une section comme Nouveautés/Sortie de la semaine. ----------
 function pickDiverseByArtist(sortedList, count){
-  const seenArtists = new Set();
-  const firstPass = [];
-  const rest = [];
+  const countByArtist = new Map();
+  const capped = [];
+  const overflow = [];
   sortedList.forEach(t=>{
     const key = t.artistId || t.a;
-    if(!seenArtists.has(key)){ seenArtists.add(key); firstPass.push(t); }
-    else { rest.push(t); }
+    const n = countByArtist.get(key) || 0;
+    if(n < 2){ countByArtist.set(key, n+1); capped.push(t); }
+    else { overflow.push(t); }
   });
-  return [...firstPass, ...rest].slice(0, count);
+  // Si le plafond laisse la sélection incomplète (peu d'artistes distincts au total),
+  // recomplète avec le trop-plein — toujours dans son propre ordre chronologique.
+  return [...capped, ...overflow].slice(0, count);
 }
 
 function renderNouveautesSimple(){
