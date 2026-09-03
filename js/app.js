@@ -2794,7 +2794,7 @@ function openCoeurCollectionPage(title, list){
   attachSwipeDownToClose(overlay, closeOverlay);
   const grid = document.getElementById('coeur-2col');
   list.forEach(tr=>{
-    const card = trackCard(tr);
+    const card = trackCard(tr, true);
     card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
     grid.appendChild(card);
   });
@@ -4898,7 +4898,26 @@ function removeFromQueue(index){
   renderQueuePanel();
 }
 
-function trackCard(tr){
+// ---------- Observateur partagé pour le chargement différé des pochettes — une seule
+// instance pour toute la page (jamais un IntersectionObserver par carte, ce qui serait
+// lourd pour rien). Marge de 400px avant la zone visible : l'image est prête avant même
+// que le scroll n'y arrive, sans jamais charger les 100 pochettes d'une grande page
+// "Tout voir" toutes en même temps. ----------
+let _lazyCoverObserver = null;
+function getLazyCoverObserver(){
+  if(_lazyCoverObserver) return _lazyCoverObserver;
+  _lazyCoverObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting && entry.target.dataset.lazyLoad === 'pending'){
+        entry.target.dataset.lazyLoad = 'done';
+        entry.target._lazyLoadFn?.();
+        _lazyCoverObserver.unobserve(entry.target);
+      }
+    });
+  }, { rootMargin: '400px 0px' });
+  return _lazyCoverObserver;
+}
+function trackCard(tr, lazy){
   // Avant : ce style ne se chargeait qu'au tout premier clic sur un menu ⋮ (dans
   // openTrackCardMenu). En attendant ce premier clic, le bouton n'avait AUCUNE position
   // définie et tombait simplement en bas à droite de la pochette (comportement par défaut
@@ -4946,17 +4965,29 @@ function trackCard(tr){
   // morceaux sans pochette du tout.
   if(tr.cover){
     const coverEl = card.querySelector('.cover');
-    const probe = new Image();
-    probe.onload = ()=>{
-      coverEl.style.backgroundImage = `url("${tr.cover}")`; coverEl.style.backgroundSize = 'cover'; coverEl.style.backgroundPosition = 'center';
-      // Alimente le moteur d'ambiance de l'accueil (voir initHomeAmbientEngine) avec la
-      // vraie couleur dominante de cette vraie pochette — jamais une couleur inventée.
-      if(typeof NuniPalette !== 'undefined'){
-        NuniPalette.extract(tr.cover).then(palette=>{ card.dataset.ambientColor = palette.dominant; });
-      }
+    const loadCoverNow = ()=>{
+      const probe = new Image();
+      probe.onload = ()=>{
+        coverEl.style.backgroundImage = `url("${tr.cover}")`; coverEl.style.backgroundSize = 'cover'; coverEl.style.backgroundPosition = 'center';
+        // Alimente le moteur d'ambiance de l'accueil (voir initHomeAmbientEngine) avec la
+        // vraie couleur dominante de cette vraie pochette — jamais une couleur inventée.
+        if(typeof NuniPalette !== 'undefined'){
+          NuniPalette.extract(tr.cover).then(palette=>{ card.dataset.ambientColor = palette.dominant; });
+        }
+      };
+      probe.onerror = ()=>{ coverEl.classList.add(tr.p || 'pal-1'); coverEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>' + coverEl.innerHTML; };
+      probe.src = tr.cover;
     };
-    probe.onerror = ()=>{ coverEl.classList.add(tr.p || 'pal-1'); coverEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>' + coverEl.innerHTML; };
-    probe.src = tr.cover;
+    if(lazy){
+      // Un seul vrai instantané réseau par carte, déclenché seulement une fois réellement
+      // proche de la zone visible — jamais les 100 requêtes d'un coup sur une grande page
+      // "Tout voir". marge de 400px : l'image est prête avant même que le scroll n'y arrive.
+      getLazyCoverObserver().observe(coverEl);
+      coverEl.dataset.lazyLoad = 'pending';
+      coverEl._lazyLoadFn = loadCoverNow;
+    } else {
+      loadCoverNow();
+    }
   }
   if(currentTrack && playing && trackKeyOf(currentTrack) === trackKeyOf(tr)) card.classList.add('is-now-playing');
   // ---- Accessibilité clavier — avant, cette carte n'était activable qu'à la souris (les
@@ -5601,7 +5632,7 @@ async function openWeeklyRankingPage(){
       document.getElementById('weekly-emerging-label').style.display = '';
       const emergingRow = document.getElementById('weekly-emerging-row');
       emerging.forEach(tr=>{
-        const card = trackCard(tr);
+        const card = trackCard(tr, true);
         card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
         emergingRow.appendChild(card);
       });
@@ -5611,7 +5642,7 @@ async function openWeeklyRankingPage(){
     if(!list.length){ grid.innerHTML = `<p class="nre-empty">Historique insuffisant pour établir le classement de cette semaine.</p>`; return; }
     grid.innerHTML = '';
     list.forEach(tr=>{
-      const card = trackCard(tr);
+      const card = trackCard(tr, true);
       card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
       grid.appendChild(card);
     });
