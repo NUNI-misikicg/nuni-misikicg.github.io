@@ -5560,6 +5560,7 @@ async function renderWeeklyRanking(){
 async function openWeeklyRankingPage(){
   ensureCategoryPageStyles();
   ensureListeningNowStyles();
+  ensureNewReleasesEditorialStyles(); // .nre-section-label en dépend
   let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
@@ -5572,6 +5573,9 @@ async function openWeeklyRankingPage(){
     <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     <div class="nre-wrap" style="max-width:720px;">
       <div class="nre-titlebar"><div class="nre-title serif">Classement de la semaine</div></div>
+      <div class="nre-section-label" id="weekly-emerging-label" style="display:none;">20 émergents de la semaine</div>
+      <div class="shelf-row" id="weekly-emerging-row" style="margin-bottom:36px;"></div>
+      <div class="nre-section-label">Classement complet</div>
       <div class="lwn-2col" id="weekly-ranking-2col">Chargement…</div>
     </div>`;
   overlay.querySelector('.cp-close').onclick = closeOverlay;
@@ -5583,6 +5587,26 @@ async function openWeeklyRankingPage(){
     const infoByTrackId = new Map((data.tracks||[]).map(r=>[r.id, r]));
     const list = tracks.filter(t=>t.isReal && infoByTrackId.has(t.realId))
       .sort((a,b)=> infoByTrackId.get(b.realId).weeklyStreams - infoByTrackId.get(a.realId).weeklyStreams);
+
+    // ---- 20 émergents — vrai DISTINCT ON artiste (1 artiste = 1 morceau, le plus en
+    // progression cette semaine), même vraie donnée de progression hebdomadaire, jamais un
+    // deuxième signal inventé. ----
+    const seenArtists = new Set();
+    const emerging = [];
+    list.forEach(t=>{
+      const key = t.artistId || t.a;
+      if(!seenArtists.has(key) && emerging.length < 20){ seenArtists.add(key); emerging.push(t); }
+    });
+    if(emerging.length){
+      document.getElementById('weekly-emerging-label').style.display = '';
+      const emergingRow = document.getElementById('weekly-emerging-row');
+      emerging.forEach(tr=>{
+        const card = trackCard(tr);
+        card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+        emergingRow.appendChild(card);
+      });
+    }
+
     const grid = document.getElementById('weekly-ranking-2col');
     if(!list.length){ grid.innerHTML = `<p class="nre-empty">Historique insuffisant pour établir le classement de cette semaine.</p>`; return; }
     grid.innerHTML = '';
