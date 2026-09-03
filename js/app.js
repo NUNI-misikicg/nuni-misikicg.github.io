@@ -5383,7 +5383,7 @@ function renderTopCongo(){
   row.innerHTML = '';
   row.classList.remove('rank-list', 'shelf-row', 'chart-flex');
   row.classList.add('chart-list');
-  const top = getTopStreamedTracks(10);
+  const top = getTopStreamedTracks(30);
   if(!top.length){
     row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Pas encore assez d'écoutes réelles pour établir un classement — revenez bientôt !</p>`;
     return;

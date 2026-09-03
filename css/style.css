@@ -1556,6 +1556,10 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
    uniformément dans une liste, le numéro fait le travail de mise en avant du #1 —
    jamais une grande pochette séparée du reste (grammaire visuelle NUNI). ---- */
 .chart-list{ display:flex; flex-direction:column; }
+/* ---- Point 23/30 — 30 morceaux réels sur la home, mais la home doit rester dense
+   (point 30) : défilement interne au lieu d'une section démesurément haute. Scopé par ID,
+   jamais les autres sections qui réutilisent .chart-list (NUNI Tendance, Classement). ---- */
+#shelf-top.chart-list{ max-height:480px; overflow-y:auto; }
 .chart-row{ display:flex; align-items:center; gap:14px; padding:10px 4px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .2s ease, padding-left .2s ease; }
 .chart-row:last-child{ border-bottom:none; }
 .chart-row:hover{ padding-left:8px; background:var(--bg-card); }
@@ -1796,7 +1800,9 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 }
 .track-card:hover .play-fab{ opacity:1; transform:translateY(0) scale(1); }
 @media(hover:none){
-  .cover .play-fab{ opacity:.9; transform:translateY(0) scale(1); width:38px; height:38px; margin:-19px 0 0 -19px; }
+  .cover .play-fab{ width:38px; height:38px; margin:-19px 0 0 -19px; }
+  .track-card.controls-revealed .play-fab{ opacity:1; transform:translateY(0) scale(1); }
+  .track-card.controls-revealed .track-card-menu-btn{ opacity:1; transform:translateX(0); }
 }
 .cover .play-fab svg{ width:16px; height:16px; fill:#fff; }
 
