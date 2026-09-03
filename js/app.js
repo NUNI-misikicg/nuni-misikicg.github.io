@@ -5242,40 +5242,6 @@ function fillShelf(id, list){
 // ---------- Nouveautés — composition éditoriale asymétrique (une grande pochette + deux
 // plus petites), plutôt qu'une rangée uniforme de cartes identiques. Sur les vraies sorties
 // récentes uniquement (mêmes données que fillShelf, juste une mise en page différente). ----------
-function fillNouveautesAsymmetric(id, list){
-  const row = document.getElementById(id);
-  if(!row) return;
-  row.innerHTML = '';
-  row.classList.add('release-grid');
-  const items = dedupeAlbums(list).slice(0, 3);
-  items.forEach((tr,i) => {
-    try{
-      const el = document.createElement('article');
-      el.className = 'rls-card' + (i===0 ? ' is-lead' : '');
-      const coverInner = tr.cover ? '' : `<div class="cover-glyph pal-pattern"></div>`;
-      el.innerHTML = `
-        <div class="rls-art ${tr.cover ? '' : (tr.p||'pal-1')}">${coverInner}<button class="rls-art-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button></div>
-        <div class="rls-info">
-          <span class="rls-tag"></span>
-          <h3 class="rls-title"></h3>
-          <p class="rls-artist"></p>
-        </div>`;
-      el.querySelector('.rls-tag').textContent = tr.releaseType || 'Single';
-      el.querySelector('.rls-title').textContent = tr.t;
-      el.querySelector('.rls-artist').textContent = tr.a;
-      el.querySelector('.rls-art-play').onclick = (e)=>{ e.stopPropagation(); playTrack(tr); };
-      if(tr.cover){
-        const artEl = el.querySelector('.rls-art');
-        const probe = new Image();
-        probe.onload = ()=>{ artEl.style.backgroundImage = `url("${tr.cover}")`; artEl.style.backgroundSize = 'cover'; artEl.style.backgroundPosition = 'center'; };
-        probe.onerror = ()=>{ artEl.classList.add(tr.p||'pal-1'); artEl.innerHTML = '<div class="cover-glyph pal-pattern"></div>'; };
-        probe.src = tr.cover;
-      }
-      el.addEventListener('click', ()=> handleTrackCardClick(tr));
-      row.appendChild(el);
-    }catch(e){ console.error('[fillNouveautesAsymmetric] carte ignorée après erreur :', e); }
-  });
-}
 function parseStreamsCount(v){
   if(typeof v === 'number') return v;
   const s = String(v||'0').trim().toUpperCase();
@@ -5438,7 +5404,17 @@ function renderTopCongo(){
     }catch(e){ console.error('[renderTopCongo] entrée ignorée après erreur :', e); }
   });
 }
-fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3));
+// ---------- "Nouveautés" — 15 vraies pochettes normales en rail, jamais de grosse carte
+// principale (remplace l'ancien fillNouveautesAsymmetric, devenu inutilisé ici). Réutilise
+// trackCard(), même motif que Rap congolais/Sortie de la semaine. ----------
+function renderNouveautesSimple(){
+  const row = document.getElementById('shelf-new');
+  if(!row) return;
+  const list = tracks.filter(t=>t.isReal).sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)).slice(0, 15);
+  row.innerHTML = '';
+  list.forEach(tr=> row.appendChild(trackCard(tr)));
+}
+renderNouveautesSimple();
 renderTopCongo();
 
 // ---------- Sortie de la semaine — la vraie sortie la plus récente en vedette, plus
@@ -5602,7 +5578,7 @@ function refreshMainShelves(){
   // n'étaient jamais exécutées (une seule exception coupait net toute la chaîne).
   const row = document.getElementById('shelf-new');
   if(row) row.innerHTML = '';
-  try{ fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3)); }catch(e){ console.error('[refreshMainShelves] shelf-new:', e); }
+  try{ renderNouveautesSimple(); }catch(e){ console.error('[refreshMainShelves] shelf-new:', e); }
   // Filet de sécurité final : si malgré tout ça la section reste visuellement vide alors que
   // de vrais morceaux existent bien en mémoire, on retente une fois après un court délai —
   // couvre le cas où le DOM n'était pas encore tout à fait prêt au moment du tout premier essai.
@@ -5610,7 +5586,7 @@ function refreshMainShelves(){
     const rowNow = document.getElementById('shelf-new');
     const realCount = tracks.filter(t=>t.isReal).length;
     if(rowNow && rowNow.children.length === 0 && realCount > 0){
-      try{ fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3)); }catch(e){ console.error('[refreshMainShelves] shelf-new (retry):', e); }
+      try{ renderNouveautesSimple(); }catch(e){ console.error('[refreshMainShelves] shelf-new (retry):', e); }
     }
   }, 400);
   try{ renderTopCongo(); }catch(e){ console.error('[refreshMainShelves] renderTopCongo:', e); }
@@ -6751,7 +6727,7 @@ loadRealTracks();
     if(realCount > 0){
       const newRow = document.getElementById('shelf-new');
       if(newRow && newRow.children.length === 0){
-        try{ fillNouveautesAsymmetric('shelf-new', tracks.filter(t=>t.isReal).slice(0,3)); }
+        try{ renderNouveautesSimple(); }
         catch(e){ console.error('[watchNeverEmptyShelves] shelf-new:', e); }
       }
       const topRow = document.getElementById('shelf-top');

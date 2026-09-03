@@ -1504,26 +1504,6 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 /* ---- Nouveautés — composition éditoriale asymétrique (grande pochette + deux plus
    petites), plutôt qu'une rangée uniforme. Réutilise les vrais jetons NUNI (--bg-card,
    --accent, --text...), jamais une couleur propre à une maquette externe. ---- */
-.release-grid{ display:grid; grid-template-columns:1.4fr 1fr; grid-template-rows:1fr 1fr; gap:16px; overflow:visible; padding-bottom:0; }
-.rls-card{ position:relative; border-radius:var(--radius-m); overflow:hidden; cursor:pointer; min-height:150px; background:var(--bg-card); }
-.rls-card.is-lead{ grid-row:1/3; min-height:320px; }
-.rls-art{ position:absolute; inset:0; background-size:cover; background-position:center; transition:transform .5s var(--ease); }
-.rls-card:hover .rls-art{ transform:scale(1.04); }
-.rls-art-play{
-  position:absolute; top:14px; right:14px; z-index:2; width:38px; height:38px; border-radius:50%;
-  background:rgba(0,0,0,.55); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.25); color:#fff;
-  display:flex; align-items:center; justify-content:center; cursor:pointer;
-  opacity:0; transform:translateY(-4px); transition:opacity .25s ease, transform .25s ease;
-}
-.rls-card:hover .rls-art-play{ opacity:1; transform:translateY(0); }
-.rls-card:after{ content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 45%, rgba(0,0,0,.78)); }
-.rls-info{ position:absolute; z-index:1; left:18px; right:18px; bottom:16px; color:#fff; }
-.rls-tag{ font-family:var(--font-data); font-size:9.5px; text-transform:uppercase; letter-spacing:.18em; opacity:.75; }
-.rls-card.is-lead .rls-title{ font-family:var(--font-display); font-style:italic; font-size:24px; font-weight:600; margin:6px 0 3px; }
-.rls-card:not(.is-lead) .rls-title{ font-size:14.5px; font-weight:600; margin:4px 0 2px; }
-.rls-artist{ font-size:12px; opacity:.8; margin:0; }
-@media(max-width:680px){ .release-grid{ grid-template-columns:1fr; grid-template-rows:none; } .rls-card.is-lead{ grid-row:auto; min-height:220px; } }
-
 /* ---- Clips — encart éditorial sombre façon magazine, distinct des autres sections.
    Réutilise --noir/--noir-2, déjà des jetons NUNI existants (pas une couleur venue d'une
    maquette externe), quel que soit le thème actif. ---- */
@@ -1535,21 +1515,7 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 .shelf-clips-feature .clip-info .a{ color:rgba(255,255,255,.6); }
 @media(max-width:680px){ .shelf-clips-feature:before{ font-size:64px; } }
 
-/* ---- "Nouveautés" façon Apple Music : pochettes énormes et verticales — même vraie
-   pochette carrée uploadée par l'artiste, simplement recadrée en format "affiche" pour un
-   rendu plus premium/éditorial, comme les cartes vedettes d'Apple Music. Jamais une image
-   inventée : juste un cadrage différent de la même vraie image. ---- */
-#shelf-new{ gap:22px; }
-#shelf-new .track-card{ width:230px; }
-#shelf-new .track-card .cover{ width:230px; height:230px; border-radius:20px; padding:14px; }
-#shelf-new .track-card::before{ height:230px; }
-#shelf-new .track-card .ttl{ font-size:15.5px; font-weight:700; margin-top:14px; }
-#shelf-new .track-card .art{ font-size:13px; }
-@media(max-width:680px){
-  #shelf-new .track-card{ width:168px; }
-  #shelf-new .track-card .cover{ width:168px; height:168px; border-radius:16px; padding:12px; }
-  #shelf-new .track-card::before{ height:168px; }
-}
+
 
 /* ---- "Écoutés récemment" : même gabarit de carte que le reste du catalogue, mais un vrai
    repère temporel "il y a X" (voir renderContinueListening) posé en médaillon sur la
@@ -1899,8 +1865,6 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
   .track-card .art{ transition:opacity .3s ease; }
   .track-card-menu-btn{ opacity:0; transform:translateX(8px); transition:opacity .3s ease, transform .3s ease; }
   .track-card:hover .track-card-menu-btn{ opacity:1; transform:translateX(0); }
-  #shelf-new .track-card:first-child .stream-count-line{ top:254px; }
-  #shelf-new .track-card:first-child .likes{ top:276px; }
 }
 
 /* generated cover palettes */
@@ -1914,22 +1878,6 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
   position:absolute; inset:0;
   background-image:repeating-linear-gradient(115deg, rgba(255,255,255,.09) 0 2px, transparent 2px 14px);
   mix-blend-mode:overlay;
-}
-
-/* ============================================================
-   PHASE 3 DA — mise en page magazine : la première sortie de la
-   section "Nouveautés" devient une pièce éditoriale, pas une carte
-   identique aux autres. Pur CSS (nth-child), fillShelf() n'a besoin
-   d'aucune modification — la même liste de cartes générée normalement
-   est simplement mise en valeur différemment ici.
-============================================================ */
-#shelf-new .track-card:first-child{ width:300px; }
-#shelf-new .track-card:first-child .cover{ width:300px; height:300px; }
-#shelf-new .track-card:first-child .ttl{ font-size:19px; font-weight:700; margin-top:16px; }
-#shelf-new .track-card:first-child .art{ font-size:13.5px; }
-@media(max-width:640px){
-  #shelf-new .track-card:first-child{ width:220px; }
-  #shelf-new .track-card:first-child .cover{ width:220px; height:220px; }
 }
 
 /* ============ ARTIST PAGE — style Spotify ============
