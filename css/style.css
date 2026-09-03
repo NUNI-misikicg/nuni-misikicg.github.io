@@ -1465,7 +1465,7 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
    réelles (jamais celles de la maquette de référence). ---- */
 .coups-coeur-row{ display:flex; gap:20px; overflow-x:auto; padding-bottom:10px; -webkit-overflow-scrolling:touch; }
 .coeur-card{
-  position:relative; flex:0 0 260px; height:400px; border-radius:18px; overflow:hidden; cursor:pointer;
+  position:relative; flex:0 0 320px; height:500px; border-radius:18px; overflow:hidden; cursor:pointer;
   transition:transform .3s var(--ease);
 }
 .coeur-card:hover{ transform:scale(.98); }
