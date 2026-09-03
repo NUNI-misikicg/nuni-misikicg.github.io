@@ -906,8 +906,6 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .badge-chip.locked .ic{ color:var(--text-faint); filter:grayscale(1); opacity:.55; box-shadow:none; }
 .badge-chip.locked .n{ color:var(--text-faint); opacity:.65; }
 
-.challenges-row{ display:flex; gap:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
-
 /* ---- NUNI Talent (accueil) — cartes verticales, vraie photo d'artiste en fond ---- */
 .home-talent-row{ display:flex; gap:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; scroll-snap-type:x proximity; }
 .htal-card{
@@ -2337,7 +2335,7 @@ html.is-playing .mp-marquee-track .mp-title{ font-weight:700; }
 .progress-track:hover, .progress-track.is-scrubbing{ height:7px; }
 .progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0%; border-radius:4px; background:var(--grad-envol); transition:background .2s ease; }
 .progress-track.is-scrubbing .progress-fill{ background:var(--accent); }
-.progress-scrub-tip{ position:absolute; bottom:16px; transform:translateX(-50%); background:var(--bg-elev); border:1px solid var(--border-strong); padding:3px 9px; border-radius:8px; font-family:var(--font-data); font-size:11px; white-space:nowrap; opacity:0; transition:opacity .15s ease; pointer-events:none; box-shadow:var(--shadow); }
+
 .progress-scrub-tip.show{ opacity:1; }
 
 .player-right{ width:230px; flex-shrink:0; display:flex; align-items:center; justify-content:flex-end; gap:14px; }
