@@ -2633,7 +2633,7 @@ async function renderRisingArtists(){
   }catch(e){ wrap.style.display = 'none'; }
 }
 
-function renderKwizaKutala(){
+async function renderKwizaKutala(){
   const wrap = document.getElementById('shelf-kwiza-wrap');
   const row = document.getElementById('shelf-kwiza');
   if(!wrap || !row) return;
@@ -2654,16 +2654,26 @@ function renderKwizaKutala(){
   const popularTracks = real.filter(t=> popularArtistIds.has(t.artistId));
   const emergingTracks = real.filter(t=> emergingArtistIds.has(t.artistId));
 
-  // Graine partagée par fenêtre de 30 minutes réelle — identique pour tout le monde dans la
-  // même fenêtre, change naturellement à la suivante.
-  const bucket = Math.floor(Date.now() / (30*60*1000));
-  let seed = bucket;
-  const seededRandom = ()=>{ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-  const shuffle = (arr)=> arr.map(t=>({t, r:seededRandom()})).sort((a,b)=>a.r-b.r).map(x=>x.t);
-
+  // Points 6-8 — vrai moteur de personnalisation, appliqué à l'intérieur de chaque bassin
+  // (populaire/émergent) plutôt que de remplacer la distinction déjà en place. Repli propre
+  // sur le tirage purement aléatoire si le contexte de personnalisation est vide (utilisateur
+  // non connecté ou aucune vraie donnée disponible).
+  const context = await getPersonalizationContext();
   const half = 7;
-  const list = [...pickDiverseByArtist(shuffle(popularTracks), half), ...pickDiverseByArtist(shuffle(emergingTracks), 15-half)];
-  const finalList = shuffle(list).slice(0, 15);
+  const hasContext = context.followedIds.size > 0 || context.likedGenres.size > 0;
+  const list = hasContext
+    ? [...weightedPersonalizedPick(popularTracks, half, context), ...weightedPersonalizedPick(emergingTracks, 15-half, context)]
+    : (()=>{
+        const bucket = Math.floor(Date.now() / (30*60*1000));
+        let seed = bucket;
+        const seededRandom = ()=>{ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+        const shuffle = (arr)=> arr.map(t=>({t, r:seededRandom()})).sort((a,b)=>a.r-b.r).map(x=>x.t);
+        return [...pickDiverseByArtist(shuffle(popularTracks), half), ...pickDiverseByArtist(shuffle(emergingTracks), 15-half)];
+      })();
+  const bucket2 = Math.floor(Date.now() / (30*60*1000));
+  let seed2 = bucket2 + 1;
+  const seededRandom2 = ()=>{ seed2 = (seed2 * 1103515245 + 12345) & 0x7fffffff; return seed2 / 0x7fffffff; };
+  const finalList = list.map(t=>({t, r:seededRandom2()})).sort((a,b)=>a.r-b.r).map(x=>x.t).slice(0, 15);
   if(!finalList.length){ wrap.style.display = 'none'; return; }
   wrap.style.display = '';
   row.innerHTML = '';
@@ -5427,6 +5437,65 @@ function renderTopCongo(){
 // (les sorties les plus récentes restent toujours en tête, jamais repoussées), mais
 // plafonne à 2 morceaux par artiste dans la sélection finale pour éviter qu'un seul
 // artiste prolifique remplisse toute une section comme Nouveautés/Sortie de la semaine. ----------
+// ---------- Points 6-8 — vrai moteur de personnalisation réutilisable. Récupère les 3
+// vrais signaux disponibles (artistes suivis, genres réellement écoutés récemment, genres
+// des morceaux réellement likés) en un seul appel, pour que chaque section qui l'utilise
+// n'ait pas à refaire les mêmes requêtes réseau. Jamais un signal inventé : si l'utilisateur
+// n'est pas connecté ou qu'une requête échoue, le contexte retombe sur des ensembles vides
+// (aucune personnalisation, jamais une fausse personnalisation). ----------
+async function getPersonalizationContext(){
+  if(!realAuthToken) return { followedIds: new Set(), likedGenres: new Set(), followedGenres: new Set() };
+  try{
+    const [followRes, recentRes, likedRes] = await Promise.all([
+      fetch(NUNI_API_BASE + '/api/me/following', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
+      fetch(NUNI_API_BASE + '/api/me/recently-played?limit=20', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
+      fetch(NUNI_API_BASE + '/api/me/liked-tracks', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
+    ]);
+    const followData = followRes.ok ? await followRes.json() : { following: [] };
+    const recentData = recentRes.ok ? await recentRes.json() : { tracks: [] };
+    const likedData = likedRes.ok ? await likedRes.json() : { tracks: [] };
+    const followedIds = new Set((followData.following||[]).map(a=>a.id));
+    const recentIds = new Set((recentData.tracks||[]).map(r=>r.id));
+    const likedIds = new Set((likedData.tracks||[]).map(r=>r.id));
+    const likedGenres = new Set(tracks.filter(t=>t.isReal && (recentIds.has(t.realId) || likedIds.has(t.realId))).map(t=>t.genre).filter(Boolean));
+    return { followedIds, likedGenres, followedGenres: likedGenres };
+  }catch(e){
+    return { followedIds: new Set(), likedGenres: new Set(), followedGenres: new Set() };
+  }
+}
+
+// ---------- Vrai ratio 70/20/10 (point 8) — 70% pertinence réelle (artiste suivi ou genre
+// aimé), 20% découverte réelle (genre différent des habitudes, jamais vu), 10% vraiment
+// aléatoire parmi tout le reste. Chaque case garde son propre ordre chronologique interne
+// (les plus récents d'abord), seule la composition du mélange change. Diversité d'artiste
+// (pickDiverseByArtist) appliquée sur le résultat final, jamais oubliée. ----------
+function weightedPersonalizedPick(sortedList, count, context){
+  const relevant = sortedList.filter(t=> context.followedIds.has(t.artistId) || context.likedGenres.has(t.genre));
+  const discovery = sortedList.filter(t=> !context.followedIds.has(t.artistId) && !context.likedGenres.has(t.genre));
+  const nRelevant = Math.round(count * 0.7);
+  const nDiscovery = Math.round(count * 0.2);
+  const nRandom = count - nRelevant - nDiscovery;
+
+  const bucket = Math.floor(Date.now() / (60*60*1000)); // graine par heure — même mélange pour tout le monde pendant 1h
+  let seed = bucket;
+  const seededRandom = ()=>{ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  const shuffle = (arr)=> arr.map(t=>({t, r:seededRandom()})).sort((a,b)=>a.r-b.r).map(x=>x.t);
+
+  const picked = [
+    ...relevant.slice(0, nRelevant), // pertinence : ordre chronologique gardé, pas mélangé
+    ...shuffle(discovery).slice(0, nDiscovery),
+    ...shuffle(sortedList).slice(0, nRandom),
+  ];
+  // Dédoublonne (un morceau peut apparaître dans plusieurs bassins) puis complète si le
+  // total réel de morceaux disponibles est trop faible pour remplir les 3 parts.
+  const seen = new Set();
+  let result = picked.filter(t=>{ const k=trackKeyOf(t); if(seen.has(k)) return false; seen.add(k); return true; });
+  if(result.length < count){
+    sortedList.forEach(t=>{ if(result.length < count && !seen.has(trackKeyOf(t))){ seen.add(trackKeyOf(t)); result.push(t); } });
+  }
+  return pickDiverseByArtist(result, count);
+}
+
 function pickDiverseByArtist(sortedList, count){
   const countByArtist = new Map();
   const capped = [];
