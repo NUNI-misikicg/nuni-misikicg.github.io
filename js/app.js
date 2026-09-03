@@ -12672,13 +12672,23 @@ async function loadPlaylistsShelf(){
     const res = await fetch(NUNI_API_BASE + '/api/playlists');
     const data = await res.json();
     const list = data.playlists || [];
-    searchPlaylistsCache = list; // réutilisé par la recherche instantanée, pas de requête dupliquée
+    searchPlaylistsCache = list; // réutilisé par la recherche instantanée, jamais réordonné (ordre neutre attendu)
     row.innerHTML = '';
     if(!list.length){
       row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucune playlist NUNI publiée pour le moment.</p>`;
       return;
     }
-    list.forEach(p=> row.appendChild(playlistCard(p)));
+    // Points 6-8 — vrai réordonnancement de l'affichage selon le vrai genre dominant de
+    // chaque playlist (jamais une catégorisation inventée, calculée côté serveur depuis
+    // ses vrais morceaux). Uniquement l'ordre change, jamais la liste elle-même.
+    let displayList = list;
+    const context = await getPersonalizationContext();
+    if(context.likedGenres.size){
+      const matching = list.filter(p=> p.dominant_genre && context.likedGenres.has(p.dominant_genre));
+      const rest = list.filter(p=> !(p.dominant_genre && context.likedGenres.has(p.dominant_genre)));
+      displayList = [...matching, ...rest];
+    }
+    displayList.forEach(p=> row.appendChild(playlistCard(p)));
   }catch(e){
     row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Playlists momentanément indisponibles.</p>`;
   }
