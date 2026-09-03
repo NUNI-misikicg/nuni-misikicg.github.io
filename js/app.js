@@ -12034,7 +12034,29 @@ async function loadFeaturedArtists(){
   try{
     const res = await fetch(NUNI_API_BASE + '/api/artists/featured');
     const data = await res.json();
-    const list = data.artists || [];
+    let list = data.artists || [];
+
+    // ---- Point 27 — priorité réelle par goût musical (point 27), jamais une exclusion :
+    // les artistes dont le genre principal correspond aux vrais genres récemment écoutés
+    // passent devant, le reste garde son ordre d'origine derrière. La vraie liste backend
+    // (déjà filtrée sur les artistes avec un Pass actif) reste la seule source de qui peut
+    // apparaître — on ne fait que réordonner, jamais recréer une deuxième liste. ----
+    if(realAuthToken && list.length){
+      try{
+        const recentRes = await fetch(NUNI_API_BASE + '/api/me/recently-played?limit=15', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
+        if(recentRes.ok){
+          const recentData = await recentRes.json();
+          const recentIds = new Set((recentData.tracks||[]).map(r=>r.id));
+          const likedGenres = new Set(tracks.filter(t=>t.isReal && recentIds.has(t.realId)).map(t=>t.genre).filter(Boolean));
+          if(likedGenres.size){
+            const matching = list.filter(a=> a.top_genre && likedGenres.has(a.top_genre));
+            const rest = list.filter(a=> !(a.top_genre && likedGenres.has(a.top_genre)));
+            list = [...matching, ...rest];
+          }
+        }
+      }catch(e){ /* la vraie liste backend reste utilisée telle quelle si ce réordonnancement échoue */ }
+    }
+
     row.innerHTML = '';
     if(!list.length){
       row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucun artiste avec un Pass actif pour le moment — revenez bientôt !</p>`;
