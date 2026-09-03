@@ -12152,19 +12152,20 @@ async function loadFeaturedArtists(){
     // passent devant, le reste garde son ordre d'origine derrière. La vraie liste backend
     // (déjà filtrée sur les artistes avec un Pass actif) reste la seule source de qui peut
     // apparaître — on ne fait que réordonner, jamais recréer une deuxième liste. ----
+    // ---- Point 27 — priorité réelle par goût musical, jamais une exclusion : les
+    // artistes dont le genre principal correspond aux vrais genres réellement aimés
+    // passent devant, le reste garde son ordre d'origine derrière. La vraie liste backend
+    // (déjà filtrée sur les artistes avec un Pass actif) reste la seule source de qui peut
+    // apparaître — on ne fait que réordonner. Réutilise le vrai contexte partagé
+    // (getPersonalizationContext), jamais une requête réseau redondante. ----
     if(realAuthToken && list.length){
       try{
-        const recentRes = await fetch(NUNI_API_BASE + '/api/me/recently-played?limit=15', { headers:{ 'Authorization':'Bearer '+realAuthToken } });
-        if(recentRes.ok){
-          const recentData = await recentRes.json();
-          const recentIds = new Set((recentData.tracks||[]).map(r=>r.id));
-          const likedGenres = new Set(tracks.filter(t=>t.isReal && recentIds.has(t.realId)).map(t=>t.genre).filter(Boolean));
-          if(likedGenres.size){
-            const matching = list.filter(a=> a.top_genre && likedGenres.has(a.top_genre));
-            const rest = list.filter(a=> !(a.top_genre && likedGenres.has(a.top_genre)));
-            list = [...matching, ...rest];
+        const context = await getPersonalizationContext();
+        if(context.likedGenres.size){
+          const matching = list.filter(a=> a.top_genre && context.likedGenres.has(a.top_genre));
+          const rest = list.filter(a=> !(a.top_genre && context.likedGenres.has(a.top_genre)));
+          list = [...matching, ...rest];
           }
-        }
       }catch(e){ /* la vraie liste backend reste utilisée telle quelle si ce réordonnancement échoue */ }
     }
 
