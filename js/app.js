@@ -6833,6 +6833,22 @@ loadRealTracks();
   setTimeout(check, intervalMs);
 })();
 
+// ---------- Point 12 — "Nouveautés" doit rester dynamique, jamais une liste figée au
+// chargement initial. Vérifie toutes les 3 minutes si de vrais nouveaux morceaux sont
+// apparus côté serveur (comparaison sur le vrai nombre de morceaux réels) ; si oui,
+// recharge réellement les données et rafraîchit les sections concernées — jamais besoin
+// de recharger toute la page pour voir une sortie publiée pendant la session. ----------
+setInterval(async ()=>{
+  const before = tracks.filter(t=>t.isReal).length;
+  try{ await loadRealTracks(); }catch(e){ return; }
+  const after = tracks.filter(t=>t.isReal).length;
+  if(after !== before){
+    try{ renderNouveautesSimple(); }catch(e){}
+    try{ renderFeatureWeek(); }catch(e){}
+    try{ renderTopCongo(); }catch(e){}
+  }
+}, 3 * 60 * 1000);
+
 /* ============ PHASE 2 DA — tilt 3D des pochettes au survol ============
    Un seul listener délégué sur tout le document plutôt qu'un par carte : la souris peut
    survoler des centaines de pochettes sans jamais multiplier les écouteurs d'événements.
