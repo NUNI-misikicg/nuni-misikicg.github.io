@@ -2722,25 +2722,30 @@ async function renderCoupsDeCoeur(){
     }catch(e){}
   }
 
-  // 2. CHOIX DU PEUPLE — vrai DISTINCT ON artiste (1 artiste = 1 morceau, son plus streamé),
-  // calculé côté client depuis les vraies données déjà chargées, jamais une donnée inventée.
+  // 2. CHOIX DU PEUPLE — vrai DISTINCT ON artiste (1 artiste = son morceau le plus streamé),
+  // mais les ARTISTES sont classés par leur vrai total cumulé croissant — favorise les
+  // émergents comme demandé explicitement, jamais les plus gros artistes déjà installés.
   const byArtist = new Map();
+  const totalByArtistCP = new Map();
   tracks.filter(t=>t.isReal && t.artistId).forEach(t=>{
     const cur = byArtist.get(t.artistId);
     if(!cur || Number(t.streams||0) > Number(cur.streams||0)) byArtist.set(t.artistId, t);
+    totalByArtistCP.set(t.artistId, (totalByArtistCP.get(t.artistId)||0) + Number(t.streams||0));
   });
-  const choixPeuple = [...byArtist.values()].sort((a,b)=> Number(b.streams||0)-Number(a.streams||0)).slice(0,15);
+  const choixPeuple = [...byArtist.values()].sort((a,b)=> totalByArtistCP.get(a.artistId) - totalByArtistCP.get(b.artistId)).slice(0,15);
   if(choixPeuple.length){
     heroes.push({ key:'choix', label:`${choixPeuple.length} artistes · ${choixPeuple.length} titres`, title:'Choix du peuple', desc:'Une voix, un artiste, un morceau à découvrir.', cover: choixPeuple[0].cover, onClick: ()=> openCoeurCollectionPage('Choix du peuple', choixPeuple) });
   }
 
-  // 3. BINA — même principe que Choix du peuple, filtré au vrai genre Rumba.
+  // 3. BINA — même principe que Choix du peuple (favorise les émergents), filtré au vrai genre Rumba.
   const byArtistRumba = new Map();
+  const totalByArtistRumba = new Map();
   tracks.filter(t=>t.isReal && t.artistId && t.genre==='Rumba').forEach(t=>{
     const cur = byArtistRumba.get(t.artistId);
     if(!cur || Number(t.streams||0) > Number(cur.streams||0)) byArtistRumba.set(t.artistId, t);
+    totalByArtistRumba.set(t.artistId, (totalByArtistRumba.get(t.artistId)||0) + Number(t.streams||0));
   });
-  const binaList = [...byArtistRumba.values()].sort((a,b)=> Number(b.streams||0)-Number(a.streams||0)).slice(0,15);
+  const binaList = [...byArtistRumba.values()].sort((a,b)=> totalByArtistRumba.get(a.artistId) - totalByArtistRumba.get(b.artistId)).slice(0,15);
   if(binaList.length){
     heroes.push({ key:'bina', label:'Rumba', title:'Bina', desc:'Plusieurs artistes, plusieurs morceaux, une autre façon de découvrir.', cover: binaList[0].cover, onClick: ()=> openCoeurCollectionPage('Bina', binaList) });
   }
