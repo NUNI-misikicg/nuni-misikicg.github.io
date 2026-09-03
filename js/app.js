@@ -5443,8 +5443,16 @@ function renderTopCongo(){
 // n'ait pas à refaire les mêmes requêtes réseau. Jamais un signal inventé : si l'utilisateur
 // n'est pas connecté ou qu'une requête échoue, le contexte retombe sur des ensembles vides
 // (aucune personnalisation, jamais une fausse personnalisation). ----------
+let _personalizationContextCache = null;
+let _personalizationContextCacheAt = 0;
 async function getPersonalizationContext(){
   if(!realAuthToken) return { followedIds: new Set(), likedGenres: new Set(), followedGenres: new Set() };
+  // Cache court (2 min) — plusieurs sections (Kwiza, Playlists, et toute future section)
+  // peuvent avoir besoin du même contexte dans la même fenêtre de chargement ; un seul vrai
+  // appel réseau partagé plutôt que de refaire 3 requêtes identiques par section.
+  if(_personalizationContextCache && (Date.now() - _personalizationContextCacheAt) < 2*60*1000){
+    return _personalizationContextCache;
+  }
   try{
     const [followRes, recentRes, likedRes] = await Promise.all([
       fetch(NUNI_API_BASE + '/api/me/following', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
@@ -5458,7 +5466,10 @@ async function getPersonalizationContext(){
     const recentIds = new Set((recentData.tracks||[]).map(r=>r.id));
     const likedIds = new Set((likedData.tracks||[]).map(r=>r.id));
     const likedGenres = new Set(tracks.filter(t=>t.isReal && (recentIds.has(t.realId) || likedIds.has(t.realId))).map(t=>t.genre).filter(Boolean));
-    return { followedIds, likedGenres, followedGenres: likedGenres };
+    const context = { followedIds, likedGenres, followedGenres: likedGenres };
+    _personalizationContextCache = context;
+    _personalizationContextCacheAt = Date.now();
+    return context;
   }catch(e){
     return { followedIds: new Set(), likedGenres: new Set(), followedGenres: new Set() };
   }
