@@ -5002,7 +5002,7 @@ function trackCard(tr, lazy){
             // Même halo coloré dérivé de la vraie pochette que "Ajouts récents" en
             // Bibliothèque — jamais un second calcul, réutilise la palette déjà extraite
             // juste au-dessus pour le moteur d'ambiance.
-            coverEl.style.boxShadow = `0 10px 26px -12px rgba(0,0,0,.55), 0 0 26px -6px ${palette.accent || palette.dominant}`;
+            coverEl.style.boxShadow = `0 10px 26px -10px rgba(0,0,0,.55), 0 0 30px -6px ${palette.accent || palette.dominant}`;
           });
         }
       };
@@ -5511,6 +5511,17 @@ function weightedPersonalizedPick(sortedList, count, context){
     sortedList.forEach(t=>{ if(result.length < count && !seen.has(trackKeyOf(t))){ seen.add(trackKeyOf(t)); result.push(t); } });
   }
   return pickDiverseByArtist(result, count);
+}
+
+// ---------- Halo de pochette — UNE SEULE vraie source de vérité pour tout le site.
+// Exactement les mêmes valeurs partout (Bibliothèque, accueil, Playlists...) : même flou,
+// même étalement, même opacité. Jamais une deuxième version avec des chiffres légèrement
+// différents. Réutilise toujours NuniPalette, jamais un système de couleur inventé. ----------
+function applyCoverGlow(el, coverUrl){
+  if(!el || !coverUrl || typeof NuniPalette === 'undefined') return;
+  NuniPalette.extract(coverUrl).then(palette=>{
+    el.style.boxShadow = `0 10px 26px -10px rgba(0,0,0,.55), 0 0 30px -6px ${palette.accent || palette.dominant}`;
+  }).catch(()=>{});
 }
 
 function pickDiverseByArtist(sortedList, count){
@@ -13663,15 +13674,17 @@ async function renderLibraryRecentGrid(){
     }
     grid.appendChild(tile);
     // Fusion pochette ↔ tuile : la vraie couleur dominante de CETTE image précise irrigue
-    // à la fois un halo derrière la pochette et un léger fond de tuile — jamais une couleur
-    // générique appliquée à toutes les tuiles indifféremment.
-    if(coverForGlow && typeof NuniPalette !== 'undefined'){
-      NuniPalette.extract(coverForGlow).then(palette=>{
-        const cov = tile.querySelector('.lib-recent-cov');
-        if(cov) cov.style.boxShadow = `0 10px 26px -10px rgba(0,0,0,.55), 0 0 30px -6px ${palette.accent}`;
-        tile.style.background = `radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, ${palette.dominant} 20%, transparent) 0%, transparent 70%)`;
-        tile.style.borderRadius = '14px';
-      }).catch(()=>{});
+    // à la fois un halo derrière la pochette (applyCoverGlow, même fonction partagée
+    // partout sur NUNI) et un léger fond de tuile propre à cette section.
+    if(coverForGlow){
+      const cov = tile.querySelector('.lib-recent-cov');
+      applyCoverGlow(cov, coverForGlow);
+      if(typeof NuniPalette !== 'undefined'){
+        NuniPalette.extract(coverForGlow).then(palette=>{
+          tile.style.background = `radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, ${palette.dominant} 20%, transparent) 0%, transparent 70%)`;
+          tile.style.borderRadius = '14px';
+        }).catch(()=>{});
+      }
     }
   });
 }

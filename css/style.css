@@ -691,11 +691,11 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .poster-card:nth-child(3n+1) .poster-cover{ transform:rotate(-1.6deg); }
 .poster-card:nth-child(3n+2) .poster-cover{ transform:rotate(1.4deg); }
 .poster-card:nth-child(3n) .poster-cover{ transform:rotate(-2.2deg); }
-.poster-card:hover .poster-cover{ transform:rotate(0deg) translateY(-4px) scale(1.025); box-shadow:0 28px 54px -14px rgba(0,0,0,0.65), 0 0 34px -6px var(--poster-glow-color, transparent); }
+.poster-card:hover .poster-cover{ transform:rotate(0deg) translateY(-4px) scale(1.025); box-shadow:0 28px 54px -14px rgba(0,0,0,0.65), 0 0 30px -6px var(--poster-glow-color, transparent); }
 .poster-cover{
   position:relative; width:100%; aspect-ratio:1/1; border-radius:18px; overflow:hidden;
   background-size:cover; background-position:center; display:flex; align-items:flex-end;
-  box-shadow:0 20px 44px -16px rgba(0,0,0,0.6), 0 0 26px -8px var(--poster-glow-color, transparent);
+  box-shadow:0 10px 26px -10px rgba(0,0,0,.55), 0 0 30px -6px var(--poster-glow-color, transparent);
   transition:transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s cubic-bezier(.2,.8,.2,1);
 }
 @media(max-width:760px){
