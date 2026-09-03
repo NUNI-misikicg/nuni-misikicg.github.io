@@ -691,11 +691,11 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .poster-card:nth-child(3n+1) .poster-cover{ transform:rotate(-1.6deg); }
 .poster-card:nth-child(3n+2) .poster-cover{ transform:rotate(1.4deg); }
 .poster-card:nth-child(3n) .poster-cover{ transform:rotate(-2.2deg); }
-.poster-card:hover .poster-cover{ transform:rotate(0deg) translateY(-4px) scale(1.025); box-shadow:0 28px 54px -14px rgba(0,0,0,0.65); }
+.poster-card:hover .poster-cover{ transform:rotate(0deg) translateY(-4px) scale(1.025); box-shadow:0 28px 54px -14px rgba(0,0,0,0.65), 0 0 34px -6px var(--poster-glow-color, transparent); }
 .poster-cover{
   position:relative; width:100%; aspect-ratio:1/1; border-radius:18px; overflow:hidden;
   background-size:cover; background-position:center; display:flex; align-items:flex-end;
-  box-shadow:0 20px 44px -16px rgba(0,0,0,0.6);
+  box-shadow:0 20px 44px -16px rgba(0,0,0,0.6), 0 0 26px -8px var(--poster-glow-color, transparent);
   transition:transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s cubic-bezier(.2,.8,.2,1);
 }
 @media(max-width:760px){
@@ -709,7 +709,7 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .poster-scrim{ position:absolute; inset:0; z-index:1; background:linear-gradient(0deg, rgba(0,0,0,.88) 0%, rgba(0,0,0,.25) 55%, transparent 78%); }
 .poster-glow{
   position:absolute; inset:-20%; z-index:0; pointer-events:none; opacity:0;
-  background:radial-gradient(circle at 30% 85%, var(--nuni-signature-glow, var(--or)) 0%, transparent 60%);
+  background:radial-gradient(circle at 30% 85%, var(--poster-glow-color, var(--nuni-signature-glow, var(--or))) 0%, transparent 60%);
   filter:blur(30px); transition:opacity .4s ease;
 }
 .poster-card:hover .poster-glow{ opacity:.55; }

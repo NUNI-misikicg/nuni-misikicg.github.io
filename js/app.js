@@ -12694,6 +12694,15 @@ function playlistCard(p){
     </div>`;
   card.querySelector('.poster-cover').onclick = ()=> openPlaylistPage(p.id);
   card.querySelector('.poster-play-fab').onclick = (e)=>{ e.stopPropagation(); openPlaylistPage(p.id); };
+  // Vrai halo dérivé de la vraie pochette — même mécanisme que trackCard() et "Ajouts
+  // récents" en Bibliothèque, jamais un système inventé séparément. Toujours visible
+  // (pas seulement au survol), pour la vraie cohérence demandée sur tout le site.
+  if(p.cover_url && typeof NuniPalette !== 'undefined'){
+    NuniPalette.extract(p.cover_url).then(palette=>{
+      const coverEl = card.querySelector('.poster-cover');
+      if(coverEl) coverEl.style.setProperty('--poster-glow-color', palette.accent || palette.dominant);
+    }).catch(()=>{});
+  }
   return card;
 }
 let searchPlaylistsCache = [];
