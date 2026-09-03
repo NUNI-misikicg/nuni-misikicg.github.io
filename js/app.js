@@ -5424,107 +5424,21 @@ function renderFeatureWeek(){
   const wrap = document.getElementById('feature-week-wrap');
   const box = document.getElementById('feature-week');
   if(!wrap || !box) return;
-  const recent = tracks.filter(t=>t.isReal).slice().sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
-  if(!recent.length){ wrap.style.display = 'none'; return; }
+  const list = tracks.filter(t=>t.isReal).slice().sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)).slice(0, 12);
+  if(!list.length){ wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
-  const setCover = (el, tr)=>{
-    if(tr.cover){
-      const probe = new Image();
-      probe.onload = ()=>{ el.style.backgroundImage = `url("${tr.cover}")`; el.style.backgroundSize='cover'; el.style.backgroundPosition='center'; };
-      probe.onerror = ()=>{ el.classList.add(tr.p||'pal-1'); };
-      probe.src = tr.cover;
-    } else el.classList.add(tr.p||'pal-1');
-  };
-  try{
-    const [main, ...others] = recent.slice(0, 5);
-    const mainEl = document.createElement('div');
-    mainEl.className = 'fw-main';
-    mainEl.innerHTML = `<div class="fw-main-art"><button class="fw-main-art-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button></div><div class="fw-main-info"><div class="fw-main-title"></div><div class="fw-main-artist"></div></div><button class="fw-main-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
-    mainEl.querySelector('.fw-main-title').textContent = main.t;
-    mainEl.querySelector('.fw-main-artist').textContent = main.a;
-    setCover(mainEl.querySelector('.fw-main-art'), main);
-    mainEl.onclick = ()=> handleTrackCardClick(main);
-    mainEl.querySelector('.fw-main-play').onclick = (e)=>{ e.stopPropagation(); playTrack(main); };
-    mainEl.querySelector('.fw-main-art-play').onclick = (e)=>{ e.stopPropagation(); playTrack(main); };
-
-    const othersEl = document.createElement('div');
-    othersEl.className = 'fw-others';
-    others.forEach(tr=>{
-      try{
-        const row = document.createElement('div');
-        row.className = 'fw-other';
-        row.innerHTML = `<div class="fw-other-art"></div><div><div class="fw-other-title"></div><div class="fw-other-artist"></div></div>`;
-        row.querySelector('.fw-other-title').textContent = tr.t;
-        row.querySelector('.fw-other-artist').textContent = tr.a;
-        setCover(row.querySelector('.fw-other-art'), tr);
-        row.onclick = ()=> handleTrackCardClick(tr);
-        othersEl.appendChild(row);
-      }catch(e){ console.error('[renderFeatureWeek] entrée ignorée après erreur :', e); }
-    });
-    box.innerHTML = '';
-    box.appendChild(mainEl);
-    box.appendChild(othersEl);
-  }catch(e){ console.error('[renderFeatureWeek]', e); wrap.style.display = 'none'; }
+  box.innerHTML = '';
+  list.forEach(tr=> box.appendChild(trackCard(tr)));
 }
 renderFeatureWeek();
 
-// ---------- Sorties — grande sortie album éditoriale (immersion couleur via NuniPalette,
-// même système que le Hero et la page Album, jamais dupliqué) + liste compacte de singles
-// récents. Masquée entièrement si aucune vraie sortie n'existe encore. ----------
+// ---------- "Sorties" — retirée : faisait doublon avec "Sortie de la semaine" (même vraies
+// données, juste une présentation différente avec une pochette surdimensionnée que la
+// nouvelle spec interdit explicitement). Fonction gardée définie pour ne casser aucun
+// appelant existant, se contente maintenant de masquer la section. ----------
 function renderReleasesSplit(){
   const wrap = document.getElementById('releases-split-wrap');
-  const albumBox = document.getElementById('rs-album');
-  const singlesBox = document.getElementById('rs-singles');
-  if(!wrap || !albumBox || !singlesBox) return;
-  const real = tracks.filter(t=>t.isReal);
-  const albums = real.filter(t=>t.releaseType && t.releaseType !== 'Single').sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
-  const singles = real.filter(t=>!t.releaseType || t.releaseType === 'Single').sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)).slice(0, 5);
-  if(!albums.length && !singles.length){ wrap.style.display = 'none'; return; }
-  wrap.style.display = '';
-
-  if(albums.length){
-    const album = albums[0];
-    const albumTrackCount = real.filter(t=> t.album === album.album && t.a === album.a).length;
-    albumBox.innerHTML = `
-      <div class="rs-album-halo"></div>
-      <div class="rs-album-cover" style="${album.cover ? `background-image:url(${album.cover});` : 'background:var(--grad-envol);'}"></div>
-      <div class="rs-album-info">
-        <span class="rs-album-label">Sortie album</span>
-        <div class="rs-album-artist">${esc(album.a)}</div>
-        <div class="rs-album-title">${esc(album.album)}</div>
-        <div class="rs-album-meta">${esc(album.releaseType || 'Album')}${albumTrackCount>1 ? ' · ' + albumTrackCount + ' titres' : ''}${album.release ? ' · ' + esc(album.release) : ''}</div>
-        <button class="rs-album-play"><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8 5v14l11-7z"/></svg> Écouter</button>
-      </div>`;
-    albumBox.querySelector('.rs-album-cover').onclick = ()=> handleTrackCardClick(album);
-    albumBox.querySelector('.rs-album-play').onclick = ()=> handleTrackCardClick(album);
-    if(album.cover){
-      NuniPalette.extract(album.cover).then(palette=>{
-        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
-        const tint = theme === 'light'
-          ? `color-mix(in srgb, ${palette.dominant} 10%, transparent)`
-          : `color-mix(in srgb, ${palette.dominant} 20%, transparent)`;
-        albumBox.style.setProperty('--rs-tint', tint);
-        albumBox.querySelector('.rs-album-halo').style.background =
-          `radial-gradient(circle at 30% 30%, color-mix(in srgb, ${palette.dominant} 40%, transparent) 0%, transparent 70%)`;
-      });
-    }
-    albumBox.style.display = '';
-  } else { albumBox.style.display = 'none'; }
-
-  if(singles.length){
-    singlesBox.innerHTML = `<div class="rs-singles-label">Sorties single</div>` + singles.map(s => `
-      <div class="rs-single-row" data-t="${esc(s.t)}">
-        <div class="rs-single-cover" style="${s.cover ? `background-image:url(${s.cover});` : 'background:var(--grad-envol);'}"></div>
-        <div class="rs-single-info"><div class="rs-single-title">${esc(s.t)}</div><div class="rs-single-artist">${esc(s.a)}</div></div>
-        <button class="rs-single-play" aria-label="Écouter"><svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M8 5v14l11-7z"/></svg></button>
-      </div>`).join('');
-    singlesBox.querySelectorAll('.rs-single-row').forEach((row, i)=>{
-      const s = singles[i];
-      row.querySelector('.rs-single-play').onclick = (e)=>{ e.stopPropagation(); playTrack(s); };
-      row.onclick = ()=> handleTrackCardClick(s);
-    });
-    singlesBox.style.display = '';
-  } else { singlesBox.style.display = 'none'; }
+  if(wrap) wrap.style.display = 'none';
 }
 renderReleasesSplit();
 
@@ -5610,36 +5524,41 @@ function refreshMainShelves(){
   // bas dans ce fichier) — appelée automatiquement au chargement et rappelée par
   // renderContinueListening() dès que sa section devient réellement visible.
 }
-// ---------- "Tendance dans votre région" — vraies écoutes de vrais auditeurs du même pays
-// que la personne connectée (voir /api/tracks/trending-region côté serveur). Jamais affichée
-// s'il n'existe pas encore de vraies données pour ce pays — pas de contenu générique ou
-// dupliqué du Top Congo pour remplir l'espace. Prépare l'arrivée de futurs auditeurs hors
-// Congo : chacun verra sa propre tendance réelle, pas un contenu identique pour tout le monde.
+// ---------- "Tendance en ce moment — Congo" — présentation éditoriale en classement,
+// vraie vitesse de progression + vrai pourcentage (calculés côté serveur depuis le vrai
+// historique de streams). Remplace l'ancienne logique par région, qui se masquait presque
+// toujours car identique au Top Congo tant que le public reste presque entièrement
+// congolais — ce nouveau calcul par vélocité ne duplique jamais Top Congo (l'ordre est
+// différent : progression récente, pas total cumulé). Réutilise .chart-row, jamais un
+// composant dupliqué. ----------
 async function renderTrendingRegion(){
   const wrap = document.getElementById('shelf-trending-region-wrap');
   const row = document.getElementById('shelf-trending-region');
   if(!wrap || !row) return;
-  if(!currentUser || !currentUser.country){ wrap.style.display = 'none'; return; }
   try{
-    const res = await fetch(NUNI_API_BASE + '/api/tracks/trending-region?country=' + encodeURIComponent(currentUser.country), {
-      headers: realAuthToken ? { 'Authorization': 'Bearer ' + realAuthToken } : {},
-    });
-    if(!res.ok){ wrap.style.display = 'none'; return; }
+    const res = await fetch(NUNI_API_BASE + '/api/tracks/trending');
     const data = await res.json();
-    if(!data.tracks || !data.tracks.length){ wrap.style.display = 'none'; return; }
-    // Ne montre jamais un doublon strict du Top Congo : si le pays du visiteur est "Congo"
-    // et que le classement régional est identique au Top Congo global (cas fréquent tant
-    // que la quasi-totalité des auditeurs sont congolais), inutile d'afficher deux fois la
-    // même chose — cette section ne prend tout son sens qu'une fois de vrais auditeurs
-    // d'autres pays présents.
-    const mapped = data.tracks.map(mapPlaylistTrack).map((tr,i)=>{ tr.realId = data.tracks[i].id; return tr; });
-    const topIds = new Set(getTopStreamedTracks(12).map(t=>t.realId));
-    const isDuplicateOfTopCongo = mapped.every(tr => topIds.has(tr.realId));
-    if(isDuplicateOfTopCongo){ wrap.style.display = 'none'; return; }
-    document.getElementById('shelf-trending-region-title').textContent = `Tendance en ce moment — ${esc(currentUser.country)}`;
-    wrap.style.display = 'block';
+    const infoByTrackId = new Map((data.tracks||[]).map(r=>[r.id, r]));
+    const list = tracks.filter(t=>t.isReal && infoByTrackId.has(t.realId))
+      .sort((a,b)=> infoByTrackId.get(b.realId).velocity - infoByTrackId.get(a.realId).velocity)
+      .slice(0, 5);
+    if(!list.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
     row.innerHTML = '';
-    fillShelf('shelf-trending-region', mapped);
+    list.forEach((tr,i)=>{
+      const info = infoByTrackId.get(tr.realId);
+      const el = document.createElement('div');
+      el.className = 'chart-row';
+      el.innerHTML = `
+        <span class="chart-row-rank">${String(i+1).padStart(2,'0')}</span>
+        <div class="chart-row-cover" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}"></div>
+        <div class="chart-row-info"><div class="chart-row-title">${esc(tr.t)}</div><div class="chart-row-artist">${esc(tr.a)}</div></div>
+        ${info.percent != null ? `<span class="chart-row-trend">+${info.percent}%</span>` : ''}
+        <button class="chart-row-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
+      el.querySelector('.chart-row-play').onclick = (e)=>{ e.stopPropagation(); playTrack(tr); };
+      el.onclick = ()=> handleTrackCardClick(tr);
+      row.appendChild(el);
+    });
   }catch(e){ wrap.style.display = 'none'; }
 }
 // ---------- "Reprendre l'écoute" — vraie position de lecture sauvegardée côté serveur.
