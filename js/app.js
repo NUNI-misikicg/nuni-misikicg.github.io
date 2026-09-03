@@ -5016,6 +5016,24 @@ function trackCard(tr){
   card.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); handleTrackCardClick(tr); }
   });
+  // ---- Tap-pour-révéler sur tactile — les contrôles (Play, ⋮) restent invisibles par
+  // défaut même sur mobile, jamais affichés en permanence. Un premier tap les révèle
+  // temporairement (3s) sans déclencher la lecture ; un tap sur les boutons eux-mêmes ou un
+  // deuxième tap sur la pochette agit normalement. ----
+  if(window.matchMedia('(hover: none)').matches){
+    let revealTimer = null;
+    card.addEventListener('click', (e)=>{
+      if(!card.classList.contains('controls-revealed')){
+        // Les boutons ont leur propre gestionnaire avec stopPropagation — s'il a déjà agi,
+        // ce clic-ci ne vient que de la pochette elle-même.
+        e.preventDefault(); e.stopPropagation();
+        document.querySelectorAll('.track-card.controls-revealed').forEach(c=> c!==card && c.classList.remove('controls-revealed'));
+        card.classList.add('controls-revealed');
+        clearTimeout(revealTimer);
+        revealTimer = setTimeout(()=> card.classList.remove('controls-revealed'), 3000);
+      }
+    }, true); // capture : s'exécute avant le gestionnaire de clic normal de la carte
+  }
   return card;
 }
 /* Petit popover léger (zone d'appui 44px min, conforme aux recommandations mobiles) — ancré
@@ -5407,10 +5425,27 @@ function renderTopCongo(){
 // ---------- "Nouveautés" — 15 vraies pochettes normales en rail, jamais de grosse carte
 // principale (remplace l'ancien fillNouveautesAsymmetric, devenu inutilisé ici). Réutilise
 // trackCard(), même motif que Rap congolais/Sortie de la semaine. ----------
+// ---------- Sélection diversifiée par artiste — privilégie un morceau par artiste
+// différent (le plus récent de chacun) avant de recomplèter avec d'autres morceaux du
+// même artiste si le nombre d'artistes distincts est insuffisant. Évite qu'un seul
+// artiste prolifique remplisse toute une section comme Nouveautés/Sortie de la semaine. ----------
+function pickDiverseByArtist(sortedList, count){
+  const seenArtists = new Set();
+  const firstPass = [];
+  const rest = [];
+  sortedList.forEach(t=>{
+    const key = t.artistId || t.a;
+    if(!seenArtists.has(key)){ seenArtists.add(key); firstPass.push(t); }
+    else { rest.push(t); }
+  });
+  return [...firstPass, ...rest].slice(0, count);
+}
+
 function renderNouveautesSimple(){
   const row = document.getElementById('shelf-new');
   if(!row) return;
-  const list = tracks.filter(t=>t.isReal).sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)).slice(0, 15);
+  const sorted = tracks.filter(t=>t.isReal).sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
+  const list = pickDiverseByArtist(sorted, 15);
   row.innerHTML = '';
   list.forEach(tr=> row.appendChild(trackCard(tr)));
 }
@@ -5424,7 +5459,8 @@ function renderFeatureWeek(){
   const wrap = document.getElementById('feature-week-wrap');
   const box = document.getElementById('feature-week');
   if(!wrap || !box) return;
-  const list = tracks.filter(t=>t.isReal).slice().sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0)).slice(0, 12);
+  const sorted = tracks.filter(t=>t.isReal).slice().sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
+  const list = pickDiverseByArtist(sorted, 12);
   if(!list.length){ wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
   box.innerHTML = '';
