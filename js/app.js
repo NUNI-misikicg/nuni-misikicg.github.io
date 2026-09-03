@@ -2725,7 +2725,7 @@ async function renderCoupsDeCoeur(){
       const followedIds = new Set((followData.following||[]).map(a=>a.id));
       const recentIds = new Set((recentData.tracks||[]).map(r=>r.id));
       const recentGenres = new Set(tracks.filter(t=>t.isReal && recentIds.has(t.realId)).map(t=>t.genre).filter(Boolean));
-      const voyagePicks = tracks.filter(t=> t.isReal && (followedIds.has(t.artistId) || recentGenres.has(t.genre)));
+      const voyagePicks = dedupeAlbums(tracks.filter(t=> t.isReal && (followedIds.has(t.artistId) || recentGenres.has(t.genre))));
       if(voyagePicks.length){
         heroes.push({ key:'voyage', label:'Pour vous', title:'Voyage', desc:'Les morceaux que vous aimez écouter encore et encore.', cover: voyagePicks[0].cover, onClick: ()=> openCoeurCollectionPage('Voyage', voyagePicks) });
       }
