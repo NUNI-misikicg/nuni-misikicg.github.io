@@ -2651,8 +2651,8 @@ async function renderKwizaKutala(){
   const popularArtistIds = new Set(sortedArtistIds.slice(0, midpoint));
   const emergingArtistIds = new Set(sortedArtistIds.slice(midpoint));
 
-  const popularTracks = real.filter(t=> popularArtistIds.has(t.artistId));
-  const emergingTracks = real.filter(t=> emergingArtistIds.has(t.artistId));
+  const popularTracks = dedupeAlbums(real.filter(t=> popularArtistIds.has(t.artistId)));
+  const emergingTracks = dedupeAlbums(real.filter(t=> emergingArtistIds.has(t.artistId)));
 
   // Points 6-8 — vrai moteur de personnalisation, appliqué à l'intérieur de chaque bassin
   // (populaire/émergent) plutôt que de remplacer la distinction déjà en place. Repli propre
@@ -2691,7 +2691,7 @@ function renderRareTracks(){
   const wrap = document.getElementById('shelf-rare-tracks-wrap');
   const row = document.getElementById('shelf-rare-tracks');
   if(!wrap || !row) return;
-  const real = tracks.filter(t=>t.isReal);
+  const real = dedupeAlbums(tracks.filter(t=>t.isReal));
   if(!real.length){ wrap.style.display = 'none'; return; }
   const today = new Date();
   let seed = today.getFullYear()*372 + today.getMonth()*31 + today.getDate();
