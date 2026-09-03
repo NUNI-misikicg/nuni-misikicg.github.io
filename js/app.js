@@ -5427,11 +5427,38 @@ function pickDiverseByArtist(sortedList, count){
   return [...capped, ...overflow].slice(0, count);
 }
 
-function renderNouveautesSimple(){
+async function renderNouveautesSimple(){
   const row = document.getElementById('shelf-new');
   if(!row) return;
   const sorted = tracks.filter(t=>t.isReal).sort((a,b)=>(b.releaseTs||0)-(a.releaseTs||0));
-  const list = pickDiverseByArtist(sorted, 15);
+
+  let list;
+  if(realAuthToken){
+    try{
+      // ---- Vraie priorité en 3 niveaux (point 9) : 1) artistes suivis, 2) genres
+      // réellement écoutés récemment, 3) découverte. Jamais un ordre inventé — les mêmes
+      // vraies données déjà utilisées pour "Voyage" (artistes suivis + historique réel). ----
+      const [followRes, recentRes] = await Promise.all([
+        fetch(NUNI_API_BASE + '/api/me/following', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
+        fetch(NUNI_API_BASE + '/api/me/recently-played?limit=15', { headers:{ 'Authorization':'Bearer '+realAuthToken } }),
+      ]);
+      const followData = followRes.ok ? await followRes.json() : { following: [] };
+      const recentData = recentRes.ok ? await recentRes.json() : { tracks: [] };
+      const followedIds = new Set((followData.following||[]).map(a=>a.id));
+      const recentIds = new Set((recentData.tracks||[]).map(r=>r.id));
+      const likedGenres = new Set(tracks.filter(t=>t.isReal && recentIds.has(t.realId)).map(t=>t.genre).filter(Boolean));
+
+      const tier1 = sorted.filter(t=> followedIds.has(t.artistId));
+      const tier2 = sorted.filter(t=> !followedIds.has(t.artistId) && likedGenres.has(t.genre));
+      const tier3 = sorted.filter(t=> !followedIds.has(t.artistId) && !likedGenres.has(t.genre));
+      list = pickDiverseByArtist([...tier1, ...tier2, ...tier3], 15);
+    }catch(e){
+      list = pickDiverseByArtist(sorted, 15); // repli propre sur l'ancien comportement si la vraie donnée échoue à charger
+    }
+  } else {
+    list = pickDiverseByArtist(sorted, 15);
+  }
+
   row.innerHTML = '';
   list.forEach(tr=> row.appendChild(trackCard(tr)));
 }
