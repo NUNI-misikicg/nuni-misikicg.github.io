@@ -1532,7 +1532,7 @@ html[data-theme="light"] .mood-chip:has(input:checked){ color:#2a1a06; }
 #shelf-continue .track-card .ttl{ font-weight:700; }
 
 .cover{
-  width:172px; height:172px; border-radius:var(--radius-m); flex-shrink:0; position:relative; overflow:hidden;
+  width:172px; height:172px; border-radius:12px; flex-shrink:0; position:relative; overflow:hidden;
   display:flex; align-items:flex-end; justify-content:flex-end; padding:14px;
   border:1px solid rgba(255,255,255,0.06);
   box-shadow:0 10px 26px -12px rgba(0,0,0,0.55);

@@ -5053,8 +5053,8 @@ function ensureTrackCardMenuStyles(){
   const style = document.createElement('style');
   style.id = 'track-card-menu-styles';
   style.textContent = `
-    .track-card-menu-btn{position:absolute; top:6px; right:6px; z-index:5; width:30px; height:30px; min-width:30px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; border:none; font-size:16px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;}
-    .track-card-menu-btn:hover{ background:rgba(0,0,0,.75); }
+    .track-card-menu-btn{position:absolute; top:6px; right:6px; z-index:5; width:30px; height:30px; min-width:30px; border-radius:50%; background:rgba(10,10,16,.4); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.15); color:#fff; font-size:16px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+    .track-card-menu-btn:hover{ background:rgba(10,10,16,.6); }
     #tcm-sheet{
       position:fixed; z-index:9999; width:240px; background:var(--bg-elev,#1a1a22);
       border:1px solid var(--border-strong,rgba(255,255,255,.1)); border-radius:16px; padding:6px;
