@@ -5496,6 +5496,7 @@ function refreshMainShelves(){
   }, 400);
   try{ renderTopCongo(); }catch(e){ console.error('[refreshMainShelves] renderTopCongo:', e); }
   try{ renderTrendingRegion(); }catch(e){ console.error('[refreshMainShelves] renderTrendingRegion:', e); }
+  try{ renderWeeklyRanking(); }catch(e){ console.error('[refreshMainShelves] renderWeeklyRanking:', e); }
   try{ renderForYouShelf(); }catch(e){ console.error('[refreshMainShelves] renderForYouShelf:', e); }
   try{ renderContinueListening(); }catch(e){ console.error('[refreshMainShelves] renderContinueListening:', e); }
   try{ renderResumeListening(); }catch(e){ console.error('[refreshMainShelves] renderResumeListening:', e); }
@@ -5522,6 +5523,79 @@ function refreshMainShelves(){
 // congolais — ce nouveau calcul par vélocité ne duplique jamais Top Congo (l'ordre est
 // différent : progression récente, pas total cumulé). Réutilise .chart-row, jamais un
 // composant dupliqué. ----------
+// ---------- "Classement de la semaine" — vraie progression depuis lundi (endpoint
+// /api/tracks/weekly-ranking), distincte de Top Congo (total cumulé). Masquée
+// automatiquement tant que l'historique est insuffisant — jamais un classement inventé. ----------
+async function renderWeeklyRanking(){
+  const wrap = document.getElementById('shelf-weekly-ranking-wrap');
+  const row = document.getElementById('shelf-weekly-ranking');
+  if(!wrap || !row) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/tracks/weekly-ranking');
+    const data = await res.json();
+    const infoByTrackId = new Map((data.tracks||[]).map(r=>[r.id, r]));
+    const list = tracks.filter(t=>t.isReal && infoByTrackId.has(t.realId))
+      .sort((a,b)=> infoByTrackId.get(b.realId).weeklyStreams - infoByTrackId.get(a.realId).weeklyStreams)
+      .slice(0, 20);
+    if(!list.length){ wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    row.innerHTML = '';
+    list.forEach((tr,i)=>{
+      const el = document.createElement('div');
+      el.className = 'chart-row';
+      el.innerHTML = `
+        <span class="chart-row-rank">${String(i+1).padStart(2,'0')}</span>
+        <div class="chart-row-cover" style="${tr.cover ? `background-image:url(${tr.cover});` : 'background:var(--grad-envol);'}"></div>
+        <div class="chart-row-info"><div class="chart-row-title">${esc(tr.t)}</div><div class="chart-row-artist">${esc(tr.a)}</div></div>
+        <button class="chart-row-play" aria-label="Écouter"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>`;
+      el.querySelector('.chart-row-play').onclick = (e)=>{ e.stopPropagation(); playTrack(tr); };
+      el.onclick = ()=> handleTrackCardClick(tr);
+      row.appendChild(el);
+    });
+  }catch(e){ wrap.style.display = 'none'; }
+}
+
+// ---------- "Tout voir" du classement de la semaine — jusqu'à 100 vrais morceaux,
+// grille 2 colonnes réutilisant .lwn-2col déjà existant, jamais un composant dupliqué. ----------
+async function openWeeklyRankingPage(){
+  ensureCategoryPageStyles();
+  ensureListeningNowStyles();
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:720px;">
+      <div class="nre-titlebar"><div class="nre-title serif">Classement de la semaine</div></div>
+      <div class="lwn-2col" id="weekly-ranking-2col">Chargement…</div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/tracks/weekly-ranking');
+    const data = await res.json();
+    const infoByTrackId = new Map((data.tracks||[]).map(r=>[r.id, r]));
+    const list = tracks.filter(t=>t.isReal && infoByTrackId.has(t.realId))
+      .sort((a,b)=> infoByTrackId.get(b.realId).weeklyStreams - infoByTrackId.get(a.realId).weeklyStreams);
+    const grid = document.getElementById('weekly-ranking-2col');
+    if(!list.length){ grid.innerHTML = `<p class="nre-empty">Historique insuffisant pour établir le classement de cette semaine.</p>`; return; }
+    grid.innerHTML = '';
+    list.forEach(tr=>{
+      const card = trackCard(tr);
+      card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+      grid.appendChild(card);
+    });
+  }catch(e){
+    document.getElementById('weekly-ranking-2col').innerHTML = `<p class="nre-empty">Impossible de charger le classement.</p>`;
+  }
+}
+
 async function renderTrendingRegion(){
   const wrap = document.getElementById('shelf-trending-region-wrap');
   const row = document.getElementById('shelf-trending-region');
