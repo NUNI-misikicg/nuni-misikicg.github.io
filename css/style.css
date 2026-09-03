@@ -693,14 +693,13 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .poster-card:nth-child(3n) .poster-cover{ transform:rotate(-2.2deg); }
 .poster-card:hover .poster-cover{ transform:rotate(0deg) translateY(-4px) scale(1.025); box-shadow:0 28px 54px -14px rgba(0,0,0,0.65); }
 .poster-cover{
-  position:relative; width:220px; height:300px; border-radius:18px; overflow:hidden;
+  position:relative; width:100%; aspect-ratio:1/1; border-radius:18px; overflow:hidden;
   background-size:cover; background-position:center; display:flex; align-items:flex-end;
   box-shadow:0 20px 44px -16px rgba(0,0,0,0.6);
   transition:transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s cubic-bezier(.2,.8,.2,1);
 }
 @media(max-width:760px){
   .poster-card{ width:165px !important; }
-  .poster-cover{ width:165px; height:225px; }
 }
 /* Même grain photographique que le Hero — cohérence de la signature visuelle NUNI. */
 .poster-grain{
@@ -727,7 +726,7 @@ html[data-theme="light"] .radio-banner{ background:linear-gradient(120deg, var(-
 .poster-card:hover .poster-play-fab{ opacity:1; transform:translateY(0); }
 .poster-play-fab svg{ width:15px; height:15px; fill:#fff; }
 @media(prefers-reduced-motion: reduce){ .poster-card:hover .poster-cover{ transform:none; } }
-@media(max-width:640px){ .poster-card, .poster-cover{ width:170px; } .poster-cover{ height:230px; } .poster-title{ font-size:18px; } }
+@media(max-width:640px){ .poster-card{ width:170px; } .poster-title{ font-size:18px; } }
 
 /* ============================================================
    RÉCAP PERSONNEL — "Ton mois en musique". Vrais artistes/morceaux
