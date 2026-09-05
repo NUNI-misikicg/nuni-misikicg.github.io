@@ -13849,7 +13849,7 @@ async function renderLibraryArtists(listEl){
     const name = ar.artist_name || ar.first_name;
     const item = document.createElement('div'); item.className = 'pi-item';
     const covStyle = ar.avatar_url ? `background-image:url(${ar.avatar_url})` : '';
-    item.innerHTML = `<div class="cov pal-1" style="${covStyle}; border-radius:50%;"></div><div><div class="t">${name}${ar.is_verified?' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>':''}</div><div class="s">Artiste NUNI</div></div>`;
+    item.innerHTML = `<div class="cov pal-1" style="${covStyle}; border-radius:50% !important;"></div><div><div class="t">${name}${ar.is_verified?' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>':''}</div><div class="s">Artiste NUNI</div></div>`;
     item.onclick = ()=> openArtistPage(name, ar.id);
     if(ar.avatar_url) applyCoverGlow(item.querySelector('.cov'), ar.avatar_url);
     listEl.appendChild(item);
@@ -13874,7 +13874,7 @@ async function renderLibrarySuggestedArtists(listEl){
       const item = document.createElement('div'); item.className = 'pi-item';
       const covStyle = ar.avatar_url ? `background-image:url(${ar.avatar_url})` : '';
       item.innerHTML = `
-        <div class="cov pal-1" style="${covStyle}; border-radius:50%;"></div>
+        <div class="cov pal-1" style="${covStyle}; border-radius:50% !important;"></div>
         <div class="pi-info-flex"><div class="t">${name}${ar.is_verified?' <svg class="nuni-ic nuni-ic-ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>':''}</div><div class="s">${ar.top_genre || 'Artiste NUNI'}</div></div>
         <button class="lib-suggest-follow-btn">Suivre</button>`;
       item.querySelector('.cov').onclick = ()=> openArtistPage(name, ar.id);
