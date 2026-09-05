@@ -129,7 +129,8 @@ body::before{
 /* ============ CARTES DE MORCEAUX — pochettes plus grandes, plus premium ============ */
 .track-card{ width: 190px; }
 .cover{
-  border-radius: var(--radius-l) !important;
+  /* border-radius retiré (2026-09-05) : géré uniquement par css/nuni-pochettes.css,
+     seule source de vérité pour la forme des pochettes. */
   box-shadow: 0 12px 30px -10px rgba(0,0,0,0.5);
   transition: transform .5s var(--ease), box-shadow .5s var(--ease);
 }
@@ -238,7 +239,8 @@ body::before{
   height: 280px !important;
 }
 .fp-cover{
-  border-radius: 36px !important;
+  /* border-radius retiré (2026-09-05) : géré uniquement par css/nuni-pochettes.css,
+     seule source de vérité pour la forme des pochettes (lecteur plein écran inclus). */
   box-shadow: 0 34px 80px -18px rgba(0,0,0,0.6), 0 0 0 1px rgba(244,238,225,0.06);
 }
 .full-player.immersion .fp-cover-wrap, .full-player.immersion .fp-cover{

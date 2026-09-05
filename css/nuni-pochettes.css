@@ -1,0 +1,66 @@
+/* ============================================================
+   NUNI — RÈGLE UNIQUE : POCHETTE MUSICALE = CARRÉ DE VINYLE
+   ============================================================
+   SEULE ET UNIQUE source de vérité pour la géométrie de toute pochette
+   musicale (album / single / morceau / playlist / compilation) sur NUNI,
+   sur TOUTE la plateforme (accueil, hero, nouveautés, tendances, top
+   Congo, genres, playlists, bibliothèque, recherche, page artiste,
+   discographie, classements, lecteur, mini-player, lecteur plein écran…)
+   et sur TOUS les écrans (PC, Mac, tablette, iPad, Android, iPhone).
+
+   NE CONCERNE PAS les avatars / photos d'artistes (portraits de
+   personnes) : volontairement exclus, ils peuvent rester ronds.
+
+   ------------------------------------------------------------
+   POURQUOI CE FICHIER EST CHARGÉ EN DERNIER (voir index.html) :
+   Plusieurs vues de l'app (Nouveautés, Ambiances, Playlists, Continuer,
+   page Album, etc.) injectent leur propre <style> à l'exécution, avec
+   leur propre border-radius sur leur propre classe de pochette. Ce
+   fichier gagne dans tous les cas car :
+     1) !important bat toute règle non-!important, peu importe l'ordre.
+     2) étant le DERNIER <link> du <head>, il gagne aussi face à toute
+        autre règle !important déclarée dans un fichier chargé avant lui
+        (nuni-premium.css, etc.) à spécificité égale.
+   Toute nouvelle classe de pochette créée à l'avenir doit être ajoutée
+   UNIQUEMENT à la liste ci-dessous — jamais recréée ailleurs.
+   ============================================================ */
+.cover,
+.poster-cover,
+.lib-recent-cov,
+.resume-cover,
+.release-cover,
+.chart-row-cover,
+.recap-track-cover,
+.player-cover,
+.fp-mini-cover,
+.fp-cover,
+.mv-art,
+.pi-item .cov,
+.rs-album-cover,
+.rs-single-cover,
+.asv-row-cover,
+.search-results .sr-cover,
+.artist-top-tracks-row .thumb,
+.artist-latest-cover,
+.ph-cover,
+.ph-sec-cover,
+.av-cover,
+.nre-featured-cover,
+.nre-single-cover,
+.nre-other-cover,
+.nre-t3-cover,
+.nre-grid-cover,
+.cp-hero-cover,
+.cp-row .thumb,
+.plv-cover,
+.plv-similar-cover,
+.mood-intro-cover,
+.mood-card-cover{
+  aspect-ratio:1/1 !important;
+  border-radius:0 !important;
+}
+
+/* ---- Exception explicite — variante ronde des avatars d'artistes qui
+   partagent une des classes ci-dessus (coexiste avec .lib-recent-cov sur
+   le même élément) : doit rester ronde malgré la règle globale. ---- */
+.lib-recent-cov-round{ border-radius:50% !important; }

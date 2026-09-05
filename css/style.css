@@ -3338,39 +3338,10 @@ html.dj-transitioning .fp-progress-track::after, html.dj-transitioning .progress
 /* ============================================================
    RÈGLE GLOBALE NUNI — POCHETTE MUSICALE = CARRÉ DE VINYLE
    ============================================================
-   UNE SEULE vraie source de vérité pour la géométrie de toute pochette
-   musicale (album/single/morceau/playlist/compilation) sur NUNI. !important
-   garantit qu'aucune règle individuelle, présente ou future, ne peut la
-   contourner silencieusement — plus besoin de corriger chaque composant
-   un par un à chaque fois qu'un nouveau est créé.
-
-   NE CONCERNE PAS les avatars/photos d'artistes (portraits de personnes),
-   volontairement exclus de cette liste — ceux-là peuvent rester ronds.
-
-   Tous les vrais composants de pochette musicale de NUNI, listés ici : */
-.cover,
-.poster-cover,
-.lib-recent-cov,
-.resume-cover,
-.release-cover,
-.chart-row-cover,
-.recap-track-cover,
-.player-cover,
-.fp-mini-cover,
-.mv-art,
-.pi-item .cov,
-.rs-album-cover,
-.rs-single-cover,
-.asv-row-cover,
-.search-results .sr-cover,
-.artist-top-tracks-row .thumb,
-.artist-latest-cover,
-.ph-cover,
-.ph-sec-cover{
-  aspect-ratio:1/1 !important;
-  border-radius:0 !important;
-}
-/* ---- Exception explicite — la variante ronde des avatars d'artistes (coexiste avec
-   .lib-recent-cov sur le même élément) doit rester ronde malgré la règle globale
-   ci-dessus. Sans ce correctif, le !important aurait aussi écrasé ce cas précis. ---- */
-.lib-recent-cov-round{ border-radius:50% !important; }
+   Déplacée dans css/nuni-pochettes.css (2026-09-05), chargée en DERNIER
+   dans index.html. Raison : plusieurs vues (Nouveautés, Ambiances,
+   Playlists, Continuer, page Album...) injectent leur propre <style> à
+   l'exécution, ce qui les place après ce fichier-ci dans le DOM — un
+   fichier chargé plus tôt ne peut plus gagner face à elles de façon
+   fiable. Toute nouvelle classe de pochette doit être ajoutée UNIQUEMENT
+   dans css/nuni-pochettes.css — jamais recréée ici. */
