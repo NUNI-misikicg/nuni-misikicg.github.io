@@ -5170,7 +5170,7 @@ function dedupeAlbums(list){
   const order = [];
   list.forEach(tr=>{
     if(tr.releaseType && tr.releaseType !== 'Single'){
-      const key = tr.a + '::' + tr.album;
+      const key = (tr.artistId != null ? tr.artistId : tr.a) + '::' + tr.album;
       const current = seen.get(key);
       if(!current){
         seen.set(key, tr);
@@ -5183,8 +5183,9 @@ function dedupeAlbums(list){
         seen.set(key, tr);
       }
     } else {
-      seen.set('single::' + tr.t + '::' + tr.a, tr);
-      order.push('single::' + tr.t + '::' + tr.a);
+      const singleKey = 'single::' + (tr.realId != null ? tr.realId : (tr.t + '::' + tr.a));
+      seen.set(singleKey, tr);
+      order.push(singleKey);
     }
   });
   return order.map(key => seen.get(key));
