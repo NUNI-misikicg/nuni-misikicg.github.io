@@ -4999,10 +4999,6 @@ function trackCard(tr, lazy){
         if(typeof NuniPalette !== 'undefined'){
           NuniPalette.extract(tr.cover).then(palette=>{
             card.dataset.ambientColor = palette.dominant;
-            // Même halo coloré dérivé de la vraie pochette que "Ajouts récents" en
-            // Bibliothèque — jamais un second calcul, réutilise la palette déjà extraite
-            // juste au-dessus pour le moteur d'ambiance.
-            coverEl.style.boxShadow = `0 10px 26px -10px rgba(0,0,0,.55), 0 0 30px -6px ${palette.accent || palette.dominant}`;
           });
         }
       };
@@ -5514,16 +5510,11 @@ function weightedPersonalizedPick(sortedList, count, context){
   return pickDiverseByArtist(result, count);
 }
 
-// ---------- Halo de pochette — UNE SEULE vraie source de vérité pour tout le site.
-// Exactement les mêmes valeurs partout (Bibliothèque, accueil, Playlists...) : même flou,
-// même étalement, même opacité. Jamais une deuxième version avec des chiffres légèrement
-// différents. Réutilise toujours NuniPalette, jamais un système de couleur inventé. ----------
-function applyCoverGlow(el, coverUrl){
-  if(!el || !coverUrl || typeof NuniPalette === 'undefined') return;
-  NuniPalette.extract(coverUrl).then(palette=>{
-    el.style.boxShadow = `0 10px 26px -10px rgba(0,0,0,.55), 0 0 30px -6px ${palette.accent || palette.dominant}`;
-  }).catch(()=>{});
-}
+// ---------- Halo de pochette — retiré partout, comme demandé explicitement : même un
+// flou minimal introduit un arrondi technique aux coins, incompatible avec "angles à 90°
+// sans aucune exception". Fonction gardée (pour ne pas casser les appels existants un peu
+// partout dans le fichier) mais neutralisée — ne fait plus rien nulle part. ----------
+function applyCoverGlow(el, coverUrl){ return; }
 
 function pickDiverseByArtist(sortedList, count){
   const countByArtist = new Map();
@@ -12706,15 +12697,6 @@ function playlistCard(p){
     </div>`;
   card.querySelector('.poster-cover').onclick = ()=> openPlaylistPage(p.id);
   card.querySelector('.poster-play-fab').onclick = (e)=>{ e.stopPropagation(); openPlaylistPage(p.id); };
-  // Vrai halo dérivé de la vraie pochette — même mécanisme que trackCard() et "Ajouts
-  // récents" en Bibliothèque, jamais un système inventé séparément. Toujours visible
-  // (pas seulement au survol), pour la vraie cohérence demandée sur tout le site.
-  if(p.cover_url && typeof NuniPalette !== 'undefined'){
-    NuniPalette.extract(p.cover_url).then(palette=>{
-      const coverEl = card.querySelector('.poster-cover');
-      if(coverEl) coverEl.style.setProperty('--poster-glow-color', palette.accent || palette.dominant);
-    }).catch(()=>{});
-  }
   return card;
 }
 let searchPlaylistsCache = [];
@@ -13710,12 +13692,6 @@ function sortTrackList(list){
 // aucune nouvelle extraction de couleur inventée, juste la même vraie couleur dominante de
 // CETTE pochette précise, appliquée en halo derrière son propre élément visuel — jamais une
 // couleur générique partagée par tous les éléments.
-function applyCoverGlow(el, coverUrl){
-  if(!el || !coverUrl || typeof NuniPalette === 'undefined') return;
-  NuniPalette.extract(coverUrl).then(palette=>{
-    el.style.boxShadow = `0 8px 22px -10px rgba(0,0,0,.55), 0 0 24px -6px ${palette.accent}`;
-  }).catch(()=>{});
-}
 function buildLibraryTrackRow(tr, subtitleSuffix){
   const item = document.createElement('div'); item.className = 'pi-item lib-track-row';
   const covStyle = tr.cover ? `background-image:url(${tr.cover})` : '';
