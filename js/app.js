@@ -4200,6 +4200,7 @@ pickHeroImage('accueil', 'assets/hero/hero-accueil.jpg').then(url=>{
 });
 
 function filterCatalogByGenre(genreName){
+  ensureListeningNowStyles(); // .lwn-2col en dépend — même grille que Sortie de la semaine, pour une seule identité visuelle
   const shelvesWrap = document.getElementById('genre-filtered-shelf');
   const defaultShelves = document.getElementById('default-shelves');
 
