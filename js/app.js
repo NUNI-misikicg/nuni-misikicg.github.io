@@ -10074,10 +10074,6 @@ async function handleProfileAvatarUpload(e){
     toast('Connectez-vous pour que cette photo soit enregistrée.');
     return;
   }
-  if(currentUser && currentUser.account_type !== 'artist'){
-    toast('Photo mise à jour pour cette session — l\'enregistrement permanent est pour l\'instant réservé aux comptes Artiste.');
-    return;
-  }
   toast('Envoi de la photo en cours…');
   try{
     const rawCloudUrl = await uploadFileToCloudinary(file, 'image');

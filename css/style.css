@@ -603,7 +603,15 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
     position:fixed; top:calc(64px + env(safe-area-inset-top,0)); right:14px; left:14px; width:auto;
   }
 }
-.notif-panel.open{ display:block; }
+.notif-panel.open{ display:block; max-height:min(70vh, 480px); overflow-y:auto; height:420px; }
+/* ---- Répété ici (même règle qu'en haut du fichier, @media(min-width:901px)) — la version
+   plus haut était systématiquement écrasée par la règle de base ci-dessus, simplement parce
+   qu'elle vient après dans le fichier (l'ordre l'emporte à spécificité égale, peu importe le
+   media query). Confirmé par un vrai test en direct : le panneau s'ouvrait vers le bas depuis
+   une cloche située en bas de la colonne de gauche, débordant hors de l'écran visible. ---- */
+@media(min-width:901px){
+  .notif-panel{ top:auto; bottom:calc(100% + 10px); right:auto; left:0; }
+}
 .notif-head{ padding:14px 16px; font-size:13px; font-weight:600; border-bottom:1px solid var(--border); }
 .notif-item{ display:flex; gap:11px; padding:13px 16px; border-bottom:1px solid var(--border); }
 .notif-item:last-child{ border-bottom:none; }
@@ -618,7 +626,14 @@ html.is-playing .eq i:nth-child(3){ animation-delay:.3s; }
   background:var(--bg-elev); border:1px solid var(--border-strong); border-radius:var(--radius-sm); box-shadow:var(--shadow);
   padding:8px; z-index:40; flex-direction:column; gap:1px;
 }
-.profile-menu.open{ display:flex; animation:fadeUp .25s var(--ease); }
+.profile-menu.open{ display:flex; animation:fadeUp .25s var(--ease); height:auto; min-height:0; }
+/* ---- Répété ici, même raison que .notif-panel juste au-dessus : la règle équivalente
+   dans @media(min-width:901px) plus haut dans le fichier était systématiquement écrasée par
+   la règle de base ci-dessus (ordre de fichier, peu importe le media query). Confirmé par un
+   vrai test en direct : scrollHeight réel de 688px mais rendu à seulement 18px. ---- */
+@media(min-width:901px){
+  .profile-menu{ top:auto; bottom:calc(100% + 10px); right:auto; left:0; }
+}
 .profile-menu-item{
   display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:var(--radius-s); font-size:13px; color:var(--text-dim);
   text-align:left; width:100%; text-decoration:none;
