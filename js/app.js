@@ -12672,12 +12672,35 @@ function ensureTopCongoHeroStyles(){
   document.head.appendChild(style);
 }
 function openGenreCategoryPage(genreName){
-  openCategoryPage(
-    genreName,
-    `Tous les vrais morceaux ${genreName} publiés sur NUNI.`,
-    ()=> tracks.filter(t=> t.isReal && t.genre === genreName),
-    false,
-  );
+  ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
+  ensureListeningNowStyles(); // .lwn-2col en dépend
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend
+  let overlay = document.getElementById('categorypage-overlay');
+  if(overlay) overlay.remove();
+  overlay = document.createElement('div');
+  overlay.id = 'categorypage-overlay';
+  overlay.className = 'nre-overlay';
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  const closeOverlay = ()=>{ overlay.classList.remove('show'); document.body.style.overflow = ''; setTimeout(()=> overlay.remove(), 200); };
+
+  const list = dedupeAlbums(tracks.filter(t=> t.isReal && t.genre === genreName));
+  overlay.innerHTML = `
+    <button class="cp-close" title="Fermer"><svg class="nuni-ic nuni-ic-err" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <div class="nre-wrap" style="max-width:720px;">
+      <div class="nre-titlebar"><div class="nre-title serif">${esc(genreName)}</div><p class="nre-sub">Tous les vrais morceaux ${esc(genreName)} publiés sur NUNI.</p></div>
+      <div class="lwn-2col" id="genre-2col">${list.length ? '' : `<p class="nre-empty">Aucun morceau ${esc(genreName)} pour le moment.</p>`}</div>
+    </div>`;
+  overlay.querySelector('.cp-close').onclick = closeOverlay;
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  attachSwipeDownToClose(overlay, closeOverlay);
+
+  const grid = document.getElementById('genre-2col');
+  list.forEach(tr=>{
+    const card = trackCard(tr, true);
+    card.onclick = ()=>{ closeOverlay(); handleTrackCardClick(tr); };
+    grid.appendChild(card);
+  });
 }
 
 // ---------- Playlists NUNI — vraies playlists curées par l'équipe (admin.html) ----------
