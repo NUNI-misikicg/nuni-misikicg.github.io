@@ -2800,6 +2800,7 @@ async function renderCoupsDeCoeur(){
 function openCoeurCollectionPage(title, list){
   ensureCategoryPageStyles();
   ensureListeningNowStyles();
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend — sans cet appel, la classe n'a aucun style tant qu'une autre page ne l'a pas chargée avant
   let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
@@ -2900,6 +2901,7 @@ function ensureListeningNowStyles(){
 function openFeatureWeekPage(){
   ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
   ensureListeningNowStyles();
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend
   let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
@@ -2942,6 +2944,7 @@ async function openRecentlyPlayedPage(){
     }catch(e){ /* la page s'ouvre quand même, juste vide */ }
   }
   ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend
   let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
@@ -2977,6 +2980,7 @@ async function openRecentlyPlayedPage(){
 // accepte n'importe quel id de conteneur) et le même endpoint que la home. ----------
 async function openUpcomingReleasesPage(){
   ensureCategoryPageStyles();
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend
   let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
@@ -3024,6 +3028,7 @@ async function openUpcomingReleasesPage(){
 // tels quels (même composant que la home), depuis la même vraie source /api/me/progress. ----------
 async function openAllBadgesPage(){
   ensureCategoryPageStyles();
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend
   let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
@@ -5910,6 +5915,7 @@ async function renderNuniSelection(){
 // système que Nouveautés/Album), handleTrackCardClick/playTrack tels quels. ----------
 function openNuniSelectionPage(genreLabel){
   ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend
   let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
@@ -7260,6 +7266,7 @@ loadAmbiances();
 // fonction getList() synchrone — on récupère donc les vraies données d'abord).
 function openMoodPage(key, label){
   ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend
   ensureMoodPageStyles();
   fetch(NUNI_API_BASE + '/api/moods').then(r=>r.json()).then(data=>{
     const mood = (data.moods||[]).find(m=>m.key===key);
@@ -10812,6 +10819,7 @@ async function loadHomeTalentRowInner(){
 }
 async function openTalentModal(){
   ensureTalentFullPageStyles();
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend
   let overlay = document.getElementById('talent-modal-overlay');
   if(overlay) overlay.remove();
   overlay = document.createElement('div');
@@ -12589,6 +12597,7 @@ function openNewReleasesPage(){
 }
 function openTopCongoPage(){
   ensureCategoryPageStyles(); // réutilisé pour .cp-close uniquement, jamais dupliqué
+  ensureNewReleasesEditorialStyles(); // .nre-overlay en dépend
   ensureTopCongoHeroStyles();
   let overlay = document.getElementById('categorypage-overlay');
   if(overlay) overlay.remove();
