@@ -1582,8 +1582,18 @@ async function loadLabelArtists(){
   if(!list || !realAuthToken) return;
   list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
   try{
-    const res = await fetch(NUNI_API_BASE + '/api/label/artists', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const [res, alertsRes] = await Promise.all([
+      fetch(NUNI_API_BASE + '/api/label/artists', { headers:{ 'Authorization':'Bearer ' + realAuthToken } }),
+      fetch(NUNI_API_BASE + '/api/label/alerts', { headers:{ 'Authorization':'Bearer ' + realAuthToken } }).catch(()=>null),
+    ]);
     const data = await res.json();
+    // Les alertes sont un simple bonus d'affichage — si l'appel échoue pour une raison
+    // quelconque, la liste des artistes reste utilisable normalement, juste sans badges.
+    let alertsByArtist = {};
+    if(alertsRes && alertsRes.ok){
+      const alertsData = await alertsRes.json();
+      (alertsData.alerts || []).forEach(a=>{ alertsByArtist[a.artist_id] = a; });
+    }
     if(!res.ok){ list.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
     if(!data.artists.length){ list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Aucun artiste rattaché pour l\'instant.</p>'; return; }
     const statusLabels = { active: 'Actif', invited: 'Invitation envoyée', suspended: 'Suspendu' };
@@ -1591,12 +1601,24 @@ async function loadLabelArtists(){
     data.artists.forEach(a=>{
       const initials = (a.artist_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
       const avatarStyle = a.avatar_url ? `background-image:url(${esc(a.avatar_url)});` : '';
+      const alert = alertsByArtist[a.artist_id];
+      // Badge discret, jamais alarmiste — un chiffre + un titre explicite au survol, jamais
+      // une accusation formulée ("suspect", "fraude") portée sur l'artiste lui-même.
+      let alertBadge = '';
+      if(alert){
+        const parts = [];
+        if(alert.open_disputes_count > 0) parts.push(`${alert.open_disputes_count} litige${alert.open_disputes_count>1?'s':''} de collaboration ouvert${alert.open_disputes_count>1?'s':''}`);
+        if(alert.flagged_listener_streams_30d > 0) parts.push(`${alert.flagged_listener_streams_30d} écoute${alert.flagged_listener_streams_30d>1?'s':''} (30j) venant de compte(s) actuellement signalé(s) — à vérifier, pas nécessairement une fraude`);
+        if(parts.length){
+          alertBadge = `<span class="label-artist-alert" title="${esc(parts.join(' · '))}" style="display:inline-flex; align-items:center; gap:3px; font-size:11px; color:#E3BE6D; background:rgba(227,190,109,.12); border-radius:20px; padding:2px 8px; margin-left:6px;">⚠ ${parts.length}</span>`;
+        }
+      }
       const row = document.createElement('div');
       row.className = 'label-artist-row';
       row.innerHTML = `
         <div class="av" style="${avatarStyle}">${avatarStyle ? '' : initials}</div>
         <div class="info">
-          <div class="name">${esc(a.artist_name)}${a.is_verified ? ' ✓' : ''}</div>
+          <div class="name">${esc(a.artist_name)}${a.is_verified ? ' ✓' : ''}${alertBadge}</div>
           <div class="meta">${a.track_count} titre${a.track_count>1?'s':''} · ${Number(a.total_streams).toLocaleString('fr-FR')} streams</div>
         </div>
         <span class="label-artist-status ${a.affiliation_status}">${esc(statusLabels[a.affiliation_status] || a.affiliation_status)}</span>
