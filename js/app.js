@@ -458,6 +458,26 @@ let realAuthToken = null;
 let realUserId = null;
 let currentUser = null; // infos complètes (prénom, nom...) de la personne connectée
 
+// ---------- Identifiant d'appareil (usage anti-fraude uniquement) ----------
+// Un identifiant aléatoire, persisté dans localStorage, pour que le serveur puisse
+// détecter quand un même appareil fait fonctionner un nombre anormal de comptes différents
+// (voir flagSuspiciousPlayPatterns dans server.js). N'identifie jamais la personne elle-même
+// (pas de lien avec l'email, le nom, ou tout autre donnée personnelle) — un simple nombre
+// aléatoire régénéré si l'utilisateur vide son stockage local, exactement comme un cookie
+// technique classique.
+function getOrCreateDeviceId(){
+  try{
+    let id = localStorage.getItem('nuni_device_id');
+    if(!id){
+      id = 'dv_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12);
+      localStorage.setItem('nuni_device_id', id);
+    }
+    return id;
+  }catch(e){
+    return ''; // navigation privée ou stockage bloqué : pas grave, l'écoute compte quand même
+  }
+}
+
 /* ============ SESSION PERSISTANTE ============ */
 // "Se souvenir de moi" coché -> localStorage (survit à la fermeture du navigateur)
 // décoché -> sessionStorage (effacé à la fermeture de l'onglet)
@@ -7844,9 +7864,11 @@ function playTrack(tr){
 
   // Enregistre une vraie écoute (pour les statistiques et revenus de l'artiste) — jamais bloquant.
   if(tr.isReal && tr.realId){
+    const playHeaders = realAuthToken ? {'Authorization':'Bearer ' + realAuthToken} : {};
+    playHeaders['X-Device-Id'] = getOrCreateDeviceId(); // usage anti-fraude uniquement côté serveur, voir server.js
     fetch(NUNI_API_BASE + '/api/tracks/' + tr.realId + '/play', {
       method:'POST',
-      headers: realAuthToken ? {'Authorization':'Bearer ' + realAuthToken} : {}
+      headers: playHeaders
     }).then(r=> r.json()).then(data=>{
       if(typeof data.streams === 'number'){
         tr.streams = String(data.streams);
