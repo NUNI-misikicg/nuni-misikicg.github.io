@@ -260,6 +260,61 @@
   </div>
 </div>
 
+<!-- ============ CONTRATS LABEL ↔ ARTISTE ============ -->
+<div class="ai-modal-overlay" id="label-contract-send-overlay" onclick="if(event.target===this) closeLabelContractModal()">
+  <div class="ai-modal" style="max-width:460px; text-align:left;">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeLabelContractModal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <span class="ai-modal-eyebrow">Envoyer un contrat</span>
+    <h2 class="serif" id="lc-send-title" style="font-size:20px;">Contrat</h2>
+    <p style="margin-bottom:14px; font-size:12.5px; color:var(--text-dim);">L'artiste devra consulter puis signer électroniquement ces conditions avant qu'elles ne s'appliquent.</p>
+    <div class="field full"><label>Type de contrat</label>
+      <select id="lc-send-type">
+        <option value="distribution">Distribution</option>
+        <option value="artist">Artiste</option>
+        <option value="exclusive">Exclusif</option>
+        <option value="non_exclusive">Non exclusif</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Commission du Label (%)</label><input type="number" id="lc-send-commission" min="0" max="100" step="0.5" placeholder="Ex : 20"></div>
+      <div class="field"><label>Durée (mois, optionnel)</label><input type="number" id="lc-send-duration" min="1" step="1" placeholder="Laisser vide = indéterminée"></div>
+    </div>
+    <div class="field full"><label>Périmètre du catalogue</label>
+      <select id="lc-send-scope">
+        <option value="future_only">Nouveautés uniquement</option>
+        <option value="all">Tout le catalogue existant + à venir</option>
+      </select>
+    </div>
+    <div class="field full"><label>Note / conditions en langage clair (optionnel)</label>
+      <textarea id="lc-send-note" rows="3" placeholder="Précisions utiles à l'artiste pour comprendre ces conditions"></textarea>
+    </div>
+    <div id="lc-send-msg" style="margin-top:6px; font-size:12.5px;"></div>
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="submitLabelContract()">Envoyer le contrat</button>
+  </div>
+</div>
+
+<div class="ai-modal-overlay" id="artist-contract-overlay" onclick="if(event.target===this) closeArtistContractModal()">
+  <div class="ai-modal" style="max-width:460px; text-align:left;">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeArtistContractModal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <span class="ai-modal-eyebrow">Contrat reçu</span>
+    <h2 class="serif" style="font-size:20px;">Conditions proposées</h2>
+    <div id="artist-contract-body" style="margin:14px 0; font-size:13px; display:flex; flex-direction:column; gap:6px;"></div>
+    <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; color:var(--text-dim); margin-top:4px;">
+      <input type="checkbox" id="artist-contract-confirm" style="margin-top:2px;">
+      J'ai lu et je comprends ces conditions. Je comprends que cela ne transfère jamais la propriété de mes morceaux — seulement les conditions commerciales avec ce Label.
+    </label>
+    <div id="artist-contract-msg" style="margin-top:8px; font-size:12.5px;"></div>
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="rejectArtistContract()">Refuser</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="signArtistContract()">Signer</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MOT DE PASSE OUBLIÉ ============ -->
 <div class="ai-modal-overlay" id="forgot-password-overlay" onclick="if(event.target===this) closeForgotPasswordModal()">
   <div class="ai-modal" style="max-width:400px; text-align:left; position:relative;">
@@ -1424,6 +1479,13 @@
         <div class="card">
           <b style="color:var(--accent); font-size:13px;">Vos artistes</b>
           <div id="label-artists-list" style="margin-top:14px; display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
+        <!-- ---- Contrats ---- -->
+        <div class="card" style="margin-top:20px;">
+          <b style="color:var(--accent); font-size:13px;">Contrats</b>
+          <p style="font-size:12px; color:var(--text-faint); margin-top:6px;">Conditions formelles (commission, durée, périmètre du catalogue) envoyées à vos artistes pour signature électronique. Un contrat ne transfère jamais la propriété d'un morceau — seulement les conditions de la relation commerciale.</p>
+          <div id="label-contracts-list" style="margin-top:14px; display:flex; flex-direction:column; gap:10px;"></div>
         </div>
 
         <!-- ---- Revenus & versements (Phase 3) ---- -->

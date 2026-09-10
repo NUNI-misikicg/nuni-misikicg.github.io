@@ -547,6 +547,7 @@ async function restoreSession(){
     currentUser = data.user;
     demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
     applyAccountType();
+    if(currentUser.account_type === 'artist') checkPendingArtistContracts();
     if(currentUser.account_type === 'label'){
       enterApp('dashboard');
  toast(`Bon retour, ${currentUser.first_name} `);
@@ -846,6 +847,7 @@ async function submitLogin(){
  feedback.textContent = ' Connexion réussie — bon retour ' + currentUser.first_name + ' !';
     btn.disabled = false;
     applyAccountType();
+    if(currentUser.account_type === 'artist') checkPendingArtistContracts();
     setTimeout(()=>{
       closeLoginModal();
       // Un compte Label n'a ni subscription_status ni plan au sens Pass Auditeur/Artiste
@@ -1309,6 +1311,7 @@ async function loadLabelDashboardStatus(){
       if(label.verification_status === 'validated'){
         loadLabelOverview();
         loadLabelArtists();
+        loadLabelContracts();
         loadLabelPayments();
         loadLabelTeam();
         loadLabelAnalytics();
@@ -1623,6 +1626,7 @@ async function loadLabelArtists(){
         </div>
         <span class="label-artist-status ${a.affiliation_status}">${esc(statusLabels[a.affiliation_status] || a.affiliation_status)}</span>
         <div style="display:flex; gap:6px;">
+          <button class="btn-icon" title="Envoyer un contrat" onclick="openLabelContractModal(${a.artist_id}, ${JSON.stringify(a.artist_name)})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg></button>
           ${a.affiliation_status === 'active' ? `<button class="btn-icon" title="Suspendre" onclick="suspendLabelArtist(${a.affiliation_id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>` : ''}
           ${a.affiliation_status === 'suspended' ? `<button class="btn-icon" title="Réactiver" onclick="reactivateLabelArtist(${a.affiliation_id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg></button>` : ''}
           <button class="btn-icon" title="Retirer du Label" onclick="removeLabelArtist(${a.affiliation_id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
@@ -1633,6 +1637,170 @@ async function loadLabelArtists(){
     list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>';
   }
 }
+// ============================================================
+// CONTRATS LABEL ↔ ARTISTE (voir /api/label/contracts et /api/me/contracts sur le serveur).
+// ============================================================
+let labelContractTargetArtistId = null;
+function openLabelContractModal(artistId, artistName){
+  labelContractTargetArtistId = artistId;
+  document.getElementById('lc-send-title').textContent = 'Contrat pour ' + artistName;
+  document.getElementById('lc-send-commission').value = '';
+  document.getElementById('lc-send-duration').value = '';
+  document.getElementById('lc-send-note').value = '';
+  document.getElementById('lc-send-msg').innerHTML = '';
+  document.getElementById('label-contract-send-overlay').classList.add('show');
+}
+function closeLabelContractModal(){
+  document.getElementById('label-contract-send-overlay').classList.remove('show');
+  labelContractTargetArtistId = null;
+}
+async function submitLabelContract(){
+  const msg = document.getElementById('lc-send-msg');
+  const commissionPct = Number(document.getElementById('lc-send-commission').value);
+  if(!Number.isFinite(commissionPct) || commissionPct < 0 || commissionPct > 100){
+    msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Indiquez une commission valide (0 à 100).';
+    return;
+  }
+  const durationRaw = document.getElementById('lc-send-duration').value.trim();
+  msg.style.color = 'var(--text-dim)'; msg.textContent = 'Envoi en cours…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/contracts', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({
+        artistId: labelContractTargetArtistId,
+        contractType: document.getElementById('lc-send-type').value,
+        commissionPct,
+        catalogScope: document.getElementById('lc-send-scope').value,
+        durationMonths: durationRaw ? Number(durationRaw) : null,
+        termsNote: document.getElementById('lc-send-note').value.trim() || null,
+      }),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
+    msg.style.color = '#7FC79A'; msg.textContent = data.message;
+    loadLabelContracts();
+    setTimeout(closeLabelContractModal, 1200);
+  }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+
+const labelContractStatusLabels = {
+  sent: 'Envoyé — en attente', viewed: 'Consulté — en attente', active: 'Actif',
+  rejected: 'Refusé', terminated: 'Résilié', expired: 'Expiré',
+};
+async function loadLabelContracts(){
+  const list = document.getElementById('label-contracts-list');
+  if(!list || !realAuthToken) return;
+  list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/contracts', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ list.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    if(!data.contracts.length){ list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Aucun contrat envoyé pour l\'instant.</p>'; return; }
+    const typeLabels = { distribution:'Distribution', artist:'Artiste', exclusive:'Exclusif', non_exclusive:'Non exclusif' };
+    list.innerHTML = '';
+    data.contracts.forEach(c=>{
+      const row = document.createElement('div');
+      row.className = 'label-artist-row';
+      row.innerHTML = `
+        <div class="info">
+          <div class="name">${esc(c.artist_name)} — ${typeLabels[c.contract_type]||esc(c.contract_type)}</div>
+          <div class="meta">Commission ${Number(c.commission_pct)}% · ${c.duration_months ? c.duration_months + ' mois' : 'durée indéterminée'} · envoyé le ${new Date(c.sent_at).toLocaleDateString('fr-FR')}</div>
+        </div>
+        <span class="label-artist-status ${c.status === 'active' ? 'active' : (c.status === 'rejected' || c.status === 'terminated' ? 'suspended' : 'invited')}">${labelContractStatusLabels[c.status]||esc(c.status)}</span>
+        ${['sent','viewed','active'].includes(c.status) ? `<button class="btn-icon" title="Résilier" onclick="terminateLabelContract(${c.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>` : ''}`;
+      list.appendChild(row);
+    });
+  }catch(e){ list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>'; }
+}
+async function terminateLabelContract(id){
+  const reason = prompt('Motif de la résiliation (obligatoire) :');
+  if(!reason || !reason.trim()) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/contracts/' + id + '/terminate', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ reason: reason.trim() }),
+    });
+    const data = await res.json();
+    if(!res.ok){ alert(data.error||'Erreur.'); return; }
+    loadLabelContracts();
+  }catch(e){ alert('Impossible de contacter le serveur NUNI.'); }
+}
+
+// ---------- Côté ARTISTE : contrat(s) en attente à signer ----------
+// Appelé au chargement du Dashboard artiste — jamais bloquant, jamais répété en boucle :
+// un seul contrôle silencieux, la modale ne s'ouvre que s'il y a vraiment quelque chose
+// à trancher (statut 'sent' ou 'viewed').
+async function checkPendingArtistContracts(){
+  if(!realAuthToken) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/contracts', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    if(!res.ok) return;
+    const data = await res.json();
+    const pending = (data.contracts||[]).find(c=> c.status === 'sent' || c.status === 'viewed');
+    if(pending) openArtistContractModal(pending);
+  }catch(e){ /* silencieux — jamais bloquant pour le reste du dashboard */ }
+}
+let artistContractTarget = null;
+async function openArtistContractModal(contract){
+  artistContractTarget = contract;
+  const typeLabels = { distribution:'Distribution', artist:'Artiste', exclusive:'Exclusif', non_exclusive:'Non exclusif' };
+  const scopeLabels = { all: 'Tout votre catalogue (existant + à venir)', future_only: 'Vos prochaines sorties uniquement' };
+  document.getElementById('artist-contract-body').innerHTML = `
+    <div><b>${esc(contract.label_name)}</b> vous propose un contrat de type <b>${typeLabels[contract.contract_type]||esc(contract.contract_type)}</b>.</div>
+    <div>Commission du Label : <b>${Number(contract.commission_pct)}%</b></div>
+    <div>Durée : <b>${contract.duration_months ? contract.duration_months + ' mois' : 'indéterminée (résiliable)'}</b></div>
+    <div>Périmètre : <b>${scopeLabels[contract.catalog_scope]||esc(contract.catalog_scope)}</b></div>
+    ${contract.terms_note ? `<div style="margin-top:6px; color:var(--text-dim);">${esc(contract.terms_note)}</div>` : ''}
+  `;
+  document.getElementById('artist-contract-confirm').checked = false;
+  document.getElementById('artist-contract-msg').innerHTML = '';
+  document.getElementById('artist-contract-overlay').classList.add('show');
+  // Marque le contrat comme consulté dès l'ouverture réelle de la modale — jamais avant.
+  if(contract.status === 'sent'){
+    fetch(NUNI_API_BASE + '/api/me/contracts/' + contract.id + '/view', {
+      method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken },
+    }).catch(()=>{});
+  }
+}
+function closeArtistContractModal(){
+  document.getElementById('artist-contract-overlay').classList.remove('show');
+  artistContractTarget = null;
+}
+async function signArtistContract(){
+  if(!artistContractTarget) return;
+  const msg = document.getElementById('artist-contract-msg');
+  if(!document.getElementById('artist-contract-confirm').checked){
+    msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Merci de cocher la case pour confirmer que vous avez lu les conditions.';
+    return;
+  }
+  msg.style.color = 'var(--text-dim)'; msg.textContent = 'Signature en cours…';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/contracts/' + artistContractTarget.id + '/sign', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ confirm: true }),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
+    msg.style.color = '#7FC79A'; msg.textContent = data.message;
+    setTimeout(closeArtistContractModal, 1400);
+  }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+async function rejectArtistContract(){
+  if(!artistContractTarget) return;
+  const reason = prompt('Motif du refus (optionnel) :') || '';
+  const msg = document.getElementById('artist-contract-msg');
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/contracts/' + artistContractTarget.id + '/reject', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ reason: reason.trim() }),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
+    msg.style.color = '#7FC79A'; msg.textContent = data.message;
+    setTimeout(closeArtistContractModal, 1000);
+  }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+
 async function createLabelArtist(){
   const msg = document.getElementById('label-artist-form-msg');
   const artistName = document.getElementById('la-create-artistname').value.trim();
