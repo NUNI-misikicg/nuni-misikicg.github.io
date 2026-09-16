@@ -1299,6 +1299,12 @@ async function loadLabelDashboardStatus(){
         el.style.display = label.verification_status === 'validated' ? '' : 'none';
       }
     });
+    // BUG corrigé : la ligne ci-dessus réaffiche TOUS les liens (y compris "Bibliothèque" et
+    // "Artiste", réservés respectivement aux comptes Auditeur et Artiste) dès qu'un Label est
+    // validé — sans jamais repasser par applyAccountType() pour ré-appliquer le filtrage par
+    // type de compte. Un compte Label voyait donc en permanence des liens qui ne le
+    // concernent pas. On ré-applique ici explicitement le bon filtrage, juste après.
+    applyAccountType();
     const phase2 = document.getElementById('label-dash-phase2');
     const changePlanCard = document.getElementById('label-change-plan-card');
     if(changePlanCard){
