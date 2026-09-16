@@ -1318,6 +1318,7 @@ async function loadLabelDashboardStatus(){
         loadLabelOverview();
         loadLabelArtists();
         loadLabelContracts();
+        loadLabelProspects();
         loadLabelPayments();
         loadLabelTeam();
         loadLabelAnalytics();
@@ -1804,6 +1805,155 @@ async function rejectArtistContract(){
     if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
     msg.style.color = '#7FC79A'; msg.textContent = data.message;
     setTimeout(closeArtistContractModal, 1000);
+  }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
+}
+
+// ============================================================
+// PIPELINE DE RECRUTEMENT — vue Trello (voir /api/label/prospects sur le serveur). Glisser-
+// déposer natif HTML5 (pas de librairie), pour rester cohérent avec le reste du site.
+// ============================================================
+const PROSPECT_STAGES = [
+  { key:'prospect', label:'Prospect' },
+  { key:'premier_contact', label:'Premier contact' },
+  { key:'negociation', label:'Négociation' },
+  { key:'contrat_envoye', label:'Contrat envoyé' },
+  { key:'contrat_signe', label:'Contrat signé' },
+  { key:'artiste_actif', label:'Artiste actif' },
+  { key:'top_artiste', label:'Top artiste' },
+];
+let labelProspectsCache = [];
+let prospectEditingId = null;
+let pendingProspectPhotoDataUri = null;
+
+async function loadLabelProspects(){
+  const board = document.getElementById('label-prospects-board');
+  if(!board || !realAuthToken) return;
+  board.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/prospects', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ board.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    labelProspectsCache = data.prospects || [];
+    renderProspectsBoard();
+  }catch(e){ board.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>'; }
+}
+
+function renderProspectsBoard(){
+  const board = document.getElementById('label-prospects-board');
+  if(!board) return;
+  board.innerHTML = '';
+  PROSPECT_STAGES.forEach(stage=>{
+    const items = labelProspectsCache.filter(p=> p.stage === stage.key);
+    const col = document.createElement('div');
+    col.style.cssText = 'flex:0 0 220px; background:var(--bg-card); border-radius:12px; padding:10px; min-height:120px;';
+    col.dataset.stage = stage.key;
+    col.ondragover = (e)=>{ e.preventDefault(); col.style.outline = '2px dashed var(--accent)'; };
+    col.ondragleave = ()=>{ col.style.outline = 'none'; };
+    col.ondrop = (e)=>{
+      e.preventDefault();
+      col.style.outline = 'none';
+      const prospectId = Number(e.dataTransfer.getData('text/prospect-id'));
+      if(prospectId) moveProspectStage(prospectId, stage.key);
+    };
+    const header = document.createElement('div');
+    header.style.cssText = 'font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-faint); margin-bottom:8px; display:flex; justify-content:space-between;';
+    header.innerHTML = `<span>${esc(stage.label)}</span><span>${items.length}</span>`;
+    col.appendChild(header);
+    items.forEach(p=>{
+      const card = document.createElement('div');
+      card.draggable = true;
+      card.style.cssText = 'background:var(--bg-surface, #fff); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:8px; cursor:grab; font-size:12.5px;';
+      card.ondragstart = (e)=>{ e.dataTransfer.setData('text/prospect-id', String(p.id)); };
+      card.onclick = ()=> openProspectModal(p);
+      const avatar = p.photo_url ? `<div style="width:32px; height:32px; border-radius:8px; background:url(${esc(p.photo_url)}); background-size:cover; background-position:center; flex-shrink:0;"></div>` : `<div style="width:32px; height:32px; border-radius:8px; background:var(--border); flex-shrink:0;"></div>`;
+      card.innerHTML = `
+        <div style="display:flex; gap:8px; align-items:center;">
+          ${avatar}
+          <div style="min-width:0;">
+            <div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(p.name)}</div>
+            ${p.email ? `<div style="color:var(--text-faint); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(p.email)}</div>` : ''}
+          </div>
+        </div>
+        ${p.track_count != null ? `<div style="margin-top:6px; color:var(--text-dim);">${p.track_count} titre${p.track_count>1?'s':''}</div>` : ''}
+        ${p.potential_note ? `<div style="margin-top:4px; color:var(--accent); font-size:11px;">${esc(p.potential_note)}</div>` : ''}
+      `;
+      col.appendChild(card);
+    });
+    board.appendChild(col);
+  });
+}
+
+async function moveProspectStage(prospectId, newStage){
+  // Optimiste : on déplace tout de suite visuellement, on annule si le serveur refuse —
+  // le glisser-déposer doit rester instantané, pas attendre un aller-retour réseau.
+  const prospect = labelProspectsCache.find(p=> p.id === prospectId);
+  if(!prospect || prospect.stage === newStage) return;
+  const previousStage = prospect.stage;
+  prospect.stage = newStage;
+  renderProspectsBoard();
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/prospects/' + prospectId + '/stage', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ stage: newStage }),
+    });
+    if(!res.ok){ prospect.stage = previousStage; renderProspectsBoard(); }
+  }catch(e){ prospect.stage = previousStage; renderProspectsBoard(); }
+}
+
+function openProspectModal(prospect){
+  prospectEditingId = prospect ? prospect.id : null;
+  pendingProspectPhotoDataUri = null;
+  document.getElementById('prospect-modal-eyebrow').textContent = prospect ? 'Modifier le prospect' : 'Nouveau prospect';
+  document.getElementById('prospect-name').value = prospect ? prospect.name : '';
+  document.getElementById('prospect-email').value = prospect ? (prospect.email||'') : '';
+  document.getElementById('prospect-track-count').value = prospect && prospect.track_count != null ? prospect.track_count : '';
+  document.getElementById('prospect-potential').value = prospect ? (prospect.potential_note||'') : '';
+  document.getElementById('prospect-notes').value = prospect ? (prospect.notes||'') : '';
+  const preview = document.getElementById('prospect-photo-preview');
+  preview.style.backgroundImage = prospect && prospect.photo_url ? `url(${prospect.photo_url})` : '';
+  preview.textContent = prospect && prospect.photo_url ? '' : 'Choisir';
+  document.getElementById('prospect-modal-msg').innerHTML = '';
+  document.getElementById('prospect-modal-overlay').classList.add('show');
+}
+function closeProspectModal(){
+  document.getElementById('prospect-modal-overlay').classList.remove('show');
+  prospectEditingId = null;
+  pendingProspectPhotoDataUri = null;
+}
+async function previewProspectPhoto(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const dataUri = await readFileAsDataUri(file);
+  pendingProspectPhotoDataUri = dataUri;
+  const preview = document.getElementById('prospect-photo-preview');
+  preview.style.backgroundImage = `url(${dataUri})`;
+  preview.textContent = '';
+}
+async function submitProspect(){
+  const msg = document.getElementById('prospect-modal-msg');
+  const name = document.getElementById('prospect-name').value.trim();
+  if(!name){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Le nom est obligatoire.'; return; }
+  msg.style.color = 'var(--text-dim)'; msg.textContent = 'Enregistrement…';
+  const payload = {
+    name,
+    email: document.getElementById('prospect-email').value.trim(),
+    trackCount: document.getElementById('prospect-track-count').value || null,
+    potentialNote: document.getElementById('prospect-potential').value.trim(),
+    notes: document.getElementById('prospect-notes').value.trim(),
+    photoDataUri: pendingProspectPhotoDataUri || undefined,
+  };
+  try{
+    const url = prospectEditingId ? NUNI_API_BASE + '/api/label/prospects/' + prospectEditingId : NUNI_API_BASE + '/api/label/prospects';
+    const res = await fetch(url, {
+      method: prospectEditingId ? 'PUT' : 'POST',
+      headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if(!res.ok){ msg.style.color = 'var(--rose-braise)'; msg.textContent = data.error; return; }
+    msg.style.color = '#7FC79A'; msg.textContent = data.message;
+    loadLabelProspects();
+    setTimeout(closeProspectModal, 900);
   }catch(e){ msg.style.color = 'var(--rose-braise)'; msg.textContent = 'Impossible de contacter le serveur NUNI.'; }
 }
 

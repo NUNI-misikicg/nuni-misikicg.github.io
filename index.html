@@ -315,6 +315,31 @@
   </div>
 </div>
 
+<!-- ============ PIPELINE DE RECRUTEMENT — ajout/édition d'un prospect ============ -->
+<div class="ai-modal-overlay" id="prospect-modal-overlay" onclick="if(event.target===this) closeProspectModal()">
+  <div class="ai-modal" style="max-width:440px; text-align:left;">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeProspectModal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <span class="ai-modal-eyebrow" id="prospect-modal-eyebrow">Nouveau prospect</span>
+    <h2 class="serif" style="font-size:20px;">Artiste potentiel</h2>
+    <div class="field full">
+      <label>Photo (optionnel)</label>
+      <div id="prospect-photo-preview" style="width:72px; height:72px; border-radius:12px; background:var(--bg-card); border:1px dashed var(--border-strong); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:11px; cursor:pointer;" onclick="document.getElementById('prospect-photo-input').click()">Choisir</div>
+      <input type="file" id="prospect-photo-input" accept="image/*" style="display:none;" onchange="previewProspectPhoto(event)">
+    </div>
+    <div class="field full"><label>Nom *</label><input type="text" id="prospect-name" placeholder="Nom d'artiste"></div>
+    <div class="field-row">
+      <div class="field"><label>Email</label><input type="email" id="prospect-email"></div>
+      <div class="field"><label>Nombre de titres</label><input type="number" id="prospect-track-count" min="0"></div>
+    </div>
+    <div class="field full"><label>Potentiel estimé</label><input type="text" id="prospect-potential" placeholder="Ex : Forte demande locale, style unique…"></div>
+    <div class="field full"><label>Notes internes</label><textarea id="prospect-notes" rows="3"></textarea></div>
+    <div id="prospect-modal-msg" style="margin-top:6px; font-size:12.5px;"></div>
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="submitProspect()">Enregistrer</button>
+  </div>
+</div>
+
 <!-- ============ MOT DE PASSE OUBLIÉ ============ -->
 <div class="ai-modal-overlay" id="forgot-password-overlay" onclick="if(event.target===this) closeForgotPasswordModal()">
   <div class="ai-modal" style="max-width:400px; text-align:left; position:relative;">
@@ -1479,6 +1504,16 @@
         <div class="card">
           <b style="color:var(--accent); font-size:13px;">Vos artistes</b>
           <div id="label-artists-list" style="margin-top:14px; display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
+        <!-- ---- Pipeline de recrutement ---- -->
+        <div class="card" style="margin-top:20px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <b style="color:var(--accent); font-size:13px;">Pipeline de recrutement</b>
+            <button class="btn btn-ghost btn-sm" onclick="openProspectModal()">+ Nouveau prospect</button>
+          </div>
+          <p style="font-size:12px; color:var(--text-faint); margin-top:6px;">Suivez vos artistes potentiels avant même qu'ils aient un compte NUNI. Glissez une carte d'une colonne à l'autre pour faire avancer le suivi.</p>
+          <div id="label-prospects-board" style="margin-top:16px; display:flex; gap:12px; overflow-x:auto; padding-bottom:8px;"></div>
         </div>
 
         <!-- ---- Contrats ---- -->
