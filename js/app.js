@@ -1319,6 +1319,7 @@ async function loadLabelDashboardStatus(){
         loadLabelArtists();
         loadLabelContracts();
         loadLabelReleasesPending();
+        loadLabelForecast();
         loadLabelProspects();
         loadLabelPayments();
         loadLabelTeam();
@@ -1526,6 +1527,37 @@ function renderArtistDetail(){
     <tr style="text-align:left; color:var(--text-faint);"><th style="padding:4px 0;">Date</th><th>Montant</th><th>Streams couverts</th><th>Méthode</th></tr>
     ${d.payments.map(p=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 0;">${new Date(p.created_at).toLocaleDateString('fr-FR')}</td><td>${p.amount_fcfa.toLocaleString('fr-FR')} FCFA</td><td>${p.streams_covered.toLocaleString('fr-FR')}</td><td>${esc(p.method||'—')}</td></tr>`).join('')}
   </table>` : '<p style="color:var(--text-faint); font-size:13px;">Aucun versement pour l\'instant.</p>';
+}
+
+// ============================================================
+// PRÉVISIONS FINANCIÈRES — voir /api/label/forecast sur le serveur. Toujours présentée comme
+// une estimation (rythme réel des 14 derniers jours extrapolé), jamais comme un chiffre garanti.
+// ============================================================
+async function loadLabelForecast(){
+  const el = document.getElementById('label-forecast-content');
+  if(!el || !realAuthToken) return;
+  el.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/forecast', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ el.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    if(!data.hasData){ el.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Pas encore assez d\'écoutes récentes pour établir une projection fiable.</p>'; return; }
+    const col = (title, p) => `
+      <div class="card" style="padding:14px; flex:1; min-width:160px;">
+        <div style="font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.4px;">${title}</div>
+        <div style="font-size:19px; font-weight:700; margin-top:6px;">${p.grossFcfa.toLocaleString('fr-FR')} FCFA</div>
+        <div style="font-size:11.5px; color:var(--text-dim); margin-top:4px;">${p.projectedStreams.toLocaleString('fr-FR')} streams projetés</div>
+        <div style="font-size:11.5px; color:var(--text-dim);">Part artistes : ${p.artistShareFcfa.toLocaleString('fr-FR')} FCFA</div>
+        <div style="font-size:11.5px; color:var(--accent);">Commission Label estimée : ${p.labelCommissionFcfa.toLocaleString('fr-FR')} FCFA</div>
+      </div>`;
+    el.innerHTML = `
+      <p style="font-size:11.5px; color:var(--text-faint); margin-bottom:10px;">Basé sur ${data.avgDailyStreams.toLocaleString('fr-FR')} streams/jour en moyenne récemment${data.avgCommissionPct ? ' · commission moyenne de vos contrats actifs : ' + data.avgCommissionPct + '%' : ' · aucun contrat actif avec commission définie'}.</p>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        ${col('Fin de mois', data.endOfMonth)}
+        ${col('Fin de trimestre', data.endOfQuarter)}
+        ${col('Fin d\'année', data.endOfYear)}
+      </div>`;
+  }catch(e){ el.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>'; }
 }
 
 async function loadLabelAnalytics(){
