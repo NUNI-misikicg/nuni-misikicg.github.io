@@ -1446,6 +1446,88 @@ async function removeLabelTeamMember(id){
 }
 
 /* ---------- Analytics du Label (Phase 5) — uniquement de vraies données ---------- */
+// ============================================================
+// FICHE ARTISTE DÉDIÉE (vue Label) — voir /api/label/artists/:id/detail sur le serveur.
+// Un seul appel réseau, six onglets alimentés depuis la même réponse.
+// ============================================================
+let artistDetailCache = null;
+async function openArtistDetail(artistId){
+  const overlay = document.getElementById('artist-detail-overlay');
+  overlay.classList.add('show');
+  document.getElementById('artist-detail-header').innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  ['overview','catalogue','contracts','royalties','growth','payments'].forEach(t=>{ document.getElementById('ad-panel-'+t).innerHTML = ''; });
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/artists/' + artistId + '/detail', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ document.getElementById('artist-detail-header').innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    artistDetailCache = data;
+    renderArtistDetail();
+  }catch(e){ document.getElementById('artist-detail-header').innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>'; }
+}
+function closeArtistDetail(){
+  document.getElementById('artist-detail-overlay').classList.remove('show');
+  artistDetailCache = null;
+}
+function switchArtistDetailTab(tab){
+  document.querySelectorAll('.ad-tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.adTab === tab));
+  document.querySelectorAll('.ad-panel').forEach(p=> p.style.display = 'none');
+  document.getElementById('ad-panel-' + tab).style.display = 'block';
+}
+function renderArtistDetail(){
+  const d = artistDetailCache;
+  if(!d) return;
+  const a = d.artist;
+  const totalStreams = d.catalogue.reduce((s,t)=> s + (t.streams||0), 0);
+  const totalPaid = d.payments.reduce((s,p)=> s + (p.amount_fcfa||0), 0);
+
+  document.getElementById('artist-detail-header').innerHTML = `
+    <div class="av" style="width:56px; height:56px; ${a.avatar_url ? 'background:url('+esc(a.avatar_url)+'); background-size:cover;' : ''}"></div>
+    <div>
+      <div style="font-size:17px; font-weight:700;">${esc(a.artist_name || a.first_name)}${a.is_verified ? ' ✓' : ''}</div>
+      <div style="color:var(--text-faint); font-size:12.5px;">${a.follower_count.toLocaleString('fr-FR')} followers · sur NUNI depuis le ${new Date(a.created_at).toLocaleDateString('fr-FR')} · avec le Label depuis le ${new Date(a.joined_label_at).toLocaleDateString('fr-FR')}</div>
+    </div>`;
+
+  document.getElementById('ad-panel-overview').innerHTML = `
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px;">
+      <div class="card" style="padding:12px;"><div style="font-size:11px; color:var(--text-faint);">Titres</div><div style="font-size:20px; font-weight:700;">${d.catalogue.length}</div></div>
+      <div class="card" style="padding:12px;"><div style="font-size:11px; color:var(--text-faint);">Streams cumulés</div><div style="font-size:20px; font-weight:700;">${totalStreams.toLocaleString('fr-FR')}</div></div>
+      <div class="card" style="padding:12px;"><div style="font-size:11px; color:var(--text-faint);">Followers</div><div style="font-size:20px; font-weight:700;">${a.follower_count.toLocaleString('fr-FR')}</div></div>
+      <div class="card" style="padding:12px;"><div style="font-size:11px; color:var(--text-faint);">Total versé</div><div style="font-size:20px; font-weight:700;">${totalPaid.toLocaleString('fr-FR')} FCFA</div></div>
+    </div>`;
+
+  document.getElementById('ad-panel-catalogue').innerHTML = d.catalogue.length ? d.catalogue.map(t=>`
+    <div style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border);">
+      ${t.cover_url ? `<div style="width:36px; height:36px; border-radius:6px; background:url(${esc(t.cover_url)}); background-size:cover; flex-shrink:0;"></div>` : ''}
+      <div style="flex:1; min-width:0;"><div style="font-weight:600; font-size:13px;">${esc(t.title)}</div><div style="color:var(--text-faint); font-size:11.5px;">${t.streams.toLocaleString('fr-FR')} streams · ${t.published ? 'publié' : 'non publié'}${t.review_status && t.review_status !== 'none' ? ' · ' + t.review_status : ''}</div></div>
+    </div>`).join('') : '<p style="color:var(--text-faint); font-size:13px;">Aucun morceau.</p>';
+
+  const contractTypeLabels = { distribution:'Distribution', artist:'Artiste', exclusive:'Exclusif', non_exclusive:'Non exclusif' };
+  document.getElementById('ad-panel-contracts').innerHTML = d.contracts.length ? d.contracts.map(c=>`
+    <div style="padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;">
+      <b>${contractTypeLabels[c.contract_type]||esc(c.contract_type)}</b> — ${labelContractStatusLabels[c.status]||esc(c.status)}
+      <div style="color:var(--text-faint); font-size:11.5px;">Commission ${Number(c.commission_pct)}% · envoyé le ${new Date(c.sent_at).toLocaleDateString('fr-FR')}</div>
+    </div>`).join('') : '<p style="color:var(--text-faint); font-size:13px;">Aucun contrat envoyé à cet artiste.</p>';
+
+  document.getElementById('ad-panel-royalties').innerHTML = `
+    <p style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;">Détail brut → net géré dans l'onglet Revenus &amp; versements du Dashboard principal. Ici : total déjà versé à cet artiste.</p>
+    <div class="card" style="padding:12px;"><div style="font-size:11px; color:var(--text-faint);">Total versé (${d.payments.length} versement${d.payments.length>1?'s':''})</div><div style="font-size:20px; font-weight:700; color:var(--accent);">${totalPaid.toLocaleString('fr-FR')} FCFA</div></div>`;
+
+  const chart = document.getElementById('ad-panel-growth');
+  if(d.growth.length){
+    const max = Math.max(1, ...d.growth.map(g=> Number(g.total_streams)));
+    chart.innerHTML = `<div class="bar-chart" style="display:flex; align-items:flex-end; gap:3px; height:140px;">${d.growth.map(g=>
+      `<div class="bar-col" style="flex:1;"><div class="bar-fill" style="height:${(Number(g.total_streams)/max*100)}%;" title="${new Date(g.recorded_date).toLocaleDateString('fr-FR')} : ${g.total_streams} streams"></div></div>`
+    ).join('')}</div><p style="color:var(--text-faint); font-size:11px; margin-top:6px;">30 derniers jours</p>`;
+  } else {
+    chart.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Pas encore assez de données pour un graphique de croissance.</p>';
+  }
+
+  document.getElementById('ad-panel-payments').innerHTML = d.payments.length ? `<table style="width:100%; font-size:12.5px; border-collapse:collapse;">
+    <tr style="text-align:left; color:var(--text-faint);"><th style="padding:4px 0;">Date</th><th>Montant</th><th>Streams couverts</th><th>Méthode</th></tr>
+    ${d.payments.map(p=>`<tr style="border-top:1px solid var(--border);"><td style="padding:6px 0;">${new Date(p.created_at).toLocaleDateString('fr-FR')}</td><td>${p.amount_fcfa.toLocaleString('fr-FR')} FCFA</td><td>${p.streams_covered.toLocaleString('fr-FR')}</td><td>${esc(p.method||'—')}</td></tr>`).join('')}
+  </table>` : '<p style="color:var(--text-faint); font-size:13px;">Aucun versement pour l\'instant.</p>';
+}
+
 async function loadLabelAnalytics(){
   const chart = document.getElementById('label-streams-chart');
   const growthEl = document.getElementById('label-growth-val');
@@ -1626,6 +1708,8 @@ async function loadLabelArtists(){
       }
       const row = document.createElement('div');
       row.className = 'label-artist-row';
+      row.style.cursor = 'pointer';
+      row.onclick = (e)=>{ if(!e.target.closest('button')) openArtistDetail(a.artist_id); };
       row.innerHTML = `
         <div class="av" style="${avatarStyle}">${avatarStyle ? '' : initials}</div>
         <div class="info">

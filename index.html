@@ -369,6 +369,30 @@
   </div>
 </div>
 
+<!-- ============ FICHE ARTISTE DÉDIÉE (vue Label) ============ -->
+<div class="ai-modal-overlay" id="artist-detail-overlay" onclick="if(event.target===this) closeArtistDetail()">
+  <div class="ai-modal" style="max-width:820px; width:94%; max-height:88vh; overflow-y:auto; text-align:left;">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeArtistDetail()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div id="artist-detail-header" style="display:flex; gap:14px; align-items:center; margin-bottom:16px;"></div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:16px;">
+      <button class="btn btn-ghost btn-sm ad-tab-btn active" data-ad-tab="overview" onclick="switchArtistDetailTab('overview')">Vue d'ensemble</button>
+      <button class="btn btn-ghost btn-sm ad-tab-btn" data-ad-tab="catalogue" onclick="switchArtistDetailTab('catalogue')">Catalogue</button>
+      <button class="btn btn-ghost btn-sm ad-tab-btn" data-ad-tab="contracts" onclick="switchArtistDetailTab('contracts')">Contrats</button>
+      <button class="btn btn-ghost btn-sm ad-tab-btn" data-ad-tab="royalties" onclick="switchArtistDetailTab('royalties')">Royalties</button>
+      <button class="btn btn-ghost btn-sm ad-tab-btn" data-ad-tab="growth" onclick="switchArtistDetailTab('growth')">Croissance</button>
+      <button class="btn btn-ghost btn-sm ad-tab-btn" data-ad-tab="payments" onclick="switchArtistDetailTab('payments')">Historique paiements</button>
+    </div>
+    <div id="ad-panel-overview" class="ad-panel"></div>
+    <div id="ad-panel-catalogue" class="ad-panel" style="display:none;"></div>
+    <div id="ad-panel-contracts" class="ad-panel" style="display:none;"></div>
+    <div id="ad-panel-royalties" class="ad-panel" style="display:none;"></div>
+    <div id="ad-panel-growth" class="ad-panel" style="display:none;"></div>
+    <div id="ad-panel-payments" class="ad-panel" style="display:none;"></div>
+  </div>
+</div>
+
 <!-- ============ MOT DE PASSE OUBLIÉ ============ -->
 <div class="ai-modal-overlay" id="forgot-password-overlay" onclick="if(event.target===this) closeForgotPasswordModal()">
   <div class="ai-modal" style="max-width:400px; text-align:left; position:relative;">
