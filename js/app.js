@@ -11314,6 +11314,44 @@ refreshActiveUsersCount();
 setInterval(refreshActiveUsersCount, 3000); // quasi instantané, sans surcharger le serveur gratuit
 
 /* ============ NUNI RADIO TUNER (12 stations) ============ */
+// ---------- Stations basées sur une vraie ambiance (voir table moods/track_moods) ----------
+// Avant : "NUNI Love", "NUNI Night", "NUNI Live" et "NUNI Amapiano" faisaient toutes
+// exactement la même chose — un mélange aléatoire de TOUT le catalogue, sans aucun rapport
+// avec leur thème affiché. Un auditeur qui "syntonisait" NUNI Love entendait exactement le
+// même flux que NUNI Night, sous un nom différent. Corrigé : chacune utilise maintenant les
+// vrais morceaux tagués de l'ambiance correspondante (moodTracksCache, rempli une seule fois
+// au chargement de la page). "NUNI Live" et "NUNI Amapiano" n'avaient aucune vraie donnée
+// correspondante (pas de notion de session live, pas de genre "Amapiano" dans NUNI) — plutôt
+// que de continuer à jouer un mélange générique sous un nom trompeur, elles ont été
+// renommées vers de vraies ambiances existantes (Motivation, Party).
+let moodTracksCache = {}; // { love: [...tracks...], nuit: [...], ... } — rempli en arrière-plan
+function mapMoodTrack(r){
+  return {
+    t: r.title, a: r.artist_name || r.first_name || 'Artiste NUNI', p: 'pal-1',
+    genre: r.genre || 'Afro', streams: String(r.streams || 0), likes: r.likes || 0,
+    cover: r.cover_url || null, audioUrl: r.audio_url || null, isReal: true,
+    releaseType: r.release_type || 'Single', realId: r.id, artistId: r.artist_id,
+    verified: !!r.is_verified,
+  };
+}
+async function ensureMoodTracksLoaded(key){
+  if(moodTracksCache[key]) return moodTracksCache[key];
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/moods/' + key + '/tracks');
+    const data = await res.json();
+    moodTracksCache[key] = (data.tracks || []).map(mapMoodTrack);
+  }catch(e){ moodTracksCache[key] = []; }
+  return moodTracksCache[key];
+}
+// Filtre d'une station par ambiance : vraie sélection thématique si assez de morceaux tagués
+// existent, sinon repli honnête sur un mélange du catalogue entier (mieux qu'une station vide,
+// mais ne prétend jamais avoir plus de morceaux "Love" qu'il n'y en a réellement).
+function moodStationFilter(key){
+  return async ()=>{
+    const pool = await ensureMoodTracksLoaded(key);
+    return shuffleArray(pool.length ? pool : tracks);
+  };
+}
 const tunerStations = [
   { freq:'87.5', name:'NUNI Hits', desc:'Les morceaux les plus populaires de la plateforme.', filter: ()=>[...tracks].sort((a,b)=>(b.likes||0)-(a.likes||0)) },
   { freq:'88.9', name:'NUNI Rap Congo', desc:'Rap, drill et trap congolais.', filter: ()=> tracks.filter(t=>t.genre==='Rap') },
@@ -11321,12 +11359,12 @@ const tunerStations = [
   { freq:'91.7', name:'NUNI Gospel', desc:'Gospel congolais, entre tradition et modernité.', filter: ()=> tracks.filter(t=>t.genre==='Gospel') },
   { freq:'93.1', name:'NUNI Afro', desc:'Le meilleur de l\'afrobeat congolais.', filter: ()=> tracks.filter(t=>t.genre==='Afro') },
   { freq:'94.8', name:'NUNI Urban', desc:'Hip-hop et sonorités urbaines congolaises.', filter: ()=> tracks.filter(t=>t.genre==='Hip-Hop') },
-  { freq:'96.4', name:'NUNI Amapiano', desc:'Amapiano et sons électroniques africains.', filter: ()=> [...tracks].sort(()=>Math.random()-0.5) },
-  { freq:'98.2', name:'NUNI Love', desc:'Titres doux, pour les cœurs romantiques.', filter: ()=> [...tracks].sort(()=>Math.random()-0.5) },
-  { freq:'100.5', name:'NUNI Live', desc:'Sessions et performances live.', filter: ()=> [...tracks].sort(()=>Math.random()-0.5) },
+  { freq:'96.4', name:'NUNI Party', desc:'Ambiance festive, pour faire monter l\'énergie.', filter: moodStationFilter('party') },
+  { freq:'98.2', name:'NUNI Love', desc:'Titres doux, pour les cœurs romantiques.', filter: moodStationFilter('love') },
+  { freq:'100.5', name:'NUNI Motivation', desc:'De quoi avancer, se lever, se dépasser.', filter: moodStationFilter('motivation') },
   { freq:'102.8', name:'NUNI Découverte', desc:'Nouveaux artistes à découvrir en premier.', filter: ()=> [...tracks].sort((a,b)=>(a.likes||0)-(b.likes||0)) },
   { freq:'104.4', name:'NUNI Classics', desc:'Musique traditionnelle congolaise intemporelle.', filter: ()=> tracks.filter(t=>t.genre==='Traditionnel') },
-  { freq:'106.9', name:'NUNI Night', desc:'Ambiance nocturne, mix continu.', filter: ()=> [...tracks].sort(()=>Math.random()-0.5) },
+  { freq:'106.9', name:'NUNI Night', desc:'Ambiance nocturne, mix continu.', filter: moodStationFilter('nuit') },
 ];
 let tunerIndex = 0;
 let tunerPlaying = false;
@@ -11970,7 +12008,7 @@ async function fetchLocalRadioStation(){
 }
 async function startTunerPlayback(){
   const s = tunerStations[tunerIndex];
-  tunerQueue = s.filter();
+  tunerQueue = await s.filter();
   radioMode = true; genreRadioActive = null; djMode = false;
 
   // priorité aux vrais fichiers importés correspondant à la station (son réel)
