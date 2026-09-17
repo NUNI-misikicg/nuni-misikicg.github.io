@@ -1318,6 +1318,7 @@ async function loadLabelDashboardStatus(){
         loadLabelOverview();
         loadLabelArtists();
         loadLabelContracts();
+        loadLabelReleasesPending();
         loadLabelProspects();
         loadLabelPayments();
         loadLabelTeam();
@@ -1714,10 +1715,21 @@ async function loadLabelContracts(){
           <div class="meta">Commission ${Number(c.commission_pct)}% · ${c.duration_months ? c.duration_months + ' mois' : 'durée indéterminée'} · envoyé le ${new Date(c.sent_at).toLocaleDateString('fr-FR')}</div>
         </div>
         <span class="label-artist-status ${c.status === 'active' ? 'active' : (c.status === 'rejected' || c.status === 'terminated' ? 'suspended' : 'invited')}">${labelContractStatusLabels[c.status]||esc(c.status)}</span>
+        ${c.status === 'active' ? `<label style="display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-dim); white-space:nowrap;" title="Si activé, aucune de ses sorties n'est publiée sans votre validation"><input type="checkbox" ${c.requires_release_approval ? 'checked' : ''} onchange="toggleContractApproval(${c.id}, this.checked)"> Valider ses sorties</label>` : ''}
         ${['sent','viewed','active'].includes(c.status) ? `<button class="btn-icon" title="Résilier" onclick="terminateLabelContract(${c.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>` : ''}`;
       list.appendChild(row);
     });
   }catch(e){ list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>'; }
+}
+async function toggleContractApproval(contractId, requiresApproval){
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/contracts/' + contractId + '/require-approval', {
+      method:'PUT', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ requiresApproval }),
+    });
+    const data = await res.json();
+    if(!res.ok){ alert(data.error||'Erreur.'); loadLabelContracts(); return; }
+  }catch(e){ alert('Impossible de contacter le serveur NUNI.'); loadLabelContracts(); }
 }
 async function terminateLabelContract(id){
   const reason = prompt('Motif de la résiliation (obligatoire) :');
@@ -1730,6 +1742,93 @@ async function terminateLabelContract(id){
     const data = await res.json();
     if(!res.ok){ alert(data.error||'Erreur.'); return; }
     loadLabelContracts();
+  }catch(e){ alert('Impossible de contacter le serveur NUNI.'); }
+}
+
+// ============================================================
+// VALIDATION DES SORTIES — voir /api/label/releases/pending sur le serveur. Checklist en 5
+// points repris tel quel du cahier des charges (Cover / Métadonnées / Audio / Droits / Date) —
+// cochée par le Label avant d'approuver, purement indicative (n'empêche pas d'approuver sans
+// tout cocher, mais rend visible ce qui a été vérifié).
+// ============================================================
+const RELEASE_CHECKLIST_ITEMS = [
+  { key:'cover', label:'Cover' }, { key:'metadata', label:'Métadonnées' },
+  { key:'audio', label:'Audio' }, { key:'rights', label:'Droits' }, { key:'release_date', label:'Date de sortie' },
+];
+async function loadLabelReleasesPending(){
+  const list = document.getElementById('label-releases-pending-list');
+  if(!list || !realAuthToken) return;
+  list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/releases/pending', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!res.ok){ list.innerHTML = `<p style="color:var(--rose-braise); font-size:13px;">${data.error||'Erreur.'}</p>`; return; }
+    if(!data.releases.length){ list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Aucune sortie en attente de validation.</p>'; return; }
+    list.innerHTML = '';
+    data.releases.forEach(t=>{
+      const row = document.createElement('div');
+      row.style.cssText = 'background:var(--bg-card); border-radius:10px; padding:12px;';
+      const checklistHtml = RELEASE_CHECKLIST_ITEMS.map(item=>
+        `<label style="display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--text-dim);"><input type="checkbox" data-release-check="${t.id}" data-key="${item.key}"> ${item.label}</label>`
+      ).join('');
+      row.innerHTML = `
+        <div style="display:flex; gap:10px; align-items:center;">
+          ${t.cover_url ? `<div style="width:44px; height:44px; border-radius:8px; background:url(${esc(t.cover_url)}); background-size:cover; flex-shrink:0;"></div>` : ''}
+          <div style="min-width:0;">
+            <div style="font-weight:600;">${esc(t.title)}</div>
+            <div style="color:var(--text-faint); font-size:11.5px;">${esc(t.artist_name)} · soumis le ${new Date(t.created_at).toLocaleDateString('fr-FR')}${t.scheduled_release_at ? ' · programmé pour le ' + new Date(t.scheduled_release_at).toLocaleDateString('fr-FR') : ''}</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">${checklistHtml}</div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="btn btn-primary btn-sm" onclick="approveLabelRelease(${t.id})">Approuver</button>
+          <button class="btn btn-ghost btn-sm" onclick="requestChangesLabelRelease(${t.id}, ${JSON.stringify(t.title)})">Demander des modifications</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--rose-braise);" onclick="rejectLabelRelease(${t.id}, ${JSON.stringify(t.title)})">Refuser</button>
+        </div>`;
+      list.appendChild(row);
+    });
+  }catch(e){ list.innerHTML = '<p style="color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>'; }
+}
+function collectReleaseChecklist(trackId){
+  const checklist = {};
+  document.querySelectorAll(`[data-release-check="${trackId}"]`).forEach(el=>{ checklist[el.dataset.key] = el.checked; });
+  return checklist;
+}
+async function approveLabelRelease(trackId){
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/releases/' + trackId + '/approve', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ checklist: collectReleaseChecklist(trackId) }),
+    });
+    const data = await res.json();
+    if(!res.ok){ alert(data.error||'Erreur.'); return; }
+    loadLabelReleasesPending();
+  }catch(e){ alert('Impossible de contacter le serveur NUNI.'); }
+}
+async function rejectLabelRelease(trackId, title){
+  const reason = prompt('Motif du refus de « ' + title + ' » (obligatoire) :');
+  if(!reason || !reason.trim()) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/releases/' + trackId + '/reject', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ reason: reason.trim() }),
+    });
+    const data = await res.json();
+    if(!res.ok){ alert(data.error||'Erreur.'); return; }
+    loadLabelReleasesPending();
+  }catch(e){ alert('Impossible de contacter le serveur NUNI.'); }
+}
+async function requestChangesLabelRelease(trackId, title){
+  const note = prompt('Que doit modifier l\'artiste sur « ' + title + ' » ? (obligatoire)');
+  if(!note || !note.trim()) return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/label/releases/' + trackId + '/request-changes', {
+      method:'POST', headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: JSON.stringify({ note: note.trim() }),
+    });
+    const data = await res.json();
+    if(!res.ok){ alert(data.error||'Erreur.'); return; }
+    loadLabelReleasesPending();
   }catch(e){ alert('Impossible de contacter le serveur NUNI.'); }
 }
 

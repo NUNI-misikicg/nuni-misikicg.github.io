@@ -290,6 +290,10 @@
     <div class="field full"><label>Note / conditions en langage clair (optionnel)</label>
       <textarea id="lc-send-note" rows="3" placeholder="Précisions utiles à l'artiste pour comprendre ces conditions"></textarea>
     </div>
+    <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; color:var(--text-dim); margin-top:4px;">
+      <input type="checkbox" id="lc-send-requires-approval" checked style="margin-top:2px;">
+      Exiger ma validation avant chaque publication de cet artiste (cover, métadonnées, audio, droits, date de sortie)
+    </label>
     <div id="lc-send-msg" style="margin-top:6px; font-size:12.5px;"></div>
     <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="submitLabelContract()">Envoyer le contrat</button>
   </div>
@@ -311,6 +315,31 @@
     <div style="display:flex; gap:8px; margin-top:12px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="rejectArtistContract()">Refuser</button>
       <button class="btn btn-primary" style="flex:1;" onclick="signArtistContract()">Signer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VALIDATION DES SORTIES — revue d'un morceau en attente ============ -->
+<div class="ai-modal-overlay" id="release-review-overlay" onclick="if(event.target===this) closeReleaseReviewModal()">
+  <div class="ai-modal" style="max-width:460px; text-align:left;">
+    <button class="btn-icon" style="position:absolute; top:16px; right:16px;" onclick="closeReleaseReviewModal()" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <span class="ai-modal-eyebrow">Validation de sortie</span>
+    <h2 class="serif" id="release-review-title" style="font-size:20px;">Morceau</h2>
+    <div id="release-review-body" style="margin:10px 0; font-size:13px; color:var(--text-dim);"></div>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px; font-size:13px;">
+      <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="rr-check-cover"> Cover conforme</label>
+      <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="rr-check-metadata"> Métadonnées correctes (titre, genre, crédits)</label>
+      <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="rr-check-audio"> Audio conforme</label>
+      <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="rr-check-rights"> Droits confirmés (samples, featurings)</label>
+      <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="rr-check-date"> Date de sortie confirmée</label>
+    </div>
+    <div id="release-review-msg" style="margin-top:8px; font-size:12.5px;"></div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="approveRelease()">✓ Approuver</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="requestReleaseChanges()">Demander des modifications</button>
+      <button class="btn btn-ghost" style="flex:1; color:var(--rose-braise);" onclick="rejectRelease()">Refuser</button>
     </div>
   </div>
 </div>
@@ -1514,6 +1543,13 @@
           </div>
           <p style="font-size:12px; color:var(--text-faint); margin-top:6px;">Suivez vos artistes potentiels avant même qu'ils aient un compte NUNI. Glissez une carte d'une colonne à l'autre pour faire avancer le suivi.</p>
           <div id="label-prospects-board" style="margin-top:16px; display:flex; gap:12px; overflow-x:auto; padding-bottom:8px;"></div>
+        </div>
+
+        <!-- ---- Validation des sorties ---- -->
+        <div class="card" style="margin-top:20px;">
+          <b style="color:var(--accent); font-size:13px;">Validation des sorties</b>
+          <p style="font-size:12px; color:var(--text-faint); margin-top:6px;">Sorties en attente de votre validation — uniquement pour les artistes dont le contrat vous donne ce contrôle. Rien n'est publié sans votre décision.</p>
+          <div id="label-releases-pending-list" style="margin-top:14px; display:flex; flex-direction:column; gap:10px;"></div>
         </div>
 
         <!-- ---- Contrats ---- -->
