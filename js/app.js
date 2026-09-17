@@ -8021,6 +8021,40 @@ try{
   if([1, 1.25, 1.5, 0.75].includes(savedSpeed)) playbackSpeed = savedSpeed;
 }catch(e){ /* pas bloquant */ }
 let usingRealAudio = false;
+
+// ---------- Rapport de progression d'écoute (score de confiance anti-fraude) ----------
+// Envoyé quand un morceau se termine naturellement, quand l'auditeur passe au suivant, ou
+// quand il quitte la page — jamais au lancement de la lecture (le stream est déjà compté à ce
+// moment-là, voir plus bas — ceci ne fait qu'ajouter un signal de confiance après coup).
+let lastPlayProgressReportedFor = null;
+function reportPlayProgress(track, elapsedSeconds, durationSeconds){
+  if(!track || !track.isReal || !track.realId || !realAuthToken) return;
+  if(!Number.isFinite(elapsedSeconds) || elapsedSeconds < 1) return; // rien à rapporter si la lecture n'a quasiment pas commencé
+  const key = track.realId + ':' + Math.round(elapsedSeconds);
+  if(lastPlayProgressReportedFor === key) return; // évite un doublon si deux évènements se déclenchent au même instant
+  lastPlayProgressReportedFor = key;
+  const payload = JSON.stringify({
+    durationPlayedSeconds: Math.round(elapsedSeconds),
+    trackDurationSeconds: Number.isFinite(durationSeconds) ? Math.round(durationSeconds) : null,
+  });
+  try{
+    // keepalive:true — la requête doit pouvoir partir même si la page se ferme juste après.
+    fetch(NUNI_API_BASE + '/api/tracks/' + track.realId + '/play-progress', {
+      method:'POST', keepalive:true,
+      headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + realAuthToken},
+      body: payload,
+    }).catch(()=>{});
+  }catch(e){ /* jamais bloquant pour la lecture elle-même */ }
+}
+// Filet de sécurité : si l'onglet est fermé/masqué en cours d'écoute (ni "ended" ni un
+// changement de morceau ne se déclenchent dans ce cas), on rapporte quand même ce qui a été
+// réellement écouté jusque-là.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden' && usingRealAudio && currentTrack){
+    reportPlayProgress(currentTrack, elapsed, duration);
+  }
+});
+
 const realAudio = new Audio();
 // Nécessaire pour que l'AnalyserNode (sphère audio "Tout") puisse lire les fréquences des
 // fichiers Cloudinary sans être bloqué par la sécurité du navigateur — doit être posé AVANT
@@ -8062,6 +8096,7 @@ realAudio.addEventListener('timeupdate', ()=>{
 });
 realAudio.addEventListener('ended', ()=>{
   if(usingRealAudio){
+    reportPlayProgress(currentTrack, elapsed, duration);
     handleTrackEnded();
     // Le morceau est allé au bout naturellement — plus rien à "reprendre" pour lui.
     if(currentTrack && currentTrack.isReal && currentTrack.realId && realAuthToken){
@@ -8407,6 +8442,12 @@ function playTrack(tr){
   if(djFadeTimer){ clearInterval(djFadeTimer); djFadeTimer = null; }
   if(djFadeAudio){ djFadeAudio.pause(); }
   djCrossfadeTriggered = false;
+
+  // Le morceau précédent est sur le point d'être remplacé : on rapporte ce qui en a vraiment
+  // été écouté avant d'écraser currentTrack/elapsed/duration avec le nouveau morceau.
+  if(usingRealAudio && currentTrack){
+    reportPlayProgress(currentTrack, elapsed, duration);
+  }
 
   currentTrack = tr;
   updateMiniPlayerNowPlaying(tr);
