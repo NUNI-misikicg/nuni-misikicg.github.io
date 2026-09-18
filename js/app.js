@@ -548,6 +548,7 @@ async function restoreSession(){
     demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
     applyAccountType();
     if(currentUser.account_type === 'artist') checkPendingArtistContracts();
+    if(currentUser.account_type === 'consumer') loadPersonalizationSignals();
     if(currentUser.account_type === 'label'){
       enterApp('dashboard');
  toast(`Bon retour, ${currentUser.first_name} `);
@@ -848,6 +849,7 @@ async function submitLogin(){
     btn.disabled = false;
     applyAccountType();
     if(currentUser.account_type === 'artist') checkPendingArtistContracts();
+    if(currentUser.account_type === 'consumer') loadPersonalizationSignals();
     setTimeout(()=>{
       closeLoginModal();
       // Un compte Label n'a ni subscription_status ni plan au sens Pass Auditeur/Artiste
@@ -5876,6 +5878,44 @@ function getTopStreamedTracks(n){
     .sort((a,b)=> parseStreamsCount(b.streams) - parseStreamsCount(a.streams))
     .slice(0, n);
 }
+
+// ---------- "Extraits populaires" personnalisés — voir /api/me/following (déjà existant) et
+// /api/me/top-genre. Règles simples, pas de Machine Learning : priorité aux artistes suivis,
+// puis au genre le plus écouté, puis on complète avec les vraies tendances globales. Chargé en
+// tâche de fond après connexion — si les signaux ne sont pas encore prêts au moment de
+// l'affichage, on retombe simplement sur le classement global (aucune régression visible).
+let personalizationSignals = { followingIds: null, topGenre: undefined };
+async function loadPersonalizationSignals(){
+  if(!realAuthToken || !currentUser || currentUser.account_type !== 'consumer') return;
+  try{
+    const [followRes, genreRes] = await Promise.all([
+      fetch(NUNI_API_BASE + '/api/me/following', { headers:{ 'Authorization':'Bearer ' + realAuthToken } }),
+      fetch(NUNI_API_BASE + '/api/me/top-genre', { headers:{ 'Authorization':'Bearer ' + realAuthToken } }),
+    ]);
+    const followData = followRes.ok ? await followRes.json() : { following: [] };
+    const genreData = genreRes.ok ? await genreRes.json() : { genre: null };
+    personalizationSignals.followingIds = (followData.following || []).map(f=> f.id);
+    personalizationSignals.topGenre = genreData.genre;
+  }catch(e){ /* pas grave — les extraits populaires retombent sur le classement global */ }
+}
+function getPersonalizedExtracts(n){
+  const { followingIds, topGenre } = personalizationSignals;
+  if(!followingIds || !followingIds.length){
+    // Pas encore chargé, ou personne suivie : le genre préféré seul reste un signal utile.
+    if(topGenre){
+      const inGenre = tracks.filter(t=> t.isReal && t.genre === topGenre).sort((a,b)=> parseStreamsCount(b.streams)-parseStreamsCount(a.streams));
+      const rest = getTopStreamedTracks(n).filter(t=> t.genre !== topGenre);
+      return [...inGenre, ...rest].slice(0, n);
+    }
+    return getTopStreamedTracks(n);
+  }
+  const fromFollowed = tracks.filter(t=> t.isReal && followingIds.includes(t.artistId)).sort((a,b)=> parseStreamsCount(b.streams)-parseStreamsCount(a.streams));
+  const inGenre = topGenre ? tracks.filter(t=> t.isReal && t.genre === topGenre && !followingIds.includes(t.artistId)).sort((a,b)=> parseStreamsCount(b.streams)-parseStreamsCount(a.streams)) : [];
+  const seen = new Set([...fromFollowed, ...inGenre].map(t=> t.realId));
+  const rest = getTopStreamedTracks(n).filter(t=> !seen.has(t.realId));
+  return [...fromFollowed, ...inGenre, ...rest].slice(0, n);
+}
+
 // ---------- Écoute automatique au survol — desktop uniquement (le survol n'existe pas
 // au doigt), et jamais si ce morceau précis est déjà la vraie lecture en cours (on ne veut
 // jamais deux sons superposés). Un seul aperçu à la fois : en survoler un nouveau coupe
@@ -13880,10 +13920,10 @@ function renderSearchViewBrowse(){
   const box = document.getElementById('asv-results');
   if(!box) return;
   const genres = Object.keys(ASV_GENRE_COLORS);
-  // "Extraits populaires" — vrais morceaux les plus streamés (même classement que Top
-  // Congo, voir getTopStreamedTracks) : jamais de faux badge "Trending" ni de chiffre
-  // inventé, seulement les vraies écoutes déjà comptabilisées.
-  const trending = getTopStreamedTracks(10);
+  // "Extraits populaires" — personnalisés si les signaux sont prêts (artistes suivis, genre
+  // préféré), sinon retombe sur le classement global — jamais de faux badge "Trending" ni de
+  // chiffre inventé, seulement les vraies écoutes déjà comptabilisées.
+  const trending = getPersonalizedExtracts(10);
   // ---- Tuiles de genre "premium" — avant : simple aplat de couleur avec juste le nom.
   // Maintenant : pochette du morceau le plus streamé du genre (au lieu d'une couleur plate),
   // vrai nombre de morceaux publiés, et vrai top artiste du genre par streams cumulés.
