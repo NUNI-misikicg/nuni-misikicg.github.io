@@ -8883,7 +8883,7 @@ function handleTrackEnded(){
   if(repeatOn){ playTrack(currentTrack); return; }
   nextTrack();
 }
-function nextTrack(){
+async function nextTrack(){
   if(djMode && djQueue.length){
     playTrack(djAdvanceQueue());
     return;
@@ -8903,8 +8903,26 @@ function nextTrack(){
     playTrack(next);
     return;
   }
+  // Rien d'autre de pertinent à enchaîner dans le contexte actuel (liste d'un seul morceau,
+  // lien direct, notification...) : plutôt que de reboucler sur le même morceau ou de
+  // s'arrêter, NUNI Radio prend le relais avec un vrai morceau similaire (même genre en
+  // priorité, sinon une ambiance partagée) — jamais une IA qui "comprend" le morceau, des
+  // règles simples sur de vraies données (voir /api/tracks/:id/similar).
+  if(pool.length <= 1 && currentTrack && currentTrack.isReal && currentTrack.realId){
+    const similar = await fetchSimilarTrack(currentTrack.realId);
+    if(similar){ playTrack(similar); return; }
+  }
   const i = pool.findIndex(t=>t.t===currentTrack.t);
   playTrack(pool[(i+1) % pool.length] || pool[0]);
+}
+async function fetchSimilarTrack(trackId){
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/tracks/' + trackId + '/similar?limit=5');
+    if(!res.ok) return null;
+    const data = await res.json();
+    const list = (data.tracks || []).map(mapMoodTrack); // même mapping que les ambiances, même forme d'objet track
+    return list.length ? list[Math.floor(Math.random() * list.length)] : null;
+  }catch(e){ return null; }
 }
 function prevTrack(){
   if(djMode && djQueue.length){
