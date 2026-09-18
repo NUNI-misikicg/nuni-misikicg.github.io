@@ -4177,14 +4177,29 @@ function openArtistPage(name, artistId){
             releaseRow.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Aucune sortie programmée pour le moment.</p>`;
             return;
           }
+          const reviewStatusLabels = {
+            pending: 'En attente de validation par votre Label',
+            changes_requested: 'Modifications demandées par votre Label',
+          };
           const mapped = list.map(r=>{
-            const d = new Date(r.scheduled_release_at);
-            const days = Math.max(0, Math.ceil((d - new Date()) / 86400000));
+            if(r.scheduled_release_at){
+              const d = new Date(r.scheduled_release_at);
+              const days = Math.max(0, Math.ceil((d - new Date()) / 86400000));
+              return {
+                d: String(d.getDate()).padStart(2,'0'),
+                m: d.toLocaleDateString('fr-FR', {month:'short'}).replace('.',''),
+                t: r.title, a: r.release_type || 'Single',
+                c: days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `Dans ${days} jours`,
+              };
+            }
+            // Morceau bloqué en attente de validation Label — pas de date, donc pas de
+            // compte à rebours : on affiche plutôt le statut réel, et la note du Label le cas
+            // échéant (jamais inventée si elle est absente).
             return {
-              d: String(d.getDate()).padStart(2,'0'),
-              m: d.toLocaleDateString('fr-FR', {month:'short'}).replace('.',''),
+              d: '—', m: '',
               t: r.title, a: r.release_type || 'Single',
-              c: days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `Dans ${days} jours`,
+              c: (reviewStatusLabels[r.review_status] || r.review_status || '') + (r.review_note ? ' — « ' + r.review_note + ' »' : ''),
+              reviewTrackId: r.review_status === 'changes_requested' ? r.id : null,
             };
           });
           fillReleaseRow('artist-release-row', mapped);
@@ -7684,6 +7699,10 @@ function fillReleaseRow(id, list){
     const card = document.createElement('div');
     card.className = 'release-card';
     const notifyBtnHtml = r.id ? `<button class="release-notify-btn ${r.notifyRequested?'is-active':''}" data-track-id="${r.id}"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>${r.notifyRequested ? 'Prévenu·e' : 'Me prévenir'}</button>` : '';
+    // Morceau bloqué par la Validation des sorties du Label (voir /api/artist/scheduled-
+    // releases) : bouton "Renvoyer" plutôt que "Me prévenir", qui n'a aucun sens pour son
+    // propre morceau. Ne fait rien tant que le Label n'a pas demandé de modification.
+    const resubmitBtnHtml = r.reviewTrackId ? `<button class="release-notify-btn" data-resubmit-track-id="${r.reviewTrackId}">Renvoyer pour validation</button>` : '';
     const coverHtml = r.cover
       ? `<div class="release-cover" style="background-image:url(${r.cover})"></div>`
       : `<div class="release-cover release-cover-empty"></div>`;
@@ -7694,11 +7713,29 @@ function fillReleaseRow(id, list){
         ${r.type ? `<span class="release-type-tag">${esc(r.type)}</span>` : ''}
         <div class="t">${r.t}</div><div class="a">${r.a}</div><div class="c">${r.c}</div>
       </div>
-      ${notifyBtnHtml}`;
-    const notifyBtn = card.querySelector('.release-notify-btn');
+      ${notifyBtnHtml}${resubmitBtnHtml}`;
+    const notifyBtn = card.querySelector('.release-notify-btn[data-track-id]');
     if(notifyBtn) notifyBtn.onclick = ()=> toggleReleaseNotify(notifyBtn, r.id);
+    const resubmitBtn = card.querySelector('[data-resubmit-track-id]');
+    if(resubmitBtn) resubmitBtn.onclick = ()=> resubmitTrackForReview(r.reviewTrackId, resubmitBtn);
     row.appendChild(card);
   });
+}
+// ---------- Renvoyer un morceau pour validation après une demande de modification du Label
+// (voir POST /api/me/tracks/:id/resubmit-for-review). Ne republie jamais tout seul — repasse
+// simplement le morceau en file d'attente de revue, exactement comme un nouvel envoi. ----------
+async function resubmitTrackForReview(trackId, btn){
+  if(!confirm('Renvoyer ce morceau à votre Label pour une nouvelle validation ?')) return;
+  btn.disabled = true;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/tracks/' + trackId + '/resubmit-for-review', {
+      method:'POST', headers:{ 'Authorization':'Bearer ' + realAuthToken },
+    });
+    const data = await res.json();
+    if(!res.ok){ toast(data.error || 'Erreur.'); btn.disabled = false; return; }
+    toast('Morceau renvoyé pour validation.');
+    if(currentUser) openArtistPage(currentUser.artist_name || currentUser.first_name, currentUser.id);
+  }catch(e){ toast('Impossible de contacter le serveur NUNI.'); btn.disabled = false; }
 }
 // Bascule réelle de l'inscription "Me prévenir" — exige une vraie connexion (pas de fausse
 // confirmation visuelle pour un visiteur non connecté, qui ne recevrait jamais rien).
