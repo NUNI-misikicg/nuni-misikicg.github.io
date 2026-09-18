@@ -11237,13 +11237,31 @@ function renderQueuePanel(){
   const autoHtml = fpQueueUpcoming.length
     ? (userQueue.length ? `<div class="fp-queue-section-lbl">À suivre</div>` : '') +
       fpQueueUpcoming.map((tr, idx)=> `<div class="fp-queue-item" data-queue-kind="next" data-queue-idx="${idx}">${queueRowHtml(tr)}</div>`).join('')
-    : (userQueue.length ? '' : `<div class="fp-queue-empty">Rien d'autre à suivre pour le moment.</div>`);
+    : (userQueue.length ? '' : `<div class="fp-queue-empty" id="fp-queue-empty-fallback">Rien d'autre à suivre pour le moment.</div>`);
   next.innerHTML = userQueueHtml + autoHtml;
+  // Rien de pertinent à enchaîner dans le contexte actuel : plutôt qu'un simple message vide,
+  // on propose une vraie section "les gens qui écoutent aussi" — co-écoute réelle calculée
+  // depuis l'historique (voir /api/tracks/:id/also-listened), jamais une estimation inventée.
+  // Chargée en tâche de fond, remplace le message vide seulement si de vraies données arrivent.
+  if(!fpQueueUpcoming.length && currentTrack && currentTrack.isReal && currentTrack.realId){
+    const forThisTrack = currentTrack.realId;
+    fetch(NUNI_API_BASE + '/api/tracks/' + forThisTrack + '/also-listened?limit=5').then(r=>r.json()).then(data=>{
+      if(currentTrack.realId !== forThisTrack) return; // le morceau a changé entre-temps, résultat périmé
+      const list = (data.tracks || []).map(mapMoodTrack);
+      if(!list.length) return; // le message "Rien d'autre à suivre" déjà affiché reste honnête dans ce cas
+      const emptyMsg = document.getElementById('fp-queue-empty-fallback');
+      const alsoHtml = `<div class="fp-queue-section-lbl">Les gens qui écoutent aussi</div>` +
+        list.map((tr, idx)=> `<div class="fp-queue-item" data-queue-kind="also" data-queue-idx="${idx}">${queueRowHtml(tr)}</div>`).join('');
+      if(emptyMsg) emptyMsg.outerHTML = alsoHtml; else next.insertAdjacentHTML('beforeend', alsoHtml);
+      fpQueueAlsoListenedList = list;
+    }).catch(()=>{});
+  }
 
   fpQueueHistoryList = listeningHistory.filter(h=> h.track.t !== currentTrack.t).slice(0, 5).map(h=> h.track);
   if(histGroup) histGroup.style.display = fpQueueHistoryList.length ? '' : 'none'; // jamais de section "récemment écouté" vide affichée pour rien
   hist.innerHTML = fpQueueHistoryList.map((tr, idx)=> `<div class="fp-queue-item" data-queue-kind="history" data-queue-idx="${idx}">${queueRowHtml(tr)}</div>`).join('');
 }
+let fpQueueAlsoListenedList = [];
 document.addEventListener('click', (e)=>{
   const removeBtn = e.target.closest('.fp-queue-remove');
   if(removeBtn){ e.stopPropagation(); removeFromQueue(Number(removeBtn.dataset.removeIdx)); return; }
@@ -11254,6 +11272,7 @@ document.addEventListener('click', (e)=>{
   let tr;
   if(kind === 'user'){ tr = userQueue[idx]; if(tr) userQueue.splice(idx,1); }
   else if(kind === 'next'){ tr = fpQueueUpcoming[idx]; }
+  else if(kind === 'also'){ tr = fpQueueAlsoListenedList[idx]; }
   else { tr = fpQueueHistoryList[idx]; }
   if(tr){
     playTrack(tr);
