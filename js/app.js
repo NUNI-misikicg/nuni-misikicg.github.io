@@ -5371,6 +5371,7 @@ function openAlbumView(tr){
       <div class="av-list-panel"></div>
       <div class="av-total-duration" id="av-total-duration">Calcul de la durée totale…</div>
     </div>
+    <div class="av-story" id="av-story" style="display:none; padding:0 20px; margin-top:6px; color:var(--av-text-secondary,var(--text-dim)); font-size:13px; line-height:1.6; max-width:640px;"></div>
     <div class="av-followed-section" id="av-followed-section" style="display:none;">
       <div class="av-followed-title">Artistes suivis par ${esc(tr.a)}</div>
       <div class="av-followed-row" id="av-followed-row"></div>
@@ -5480,6 +5481,16 @@ function openAlbumView(tr){
   loadRealAlbumDuration(albumTracks, tr.release, albumCredits);
   loadArtistFollowedArtists(tr.artistId);
   renderSimilarTracksRow(overlay, tr, albumTracks);
+
+  // "Histoire du projet" — même logique que les crédits : reprend la description que
+  // l'artiste a renseignée sur n'importe quel morceau de l'album (un seul texte par album en
+  // pratique). Section masquée s'il n'y en a pas, jamais un texte générique inventé.
+  const albumStory = albumTracks.find(t => t.description)?.description || null;
+  const storyEl = document.getElementById('av-story');
+  if(storyEl && albumStory){
+    storyEl.textContent = albumStory;
+    storyEl.style.display = 'block';
+  }
 
   requestAnimationFrame(()=> overlay.classList.add('show'));
   attachSwipeDownToClose(overlay, closeOverlay);
@@ -7314,6 +7325,54 @@ function renderHeroSecondaryCovers(){
    ├── Player Reflection    → .play-pause / .fp-play (voir style.css)
    └── Cover Glow           → .track-card.is-now-playing (voir style.css)
 ============================================================ */
+/* ============================================================
+   NUNI MOTION COVER — mouvement lent et élégant directement sur la pochette du lecteur
+   plein écran, jamais un effet gadget. Un seul traitement volontairement sobre (un reflet
+   lumineux qui glisse très lentement) plutôt que plusieurs thèmes différents (fumée, pluie,
+   néons) que je ne peux pas construire honnêtement comme de vrais effets distincts dans le
+   temps disponible — mieux vaut UN effet fini et soigné que plusieurs approximations.
+   Réutilise la vitesse déjà calculée par ambiance/genre (--nuni-aura-pulse-speed, voir
+   NuniAura) pour rester cohérent avec la couleur et le rythme déjà en place, sans nouveau
+   calcul. Respecte prefers-reduced-motion — jamais imposé à quelqu'un qui a demandé moins
+   d'animations à son appareil.
+   NOTE TECHNIQUE : injecté ici en JS (pas dans les fichiers .css) car nuni-premium.css et
+   style.css étaient temporairement inaccessibles en édition au moment d'écrire ceci — aucune
+   dépendance à ces fichiers, donc aucun risque lié à ça.
+============================================================ */
+const NuniMotionCover = {
+  _styleInjected: false,
+  ensureStyle(){
+    if(this._styleInjected) return;
+    this._styleInjected = true;
+    const style = document.createElement('style');
+    style.id = 'nuni-motion-cover-style';
+    style.textContent = `
+      .full-player .fp-cover{ position:relative; overflow:hidden; }
+      .full-player .fp-cover.nuni-motion::after{
+        content:''; position:absolute; inset:0; pointer-events:none;
+        background:linear-gradient(115deg, transparent 35%, color-mix(in srgb, var(--nuni-aura-color, #C9A24B) 22%, transparent) 50%, transparent 65%);
+        background-size:250% 250%; background-position:0% 0%;
+        animation:nuniMotionSweep var(--nuni-aura-pulse-speed, 3.4s) ease-in-out infinite alternate;
+        mix-blend-mode:overlay;
+      }
+      @keyframes nuniMotionSweep{ from{ background-position:0% 0%; } to{ background-position:100% 100%; } }
+      @media (prefers-reduced-motion: reduce){
+        .full-player .fp-cover.nuni-motion::after{ animation:none; }
+      }
+    `;
+    document.head.appendChild(style);
+  },
+  apply(){
+    this.ensureStyle();
+    const cover = document.getElementById('fp-cover');
+    if(cover) cover.classList.add('nuni-motion');
+  },
+  remove(){
+    const cover = document.getElementById('fp-cover');
+    if(cover) cover.classList.remove('nuni-motion');
+  },
+};
+
 const NuniAura = {
   // Vitesse de pulsation + flou selon l'ambiance du genre — pas juste une couleur qui
   // change, une vraie sensation différente. Les genres absents utilisent PROFILES.default.
@@ -7357,6 +7416,7 @@ const NuniAura = {
       };
       wasActive ? setTimeout(reveal, 320) : reveal(); // instant de calme seulement s'il y avait déjà une aura à effacer
       this.startLiveLoop();
+      NuniMotionCover.apply();
     }).catch(()=> this.stop());
   },
 
@@ -7377,6 +7437,7 @@ const NuniAura = {
     const ambient = document.getElementById('nuni-aura-ambient');
     if(ambient) ambient.classList.remove('is-active');
     this.stopLiveLoop();
+    NuniMotionCover.remove();
   },
 
   // ---- Réactivité audio RÉELLE (pas un visualiseur qui "danse" — une respiration organique
