@@ -4184,12 +4184,13 @@ function openArtistPage(name, artistId){
           const mapped = list.map(r=>{
             if(r.scheduled_release_at){
               const d = new Date(r.scheduled_release_at);
-              const days = Math.max(0, Math.ceil((d - new Date()) / 86400000));
+              const featuringTxt = r.featuring ? ' (feat. ' + r.featuring + ')' : '';
               return {
                 d: String(d.getDate()).padStart(2,'0'),
                 m: d.toLocaleDateString('fr-FR', {month:'short'}).replace('.',''),
-                t: r.title, a: r.release_type || 'Single',
-                c: days === 0 ? "Aujourd'hui" : days === 1 ? 'Demain' : `Dans ${days} jours`,
+                t: r.title, a: (r.release_type || 'Single') + featuringTxt,
+                c: '🔒 ' + formatLockCountdown(d),
+                lockUntil: r.scheduled_release_at,
               };
             }
             // Morceau bloqué en attente de validation Label — pas de date, donc pas de
@@ -7689,6 +7690,23 @@ function loadUpcomingReleases(){
   }).catch(()=>{
     row.innerHTML = `<p style="font-size:12.5px; color:var(--text-faint);">Calendrier momentanément indisponible.</p>`;
   });
+}
+// ---------- Compte à rebours précis pour un morceau verrouillé avant sa sortie — format exact
+// du cahier des charges ("Disponible dans : 5 jours 12 heures 35 minutes"). Le panneau qui
+// l'affiche se rafraîchit déjà automatiquement toutes les 60s (voir plus bas), donc ce texte
+// reste à jour sans logique de minuterie supplémentaire à faire vivre séparément.
+function formatLockCountdown(targetDate){
+  const diffMs = targetDate - new Date();
+  if(diffMs <= 0) return 'Disponible maintenant';
+  const totalMinutes = Math.floor(diffMs / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+  if(days > 0) parts.push(days + (days>1?' jours':' jour'));
+  if(hours > 0) parts.push(hours + (hours>1?' heures':' heure'));
+  if(days === 0 && minutes > 0) parts.push(minutes + (minutes>1?' minutes':' minute')); // les minutes ne comptent que sous 24h, comme l'exemple du cahier des charges
+  return 'Disponible dans ' + (parts.length ? parts.join(' ') : 'quelques instants');
 }
 function fillReleaseRow(id, list){
   const row = document.getElementById(id);
@@ -11349,7 +11367,8 @@ function openFpCredits(){
       <div class="pi-sub-row"><span>Type de sortie</span><b>${tr.releaseType || 'Single'}</b></div>
       <div class="pi-sub-row"><span>Distribution</span><b>NUNI</b></div>
     </div>
-    ${tr.description ? `<p style="color:var(--text-dim); font-size:13px; margin-top:14px; line-height:1.5;">${esc(tr.description)}</p>` : ''}`;
+    ${tr.description ? `<p style="color:var(--text-dim); font-size:13px; margin-top:14px; line-height:1.5;">${esc(tr.description)}</p>` : ''}
+    ${tr.credits ? `<div class="pi-sub-card" style="margin-top:14px;"><div class="pi-sub-row" style="flex-direction:column; align-items:flex-start; gap:4px;"><span>Crédits</span><b style="white-space:pre-line; text-align:left; font-weight:500;">${esc(tr.credits)}</b></div></div>` : ''}`;
   document.getElementById('credits-modal-overlay').classList.add('show');
 }
 function closeFpCredits(){
