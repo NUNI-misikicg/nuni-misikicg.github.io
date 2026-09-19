@@ -1150,6 +1150,7 @@
         <div class="ambiances-grid" id="ambiances-grid"></div>
       </div>
       <div class="shelf shelf-clips-feature"><div class="shelf-head"><h3 class="serif">Clips</h3><a href="#" onclick="event.preventDefault(); enterApp('clips');">Tout voir</a></div><div class="clips-feature-grid" id="shelf-clips-home"></div></div>
+      <div class="shelf" id="shelf-genre-affinity" style="display:none;"><div class="shelf-head"><h3 class="serif" id="shelf-genre-affinity-title">Parce que vous écoutez…</h3></div><div class="shelf-row" id="shelf-genre-affinity-row"></div></div>
       <div class="shelf">
         <div class="shelf-head"><h3 class="serif">Artistes à suivre</h3><a href="#" onclick="event.preventDefault(); openTop100ArtistsPage();">Tout voir</a></div>
         <div class="artist-suggest-row" id="artist-suggest-row"></div>
@@ -1301,6 +1302,11 @@
         <button class="lib-quick-item" data-lib-cat="recent" onclick="setLibraryCategory('recent')">
           <span class="lib-quick-ic lib-quick-ic-recent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
           <span class="lib-quick-label">Écoutés récemment</span>
+          <svg class="lib-quick-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <button class="lib-quick-item" data-lib-cat="profile" onclick="setLibraryCategory('profile')">
+          <span class="lib-quick-ic lib-quick-ic-artists"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></span>
+          <span class="lib-quick-label">Profil musical</span>
           <svg class="lib-quick-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
         </button>
       </div>

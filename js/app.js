@@ -548,7 +548,7 @@ async function restoreSession(){
     demoOverride = false; // une vraie session (connexion/inscription/restauration) prime toujours sur un ancien essai du bouton démo
     applyAccountType();
     if(currentUser.account_type === 'artist') checkPendingArtistContracts();
-    if(currentUser.account_type === 'consumer') loadPersonalizationSignals();
+    if(currentUser.account_type === 'consumer'){ loadPersonalizationSignals(); loadGenreAffinityShelf(); }
     if(currentUser.account_type === 'label'){
       enterApp('dashboard');
  toast(`Bon retour, ${currentUser.first_name} `);
@@ -849,7 +849,7 @@ async function submitLogin(){
     btn.disabled = false;
     applyAccountType();
     if(currentUser.account_type === 'artist') checkPendingArtistContracts();
-    if(currentUser.account_type === 'consumer') loadPersonalizationSignals();
+    if(currentUser.account_type === 'consumer'){ loadPersonalizationSignals(); loadGenreAffinityShelf(); }
     setTimeout(()=>{
       closeLoginModal();
       // Un compte Label n'a ni subscription_status ni plan au sens Pass Auditeur/Artiste
@@ -9716,6 +9716,31 @@ async function loadRealClips(){
 }
 loadRealClips();
 
+// ---------- "Parce que vous écoutez [Genre]" — réutilise /api/me/top-genre (déjà construit
+// pour la personnalisation des extraits populaires) : un vrai genre réellement écouté, jamais
+// deviné. Masqué tant qu'il n'y a pas assez d'historique — pas de section vide ni de faux
+// genre affiché par défaut.
+async function loadGenreAffinityShelf(){
+  const shelf = document.getElementById('shelf-genre-affinity');
+  if(!shelf || !realAuthToken || !currentUser || currentUser.account_type !== 'consumer') return;
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/top-genre', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(!data.genre) return; // pas assez d'historique — la section reste masquée, honnêtement
+    const genreTracks = tracks.filter(t=> t.isReal && t.genre === data.genre).sort((a,b)=> parseStreamsCount(b.streams)-parseStreamsCount(a.streams)).slice(0, 12);
+    if(!genreTracks.length) return;
+    document.getElementById('shelf-genre-affinity-title').textContent = 'Parce que vous écoutez ' + data.genre;
+    const row = document.getElementById('shelf-genre-affinity-row');
+    row.innerHTML = '';
+    genreTracks.forEach(tr=>{
+      const card = trackCard(tr);
+      wireHoverPreview(card, tr);
+      row.appendChild(card);
+    });
+    shelf.style.display = '';
+  }catch(e){ /* section reste simplement masquée si l'appel échoue */ }
+}
+
 // ---------- Rangée "Clips" sur l'accueil, juste après "Nouveautés" ----------
 // Réutilise clipCard() (même carte que l'onglet Clips complet) — seuls les vrais clips
 // publiés apparaissent ici, jamais de contenu inventé. Voir #shelf-clips-home en CSS pour
@@ -11466,6 +11491,59 @@ function moodStationFilter(key){
     return shuffleArray(pool.length ? pool : tracks);
   };
 }
+
+// ---------- Adaptation selon l'heure de la journée — règle simple sur l'horloge locale de
+// l'appareil, pas un modèle prédictif. Reprend les 4 tranches du cahier des charges, mappées
+// sur les vraies ambiances/genres qui existent réellement sur NUNI (pas de mood "acoustique"
+// ou "instrumental" chez nous — honnête plutôt que d'inventer une ambiance qui n'existe pas).
+function getTimeOfDayContext(){
+  const h = new Date().getHours();
+  if(h >= 5 && h < 11) return { label:'Matin', moodKey:'motivation', genre:'Gospel' };
+  if(h >= 11 && h < 17) return { label:'Midi', moodKey:'party', genre:'Afro' };
+  if(h >= 17 && h < 22) return { label:'Soir', moodKey:'love', genre:'Rumba' };
+  return { label:'Nuit', moodKey:'nuit', genre:null };
+}
+
+// ---------- "NUNI Pour vous" — radio personnalisée par utilisateur (règles simples, pas de
+// Machine Learning) : mélange pondéré ~70% préférences réelles (artistes suivis + genres les
+// plus écoutés) / ~30% découverte (le reste des tendances, teinté par l'heure de la journée).
+// Si la personne n'est pas connectée ou n'a pas encore assez d'historique, repli honnête sur
+// les tendances globales — jamais un faux "profil" inventé pour remplir la station.
+async function personalRadioFilter(){
+  if(!realAuthToken || !currentUser || currentUser.account_type !== 'consumer'){
+    return shuffleArray(getTopStreamedTracks(40));
+  }
+  await loadPersonalizationSignals();
+  let profileGenres = [];
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/music-profile', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(data.hasEnoughData) profileGenres = data.genres.slice(0, 2).map(g=> g.genre);
+  }catch(e){ /* pas grave, on retombe sur le classement global pour la découverte */ }
+
+  const followingIds = personalizationSignals.followingIds || [];
+  const preferencePool = tracks.filter(t=> t.isReal && (followingIds.includes(t.artistId) || profileGenres.includes(t.genre)));
+
+  const timeCtx = getTimeOfDayContext();
+  const timeMoodTracks = await ensureMoodTracksLoaded(timeCtx.moodKey);
+  const preferenceIds = new Set(preferencePool.map(t=> t.realId));
+  const discoveryPool = [
+    ...timeMoodTracks.filter(t=> !preferenceIds.has(t.realId)),
+    ...(timeCtx.genre ? tracks.filter(t=> t.isReal && t.genre === timeCtx.genre && !preferenceIds.has(t.realId)) : []),
+    ...getTopStreamedTracks(30).filter(t=> !preferenceIds.has(t.realId)),
+  ];
+
+  if(!preferencePool.length) return shuffleArray(discoveryPool.length ? discoveryPool : getTopStreamedTracks(40));
+
+  // ~70/30, en gardant l'ordre mélangé à l'intérieur de chaque groupe.
+  const shuffledPref = shuffleArray(preferencePool);
+  const shuffledDisc = shuffleArray(discoveryPool);
+  const targetTotal = Math.min(40, shuffledPref.length + shuffledDisc.length) || 1;
+  const prefCount = Math.max(1, Math.round(targetTotal * 0.7));
+  const mix = [...shuffledPref.slice(0, prefCount), ...shuffledDisc.slice(0, targetTotal - prefCount)];
+  return shuffleArray(mix.length ? mix : getTopStreamedTracks(40));
+}
+
 const tunerStations = [
   { freq:'87.5', name:'NUNI Hits', desc:'Les morceaux les plus populaires de la plateforme.', filter: ()=>[...tracks].sort((a,b)=>(b.likes||0)-(a.likes||0)) },
   { freq:'88.9', name:'NUNI Rap Congo', desc:'Rap, drill et trap congolais.', filter: ()=> tracks.filter(t=>t.genre==='Rap') },
@@ -11479,6 +11557,7 @@ const tunerStations = [
   { freq:'102.8', name:'NUNI Découverte', desc:'Nouveaux artistes à découvrir en premier.', filter: ()=> [...tracks].sort((a,b)=>(a.likes||0)-(b.likes||0)) },
   { freq:'104.4', name:'NUNI Classics', desc:'Musique traditionnelle congolaise intemporelle.', filter: ()=> tracks.filter(t=>t.genre==='Traditionnel') },
   { freq:'106.9', name:'NUNI Night', desc:'Ambiance nocturne, mix continu.', filter: moodStationFilter('nuit') },
+  { freq:'108.7', name:'NUNI Pour vous', desc:'Votre radio personnelle : vos artistes, vos genres, et des découvertes selon le moment de la journée.', filter: personalRadioFilter },
 ];
 let tunerIndex = 0;
 let tunerPlaying = false;
@@ -14733,7 +14812,38 @@ function renderLibrary(){
   } else if(libraryActiveCategory === 'artists'){
     titleEl.textContent = 'Artistes suivis';
     renderLibraryArtists(listEl);
+  } else if(libraryActiveCategory === 'profile'){
+    titleEl.textContent = 'Profil musical';
+    renderMusicProfile(listEl);
   }
+}
+// ---------- Profil musical — répartition réelle par genre (voir /api/me/music-profile). Un
+// résumé de règles simples sur de vraies écoutes, jamais un profil "deviné" par une IA.
+let musicProfileCache = null;
+async function renderMusicProfile(listEl){
+  listEl.innerHTML = '<p style="padding:16px; color:var(--text-faint); font-size:13px;">Chargement…</p>';
+  if(!realAuthToken){ listEl.innerHTML = '<p style="padding:16px; color:var(--text-faint); font-size:13px;">Connectez-vous pour voir votre profil musical.</p>'; return; }
+  try{
+    const res = await fetch(NUNI_API_BASE + '/api/me/music-profile', { headers:{ 'Authorization':'Bearer ' + realAuthToken } });
+    const data = await res.json();
+    if(libraryActiveCategory !== 'profile') return; // catégorie changée pendant le chargement
+    if(!res.ok){ listEl.innerHTML = '<p style="padding:16px; color:var(--text-faint); font-size:13px;">Erreur de chargement.</p>'; return; }
+    musicProfileCache = data;
+    if(!data.hasEnoughData){
+      listEl.innerHTML = '<p style="padding:16px; color:var(--text-faint); font-size:13px;">Écoutez encore quelques morceaux pour que votre profil musical se dessine.</p>';
+      return;
+    }
+    const colors = ['#D4AF6A','#E8927C','#8AA6C1','#9BC49A','#C79BD4','#D4C49B'];
+    listEl.innerHTML = `
+      <div style="padding:16px;">
+        <p style="font-size:12.5px; color:var(--text-faint); margin-bottom:14px;">Basé sur ${data.totalPlays} écoute${data.totalPlays>1?'s':''} réelle${data.totalPlays>1?'s':''} — pas une estimation.</p>
+        ${data.genres.map((g,idx)=>`
+          <div style="margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;"><span>${esc(g.genre)}</span><b>${g.pct}%</b></div>
+            <div style="height:6px; border-radius:3px; background:var(--bg-card);"><div style="height:100%; width:${g.pct}%; border-radius:3px; background:${colors[idx%colors.length]};"></div></div>
+          </div>`).join('')}
+      </div>`;
+  }catch(e){ listEl.innerHTML = '<p style="padding:16px; color:var(--text-faint); font-size:13px;">Impossible de contacter le serveur NUNI.</p>'; }
 }
 // ---------- "Écoutés récemment" — avant : basé UNIQUEMENT sur listeningHistory, une mémoire
 // de session remise à zéro à chaque rechargement de page (invisible dès qu'on revenait sur
