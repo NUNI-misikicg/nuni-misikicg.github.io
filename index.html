@@ -393,6 +393,19 @@
   </div>
 </div>
 
+<!-- ============ INSTALLATION INTELLIGENTE (PWA) ============
+     N'apparaît jamais au premier chargement — seulement après plusieurs vraies visites, et
+     jamais si déjà installé ou récemment refusé (voir maybeShowSmartInstallBanner dans app.js). -->
+<div id="smart-install-banner" style="display:none; position:fixed; left:16px; right:16px; bottom:88px; z-index:400; background:var(--bg-card,#1a1712); border:1px solid var(--border-strong,rgba(255,255,255,.12)); border-radius:16px; padding:14px 16px; align-items:center; gap:12px; box-shadow:0 10px 30px rgba(0,0,0,.4); max-width:420px; margin:0 auto;">
+  <img src="assets/icons/icon-96.png" alt="" style="width:44px; height:44px; border-radius:12px; flex-shrink:0;">
+  <div style="flex:1; min-width:0;">
+    <div style="font-weight:700; font-size:13.5px;">Installer NUNI</div>
+    <div style="font-size:11.5px; color:var(--text-faint,#B8AA96);">Accès plus rapide, plein écran, sans navigateur.</div>
+  </div>
+  <button onclick="dismissSmartInstallBanner()" style="background:none; border:none; color:var(--text-faint,#B8AA96); font-size:12px; padding:6px; cursor:pointer;">Plus tard</button>
+  <button onclick="acceptSmartInstallBanner()" class="btn btn-primary btn-sm" style="white-space:nowrap;">Installer</button>
+</div>
+
 <!-- ============ MOT DE PASSE OUBLIÉ ============ -->
 <div class="ai-modal-overlay" id="forgot-password-overlay" onclick="if(event.target===this) closeForgotPasswordModal()">
   <div class="ai-modal" style="max-width:400px; text-align:left; position:relative;">

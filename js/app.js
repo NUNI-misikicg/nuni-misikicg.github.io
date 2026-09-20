@@ -3775,6 +3775,46 @@ function enterApp(view){
    Bouton flottant repurposé (avant : contournait le système de Pass, désormais désactivé
    ailleurs) — vrai contact WhatsApp/email déjà utilisés partout ailleurs sur NUNI, et une
    vraie FAQ honnête, sans rien inventer sur le fonctionnement réel de la plateforme. */
+// ============ INSTALLATION INTELLIGENTE — proposer l'installation seulement aux personnes
+// vraiment engagées, jamais dès la première visite (voir mission : "Ne pas afficher
+// immédiatement"). Compte les vraies visites (une par session d'onglet, pas par rechargement
+// dans la même session), et respecte un refus explicite pendant 14 jours avant de reproposer. ============
+const SMART_INSTALL_VISIT_THRESHOLD = 3;
+const SMART_INSTALL_DISMISS_DAYS = 14;
+function trackVisitAndMaybeOfferInstall(){
+  try{
+    if(isRunningAsInstalledApp()) return; // déjà installé, rien à proposer
+    if(!sessionStorage.getItem('nuni_visit_counted')){
+      sessionStorage.setItem('nuni_visit_counted', '1');
+      const count = (parseInt(localStorage.getItem('nuni_visit_count') || '0', 10)) + 1;
+      localStorage.setItem('nuni_visit_count', String(count));
+    }
+    const visits = parseInt(localStorage.getItem('nuni_visit_count') || '0', 10);
+    if(visits < SMART_INSTALL_VISIT_THRESHOLD) return;
+    const dismissedAt = parseInt(localStorage.getItem('nuni_install_dismissed_at') || '0', 10);
+    const daysSinceDismiss = (Date.now() - dismissedAt) / 86400000;
+    if(dismissedAt && daysSinceDismiss < SMART_INSTALL_DISMISS_DAYS) return;
+    // Un peu de délai après le chargement — jamais imposé dès la première seconde, pour
+    // laisser la personne arriver sur son contenu avant de lui parler d'installation.
+    setTimeout(()=>{
+      const ua = navigator.userAgent || '';
+      const isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
+      if(nuniInstallPrompt || isIOS){
+        const banner = document.getElementById('smart-install-banner');
+        if(banner) banner.style.display = 'flex';
+      }
+    }, 4000);
+  }catch(e){ /* stockage local indisponible (navigation privée…) — pas grave, juste pas de bandeau */ }
+}
+function dismissSmartInstallBanner(){
+  document.getElementById('smart-install-banner').style.display = 'none';
+  try{ localStorage.setItem('nuni_install_dismissed_at', String(Date.now())); }catch(e){}
+}
+function acceptSmartInstallBanner(){
+  document.getElementById('smart-install-banner').style.display = 'none';
+  installNuniApp();
+}
+
 // ============ INSTALLER NUNI EN APPLICATION (PWA) ============
 // Android/Chrome : l'installation peut être déclenchée directement via l'événement
 // standard 'beforeinstallprompt', capturé dès le chargement de la page. iOS Safari ne
@@ -6810,6 +6850,7 @@ async function loadRealTracks(attempt){
       syncFullPlayer();
     }
     handleSharedTrackLink();
+    handleAppShortcut();
   }catch(e){
     if(attempt < maxAttempts - 1 && myGen === loadRealTracksGen){
       await new Promise(r=> setTimeout(r, retryDelays[attempt] || 15000));
@@ -11243,6 +11284,16 @@ async function reportCurrentTrack(){
    est chargé, on cherche ce morceau précis et on l'ouvre en plein écran automatiquement.
    Si la personne n'est pas encore connectée, le lien reste en attente (l'URL n'est pas
    nettoyée) : il sera repris juste après une connexion/inscription réussie. */
+/* Raccourcis d'application (manifest.json → "shortcuts") — ouverts via un appui long sur
+   l'icône NUNI une fois installée. ?shortcut=search / ?shortcut=library dans l'URL. */
+function handleAppShortcut(){
+  const params = new URLSearchParams(location.search);
+  const shortcut = params.get('shortcut');
+  if(!shortcut) return;
+  if(shortcut === 'search') enterApp('search');
+  else if(shortcut === 'library') enterApp('library');
+}
+
 function handleSharedTrackLink(){
   const params = new URLSearchParams(location.search);
   const sharedId = params.get('track');
@@ -15010,6 +15061,7 @@ document.addEventListener('click', (e)=>{
   if(!mimiWidget.contains(e.target)) mimiWidget.classList.remove('open');
 });
 applyAccountType();
+trackVisitAndMaybeOfferInstall();
 refreshLabelPlanOptionsFromServer();
 sessionRestorePromise = restoreSession();
 
